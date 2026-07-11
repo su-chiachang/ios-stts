@@ -2,13 +2,19 @@
 
 macOS SwiftUI speech-to-speech conversation app. STT = parakeet.cpp, LLM = OpenAI-compatible API, TTS = qwen3-tts.cpp. Full plan: see `/Users/suchiachang/.claude/plans/swirling-wiggling-bonbon.md`.
 
-## Status: M0, M1, M2 done, starting M3
+## Reference repos
+- speech-to-speech: https://github.com/huggingface/speech-to-speech
+- parakeet.cpp: https://github.com/mudler/parakeet.cpp
+- qwen3-tts.cpp: https://github.com/predict-woo/qwen3-tts.cpp
+- whisper.cpp: https://github.com/ggml-org/whisper.cpp
+
+## Status: M0, M1, M2, M3, M4 done; starting M5
 
 - [x] M0 — native foundation (build scripts, models, dual-engine smoke test)
 - [x] M1 — app skeleton (xcodegen project, views, model loading)
 - [x] M2 — file-based STT transcription (audio/video input; live mic moved to M6, see below)
-- [ ] M3 — LLM round trip (endpoint detection + SSE client)
-- [ ] M4 — voice output (TTS + sentence chunking + playback)
+- [x] M3 — LLM round trip (endpoint detection + SSE client)
+- [x] M4 — voice output (TTS + sentence chunking + playback)
 - [ ] M5 — full loop + polish
 - [ ] M6 — live mic transcription (AVAudioEngine) — deferred from M2 by explicit user request
 
@@ -60,26 +66,44 @@ stts/
   App/
     STTSApp.swift                    # done (M1 scope: loads models on launch; no debug scaffolding left in it)
     Core/AppSettings.swift           # done (UserDefaults + security-scoped bookmarks)
-    Core/ConversationEngine.swift    # done through M2: state enum, loadModels(), transcribeFile(_:)
+    Core/ConversationEngine.swift    # done through M4: file STT → LLM → sentence TTS/playback
     Audio/AudioFileInput.swift       # done — AVAssetReader-based file/video → 16kHz mono Float32 chunk stream
     STT/ParakeetStt.swift            # done — actor wrapping streaming C API, incl. lang-tag stripping
     TTS/QwenTts.swift                # done — actor wrapping synthesize C API
     UI/ConversationView.swift        # done — bubbles + status bar + "Transcribe File…" button (NSOpenPanel)
     UI/SettingsView.swift            # done (model pickers, LLM config, locale/threshold sliders; zh locale = "zh-CN")
     Resources/STTS.entitlements      # done (sandbox on: audio-input, network.client, user-selected read-only)
-  App/Core/SentenceChunker.swift     # not yet written — M4
-  App/Core/LanguageDetect.swift      # not yet written — M4
-  App/STT/EndpointDetector.swift     # not yet written — M3
-  App/LLM/OpenAIChatClient.swift     # not yet written — M3
+  App/Core/SentenceChunker.swift     # done — M4 CJK-aware streaming sentence splitter
+  App/Core/LanguageDetect.swift      # done — M4 Han-ratio → Qwen language id routing
+  App/Core/SpeechPipeline.swift      # done — M4 serialized synthesis + concurrent playback pipeline
+  App/Audio/AudioPlayer.swift        # done — M4 AVAudioEngine/player-node buffer playback
+  App/STT/EndpointDetector.swift     # done — M3
+  App/LLM/OpenAIChatClient.swift     # done — M3
   App/Audio/AudioInputManager.swift  # not yet written — M6 (live mic, deferred)
 ```
 
-Xcode project builds successfully (`xcodegen generate && xcodebuild -project STTS.xcodeproj -scheme STTS build`). Real conversation loop (LLM + TTS) not yet wired — that's M3/M4.
+Xcode project builds successfully (`xcodegen generate && xcodebuild -project STTS.xcodeproj -scheme STTS build`). The M3/M4 file-input loop now streams STT → LLM → sentence TTS/playback; M5 adds controls and conversation-loop polish.
 
 Own git repo at `stts/.git` (separate from the parent `qwen3-tts.cpp` repo, which now ignores `stts/`). Nothing committed yet.
 
 Test fixtures (gitignored, in `build/fixtures/`): `en.wav`/`zh.wav` (macOS `say` synthesized), `en_pad.wav`/`zh_pad.wav` (+1.5s trailing silence, for EOU testing), `en.mp4` (ffmpeg-muxed video+audio, for video-container testing). Regenerate with `say -v <voice> "<text>" -o x.aiff && afconvert x.aiff x.wav -d LEI16@16000 -c 1 -f WAVE`.
 
-## Next up: M3 — LLM round trip
+## M3 findings (locked in)
 
-Per the plan: `EndpointDetector` (silence-based primary, EOU-event bonus — see M0 findings) + `OpenAIChatClient` (URLSession.bytes SSE client against an OpenAI-compatible `/chat/completions` endpoint, e.g. local llama-server + gemma). Wire so that when a turn ends, the finalized transcript goes to the LLM and the streamed reply appears as a live assistant bubble. File input still drives STT for now (M6 swaps in the mic); `EndpointDetector` can be exercised by feeding it the file-input chunk-by-chunk RMS/text signal the same way mic chunks will.
+**The file-input path now exercises the same primary endpoint logic as the future mic path.** `EndpointDetector` is a pure value type: a model EOU event ends the turn immediately; otherwise it measures RMS from each 16 kHz PCM chunk and ends after detected speech plus the configured silent interval and a non-empty partial transcript. `ConversationEngine.transcribeFile(_:)` feeds each chunk through it, while EOF remains the deterministic fallback for short fixture files without trailing silence.
+
+**LLM streaming is OpenAI-compatible and does not depend on a particular server.** `OpenAIChatClient` normalizes the configured base URL to `/chat/completions`, posts the configured system prompt plus chat history with `stream: true`, and reads `data:` SSE events until `[DONE]`. Text deltas update a newly-created assistant bubble on the main actor; malformed URLs, HTTP failures, and SSE/transport errors flow into the existing UI error state. `Authorization` is sent only when an API key is configured, allowing local llama-server endpoints without dummy credentials.
+
+**Verified locally:** the arm64 macOS app target builds; an isolated `EndpointDetector` test covers the 0.8-second silence and EOU triggers; and an `URLProtocol`-backed mock endpoint verifies SSE text-delta assembly, `/v1/chat/completions` URL construction, and Authorization handling. Performing the milestone's live round-trip checks still requires a running OpenAI-compatible endpoint (local llama-server + gemma and a cloud endpoint/API key) selected by the user in Settings. No endpoint credentials or server were present in the workspace, so none were invented.
+
+## M4 findings (locked in)
+
+**Sentence-level pipelining hides Qwen's non-streaming synthesis.** `SentenceChunker` extracts CJK/Latin sentence boundaries at 10+ characters (or a 120-character hard split), and `SpeechPipeline` starts synthesis of the following sentence once the previous sentence's buffer has been scheduled. `AVAudioPlayerNode` renders that prior buffer independently, so synthesis and playback overlap without concurrent access to Qwen's native handle.
+
+**Language routing stays local and deterministic.** `LanguageDetect` selects Qwen Chinese (2055) when Han scalars are over 30% of non-whitespace content; otherwise it selects English (2050). This avoids an additional language-ID model or network round trip.
+
+**Verified locally:** `SentenceChunker` handling of English, CJK, flush, and hard-split paths plus `LanguageDetect` routing pass in an isolated test. `AudioPlayer` successfully schedules and completes a 24 kHz mono buffer against the real audio engine. The initial test exposed a stereo-output/mono-buffer assertion, fixed by explicitly connecting the player node at Qwen's 24 kHz mono format and allowing the mixer to perform hardware-output conversion. The full production-source SPM tool and arm64 macOS app target build successfully.
+
+## Next up: M5 — full loop + polish
+
+M5 scope: add Stop/Reset controls, cancellation and queue flushing, half-duplex state gating, automatic re-listening for the forthcoming microphone path, and final UI/error polish. M6 remains the live microphone implementation.

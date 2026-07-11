@@ -6,3 +6,4 @@ models/
 *.xcodeproj/
 xcuserdata/
 .DS_Store
+.codebase-memory/

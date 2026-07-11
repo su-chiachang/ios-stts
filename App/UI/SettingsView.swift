@@ -7,6 +7,8 @@ struct SettingsView: View {
 
     @State private var parakeetPath: String = ""
     @State private var qwenDirPath: String = ""
+    @State private var modelMessage: String?
+    @State private var modelMessageIsError = false
 
     var body: some View {
         Form {
@@ -29,8 +31,14 @@ struct SettingsView: View {
                         Button("Choose…") { pickQwenModelDir() }
                     }
                 }
-                Button("Reload Models") {
-                    Task { await engine.loadModels() }
+                Button("Reload Models") { reloadModels() }
+                if let modelMessage {
+                    Text(modelMessage)
+                        .font(.caption)
+                        .foregroundStyle(modelMessageIsError ? .red : .secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .textSelection(.enabled)
                 }
             }
 
@@ -77,8 +85,13 @@ struct SettingsView: View {
         panel.canChooseDirectories = false
         panel.allowedContentTypes = [UTType(filenameExtension: "gguf") ?? .data]
         if panel.runModal() == .OK, let url = panel.url {
-            try? AppSettings.shared.setParakeetModel(url)
-            parakeetPath = url.path
+            do {
+                try AppSettings.shared.setParakeetModel(url)
+                parakeetPath = url.path
+                reloadModels()
+            } catch {
+                showModelError(bookmarkErrorMessage("STT model", error: error))
+            }
         }
     }
 
@@ -87,9 +100,37 @@ struct SettingsView: View {
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         if panel.runModal() == .OK, let url = panel.url {
-            try? AppSettings.shared.setQwenModelDir(url)
-            qwenDirPath = url.path
+            do {
+                try AppSettings.shared.setQwenModelDir(url)
+                qwenDirPath = url.path
+                reloadModels()
+            } catch {
+                showModelError(bookmarkErrorMessage("TTS model directory", error: error))
+            }
         }
+    }
+
+    private func reloadModels() {
+        modelMessage = "Loading models…"
+        modelMessageIsError = false
+        Task { @MainActor in
+            await engine.loadModels()
+            if case .error(let message) = engine.state {
+                showModelError(message)
+            } else {
+                modelMessage = "Models loaded."
+            }
+        }
+    }
+
+    private func showModelError(_ message: String) {
+        modelMessage = message
+        modelMessageIsError = true
+    }
+
+    private func bookmarkErrorMessage(_ subject: String, error: Error) -> String {
+        let nsError = error as NSError
+        return "Could not save the \(subject) [\(nsError.domain) \(nsError.code)]: \(nsError.localizedDescription)"
     }
 }
 

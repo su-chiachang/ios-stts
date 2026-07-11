@@ -17,6 +17,13 @@ struct ConversationView: View {
                         BubbleView(bubble: ChatBubble(role: .user, text: engine.partialTranscript))
                             .opacity(0.5)
                     }
+                    if engine.state == .thinking,
+                       engine.bubbles.last?.role == .assistant,
+                       engine.bubbles.last?.text.isEmpty == true {
+                        ProgressView()
+                            .controlSize(.small)
+                            .padding(.horizontal, 12)
+                    }
                 }
                 .padding()
             }

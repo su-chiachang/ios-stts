@@ -41,6 +41,7 @@ let package = Package(
                 .linkedFramework("MetalKit"),
                 .linkedFramework("Foundation"),
                 .linkedFramework("CoreML"),
+                .linkedFramework("AVFoundation"),
             ]
         ),
     ]

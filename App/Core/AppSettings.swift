@@ -67,18 +67,32 @@ final class AppSettings {
     func setQwenModelDir(_ url: URL) throws { try storeBookmark(url, key: Keys.qwenBookmark) }
 
     private func storeBookmark(_ url: URL, key: String) throws {
-        let data = try url.bookmarkData(options: .withSecurityScope,
-                                         includingResourceValuesForKeys: nil,
-                                         relativeTo: nil)
+        // macOS can intermittently fail to retrieve the app-scope key here
+        // (NSCocoaErrorDomain 256) even when the user selected the URL with
+        // NSOpenPanel. In that case, preserve the panel's implicit security
+        // scope instead. It provides the same read access this app needs and
+        // avoids relying on ScopedBookmarkAgent's app-scope key.
+        let data: Data
+        do {
+            data = try url.bookmarkData(options: .withSecurityScope,
+                                        includingResourceValuesForKeys: nil,
+                                        relativeTo: nil)
+        } catch {
+            data = try url.bookmarkData(options: [],
+                                        includingResourceValuesForKeys: nil,
+                                        relativeTo: nil)
+        }
         UserDefaults.standard.set(data, forKey: key)
     }
 
     private func resolveBookmark(_ key: String) -> URL? {
         guard let data = UserDefaults.standard.data(forKey: key) else { return nil }
         var stale = false
-        guard let url = try? URL(resolvingBookmarkData: data, options: .withSecurityScope,
-                                  relativeTo: nil, bookmarkDataIsStale: &stale) else { return nil }
-        _ = url.startAccessingSecurityScopedResource()
+        let url = (try? URL(resolvingBookmarkData: data, options: .withSecurityScope,
+                            relativeTo: nil, bookmarkDataIsStale: &stale))
+            ?? (try? URL(resolvingBookmarkData: data, options: [],
+                         relativeTo: nil, bookmarkDataIsStale: &stale))
+        guard let url, url.startAccessingSecurityScopedResource() else { return nil }
         return url
     }
 }

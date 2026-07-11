@@ -11,15 +11,19 @@ enum ConversationState: Equatable {
 
 struct ChatBubble: Identifiable, Equatable {
     enum Role { case user, assistant }
-    let id = UUID()
+    let id: UUID
     let role: Role
     var text: String
+
+    init(id: UUID = UUID(), role: Role, text: String) {
+        self.id = id
+        self.role = role
+        self.text = text
+    }
 }
 
-/// Owns the two native engines and the conversation state machine. M2 scope:
-/// load both models, transcribe an audio/video file end-to-end through the
-/// same streaming STT path live mic input will use later (M6). LLM
-/// round-trip and TTS playback are wired in M3-M4.
+/// Owns the two native engines and the conversation state machine. File input
+/// follows the same STT/endpoint/LLM path that live mic input will use in M6.
 @MainActor
 @Observable
 final class ConversationEngine {
@@ -29,7 +33,9 @@ final class ConversationEngine {
 
     private var stt: ParakeetStt?
     private var tts: QwenTts?
-    private var transcriptionTask: Task<Void, Never>?
+    private var turnTask: Task<Void, Never>?
+    private var audioPlayer: AudioPlayer?
+    private var speechPipeline: SpeechPipeline?
 
     func loadModels() async {
         state = .loadingModels
@@ -60,19 +66,28 @@ final class ConversationEngine {
             state = .error("STT model not loaded.")
             return
         }
-        transcriptionTask?.cancel()
+        turnTask?.cancel()
+        if let speechPipeline {
+            Task { await speechPipeline.cancel() }
+        }
         partialTranscript = ""
         state = .listening
 
-        transcriptionTask = Task {
+        turnTask = Task {
             do {
                 try await stt.beginTurn(lang: AppSettings.shared.sttLocale)
                 let source = AudioFileInput(url: url)
+                var endpoint = EndpointDetector(rmsThreshold: AppSettings.shared.rmsThreshold,
+                                                silenceHangMs: AppSettings.shared.silenceHangMs)
                 for try await chunk in source.stream() {
                     try Task.checkCancellation()
                     let result = try await stt.feed(chunk)
                     if !result.newText.isEmpty {
                         partialTranscript += result.newText
+                    }
+                    if endpoint.process(chunk, modelEOU: result.eou,
+                                        hasTranscript: !partialTranscript.isEmpty) {
+                        break
                     }
                 }
                 let tail = try await stt.endTurn()
@@ -81,13 +96,64 @@ final class ConversationEngine {
                 partialTranscript = ""
                 if !finalText.isEmpty {
                     bubbles.append(ChatBubble(role: .user, text: finalText))
+                    try await requestAssistantReply()
+                } else {
+                    state = .idle
                 }
-                state = .idle
             } catch is CancellationError {
                 state = .idle
             } catch {
                 state = .error(error.localizedDescription)
             }
         }
+    }
+
+    private func requestAssistantReply() async throws {
+        guard let tts else {
+            throw QwenTtsError.synthesizeFailed("TTS model not loaded.")
+        }
+        let settings = AppSettings.shared
+        let client = try OpenAIChatClient(baseURL: settings.llmBaseURL,
+                                          apiKey: settings.llmAPIKey,
+                                          model: settings.llmModel)
+        let messages = [OpenAIChatClient.Message(role: .system, content: settings.systemPrompt)]
+            + bubbles.map { bubble in
+                OpenAIChatClient.Message(role: bubble.role == .user ? .user : .assistant,
+                                         content: bubble.text)
+            }
+        let assistantID = UUID()
+        bubbles.append(ChatBubble(id: assistantID, role: .assistant, text: ""))
+        state = .thinking
+        let player: AudioPlayer
+        if let audioPlayer {
+            player = audioPlayer
+        } else {
+            let newPlayer = try AudioPlayer()
+            audioPlayer = newPlayer
+            player = newPlayer
+        }
+        let pipeline = SpeechPipeline(tts: tts, player: player)
+        speechPipeline = pipeline
+        defer { speechPipeline = nil }
+        var chunker = SentenceChunker()
+
+        for try await fragment in client.streamChat(messages: messages) {
+            try Task.checkCancellation()
+            guard let index = bubbles.firstIndex(where: { $0.id == assistantID }) else { continue }
+            bubbles[index].text += fragment
+            for sentence in chunker.append(fragment) {
+                await pipeline.enqueue(sentence)
+                state = .speaking
+            }
+        }
+        for sentence in chunker.finish() {
+            await pipeline.enqueue(sentence)
+            state = .speaking
+        }
+        if let index = bubbles.firstIndex(where: { $0.id == assistantID }), bubbles[index].text.isEmpty {
+            bubbles.remove(at: index)
+        }
+        try await pipeline.finish()
+        state = .idle
     }
 }
