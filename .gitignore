@@ -3,7 +3,6 @@ vendor/
 models/
 .build/
 .swiftpm/
-*.xcodeproj/
 xcuserdata/
 .DS_Store
 .codebase-memory/
