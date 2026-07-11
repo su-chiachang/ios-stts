@@ -6,7 +6,7 @@
 set -euo pipefail
 
 STTS_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-QWEN_SRC="$(cd "$STTS_DIR/../qwen3-tts.cpp" && pwd)"
+QWEN_SRC="$(cd "$STTS_DIR/qwen3-tts.cpp" && pwd)"
 VENDOR="$STTS_DIR/vendor/qwen3tts"
 
 # 1) ggml (Metal + embedded shader library, so no default.metallib to bundle)

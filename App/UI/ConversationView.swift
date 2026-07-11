@@ -3,6 +3,7 @@ import UniformTypeIdentifiers
 
 struct ConversationView: View {
     var engine: ConversationEngine
+    @State private var draft = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -32,10 +33,22 @@ struct ConversationView: View {
                 Text(stateLabel)
                     .font(.callout)
                     .foregroundStyle(.secondary)
+                if engine.state == .listening {
+                    Text("RMS \(engine.inputRMS, specifier: "%.3f")")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.tertiary)
+                }
                 Spacer()
+                if case .error = engine.state {
+                    Button("Reload Models") {
+                        Task { await engine.loadModels() }
+                    }
+                }
             }
             .padding(.horizontal)
             .padding(.vertical, 8)
+            Divider()
+            composer
         }
         .frame(minWidth: 420, minHeight: 500)
     }
@@ -48,8 +61,12 @@ struct ConversationView: View {
             Text("STTS")
                 .font(.headline)
             Spacer()
+            Button("Stop") { engine.stop() }
+                .disabled(!engine.isProcessing)
+            Button("Reset") { engine.resetConversation() }
+                .disabled(engine.bubbles.isEmpty && engine.partialTranscript.isEmpty && !engine.isProcessing)
             Button("Transcribe File…") { pickFile() }
-                .disabled(!engine.isReady)
+                .disabled(!engine.isReady || engine.isProcessing)
         }
         .padding()
     }
@@ -64,10 +81,53 @@ struct ConversationView: View {
         }
     }
 
+    private var composer: some View {
+        HStack(alignment: .bottom, spacing: 8) {
+            TextEditor(text: $draft)
+                .font(.body)
+                .scrollContentBackground(.hidden)
+                .frame(minHeight: 40, maxHeight: 110)
+                .padding(6)
+                .background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
+                .disabled(!engine.isReady || engine.isProcessing)
+
+            Button(action: toggleMicrophone) {
+                Image(systemName: engine.state == .listening ? "stop.fill" : "mic.fill")
+            }
+            .help(engine.state == .listening ? "Stop listening" : "Start voice input")
+            .disabled(!canControlMicrophone)
+
+            Button(action: sendDraft) {
+                Image(systemName: "arrow.up.circle.fill")
+                    .font(.title2)
+            }
+            .help("Send message")
+            .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                      || !engine.isReady || engine.isProcessing)
+        }
+        .padding()
+    }
+
+    private var canControlMicrophone: Bool {
+        engine.isReady && (!engine.isProcessing || engine.state == .listening)
+    }
+
+    private func sendDraft() {
+        if engine.sendText(draft) { draft = "" }
+    }
+
+    private func toggleMicrophone() {
+        if engine.state == .listening {
+            engine.stop()
+        } else {
+            engine.startListening()
+        }
+    }
+
     private var stateLabel: String {
         switch engine.state {
         case .loadingModels: "Loading models…"
-        case .idle: "Idle"
+        case .idle: "Ready"
         case .listening: "Listening…"
         case .thinking: "Thinking…"
         case .speaking: "Speaking…"
@@ -91,14 +151,26 @@ private struct BubbleView: View {
     let bubble: ChatBubble
 
     var body: some View {
-        HStack {
-            if bubble.role == .assistant { Spacer(minLength: 40) }
+        HStack(alignment: .bottom, spacing: 8) {
+            if bubble.role == .assistant {
+                Image(systemName: "person.crop.circle.badge.sparkles")
+                    .font(.title2)
+                    .foregroundStyle(.purple)
+            } else {
+                Spacer(minLength: 40)
+            }
             Text(bubble.text)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
                 .background(bubble.role == .user ? Color.blue.opacity(0.15) : Color.gray.opacity(0.15))
                 .clipShape(RoundedRectangle(cornerRadius: 12))
-            if bubble.role == .user { Spacer(minLength: 40) }
+            if bubble.role == .user {
+                Image(systemName: "person.crop.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(.blue)
+            } else {
+                Spacer(minLength: 40)
+            }
         }
     }
 }

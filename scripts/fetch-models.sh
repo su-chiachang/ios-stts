@@ -3,17 +3,24 @@
 #
 # Default: prebuilt GGUFs from HuggingFace (fast path, no Python needed).
 #   - STT: mudler/parakeet-cpp-gguf (nemotron streaming + eou_120m)
-#   - TTS: Volko76/Qwen3-TTS-12Hz-0.6B-Base-Qwen3tts.cpp_quants-GGUF
-#     (community conversion with the exact filenames qwen3_tts.cpp's loader
-#     expects; verified against the CLI in M0)
+#   - TTS: badlogicgames/qwen3-tts-0.6b-q8_0-gguf
+#     (Q8 talker and F16 tokenizer with the exact filenames qwen3_tts.cpp's
+#     loader prefers)
+#
+# The app also supports two other talker/tokenizer quantization pairs,
+# selectable in Settings, if these files are placed in $QWEN_MODELS by hand
+# (no verified HF source for them is wired up here yet):
+#   - F16:  qwen3-tts-0.6b-f16.gguf          + qwen3-tts-tokenizer-f16.gguf
+#   - Q4:   qwen3-tts-0.6b-q4-k-m.gguf       + qwen3-tts-tokenizer-0.6b-q4-k-m.gguf
 #
 # --convert: instead run the canonical qwen3-tts.cpp conversion pipeline
 #   (downloads safetensors + torch, also exports the CoreML code predictor,
-#   which the fast path does not provide).
+#   which the fast path does not provide). Pass --type q4_k to
+#   convert_tts_to_gguf.py for the Q4 talker.
 set -euo pipefail
 
 STTS_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-QWEN_SRC="$(cd "$STTS_DIR/.." && pwd)"
+QWEN_SRC="$(cd "$STTS_DIR/qwen3-tts.cpp" && pwd)"
 PARAKEET_MODELS="$STTS_DIR/models/parakeet"
 QWEN_MODELS="$STTS_DIR/models/qwen3tts"
 HF="https://huggingface.co"
@@ -43,9 +50,13 @@ if [ "${1:-}" = "--convert" ]; then
   uv pip install huggingface_hub gguf torch safetensors numpy tqdm coremltools
   python scripts/setup_pipeline_models.py --models-dir "$QWEN_MODELS"
 else
-  TTS_REPO="Volko76/Qwen3-TTS-12Hz-0.6B-Base-Qwen3tts.cpp_quants-GGUF"
-  fetch "$HF/$TTS_REPO/resolve/main/qwen3-tts-0.6b-f16.gguf" \
-        "$QWEN_MODELS/qwen3-tts-0.6b-f16.gguf"
+  # This repository publishes artifacts directly compatible with
+  # qwen3-tts.cpp's Q8-preferred filenames.
+  TTS_REPO="badlogicgames/qwen3-tts-0.6b-q8_0-gguf"
+  # qwen3_tts.cpp prefers this Q8 model automatically when it is present;
+  # it is substantially smaller than the F16 talker while retaining quality.
+  fetch "$HF/$TTS_REPO/resolve/main/qwen3-tts-0.6b-q8_0.gguf" \
+        "$QWEN_MODELS/qwen3-tts-0.6b-q8_0.gguf"
   fetch "$HF/$TTS_REPO/resolve/main/qwen3-tts-tokenizer-f16.gguf" \
         "$QWEN_MODELS/qwen3-tts-tokenizer-f16.gguf"
 fi

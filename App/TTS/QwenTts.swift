@@ -19,6 +19,25 @@ enum SpokenLanguage: Int32 {
     case ja = 2058
 }
 
+/// Talker/tokenizer quantization pairing. qwen3-tts.cpp's loader always
+/// pairs a given talker with a specific vocoder ("tokenizer") file — the two
+/// aren't independently selectable, so this enum is the unit of choice.
+enum QwenTtsVariant: String, CaseIterable, Identifiable {
+    case f16
+    case q8_0
+    case q4_k_m
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .f16: "F16 (talker + tokenizer)"
+        case .q8_0: "Q8 (talker) + F16 (tokenizer)"
+        case .q4_k_m: "Q4 (talker + tokenizer)"
+        }
+    }
+}
+
 /// Wraps the qwen3-tts C API. `actor` because the opaque handle is not
 /// documented as thread-safe. Synthesis is full-utterance only (no
 /// streaming) — see SentenceChunker for how the app hides this latency.
@@ -30,9 +49,9 @@ actor QwenTts {
 
     private var tts: OpaquePointer?
 
-    init(modelDir: String, threads: Int32 = 4) throws {
-        guard let tts = qwen3_tts_create(modelDir, threads) else {
-            throw QwenTtsError.loadFailed("qwen3_tts_create returned NULL for \(modelDir)")
+    init(modelDir: String, variant: QwenTtsVariant, threads: Int32 = 4) throws {
+        guard let tts = variant.rawValue.withCString({ qwen3_tts_create(modelDir, $0, threads) }) else {
+            throw QwenTtsError.loadFailed("qwen3_tts_create returned NULL for \(modelDir) (variant: \(variant.rawValue))")
         }
         self.tts = tts
     }

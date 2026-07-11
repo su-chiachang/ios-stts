@@ -28,6 +28,9 @@ final class AppSettings {
     var rmsThreshold: Double {
         didSet { UserDefaults.standard.set(rmsThreshold, forKey: Keys.rmsThreshold) }
     }
+    var qwenModelVariant: QwenTtsVariant {
+        didSet { UserDefaults.standard.set(qwenModelVariant.rawValue, forKey: Keys.qwenModelVariant) }
+    }
 
     private enum Keys {
         static let llmBaseURL = "llmBaseURL"
@@ -39,6 +42,7 @@ final class AppSettings {
         static let rmsThreshold = "rmsThreshold"
         static let parakeetBookmark = "parakeetModelBookmark"
         static let qwenBookmark = "qwenModelDirBookmark"
+        static let qwenModelVariant = "qwenModelVariant"
     }
 
     static let defaultSystemPrompt = """
@@ -56,6 +60,7 @@ final class AppSettings {
         sttLocale = d.string(forKey: Keys.sttLocale) ?? "auto"
         silenceHangMs = d.object(forKey: Keys.silenceHangMs) as? Double ?? 800
         rmsThreshold = d.object(forKey: Keys.rmsThreshold) as? Double ?? 0.015
+        qwenModelVariant = d.string(forKey: Keys.qwenModelVariant).flatMap(QwenTtsVariant.init(rawValue:)) ?? .q8_0
     }
 
     // MARK: - Security-scoped model paths

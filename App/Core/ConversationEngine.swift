@@ -36,9 +36,17 @@ final class ConversationEngine {
     private var turnTask: Task<Void, Never>?
     private var audioPlayer: AudioPlayer?
     private var speechPipeline: SpeechPipeline?
+    private var activeTurnID: UUID?
+    private var activeInput: TurnInput?
+    private var audioInput: AudioInputManager?
+    private var sourceMediaPlayer: SourceMediaPlayer?
+    private(set) var inputRMS: Float = 0
 
     func loadModels() async {
+        cancelCurrentTurn()
         state = .loadingModels
+        stt = nil
+        tts = nil
         guard let parakeetURL = AppSettings.shared.parakeetModelURL() else {
             state = .error("No STT model selected. Pick a parakeet .gguf file in Settings.")
             return
@@ -49,7 +57,7 @@ final class ConversationEngine {
         }
         do {
             stt = try ParakeetStt(modelPath: parakeetURL.path)
-            tts = try QwenTts(modelDir: qwenDirURL.path)
+            tts = try QwenTts(modelDir: qwenDirURL.path, variant: AppSettings.shared.qwenModelVariant)
             state = .idle
         } catch {
             state = .error(error.localizedDescription)
@@ -57,31 +65,41 @@ final class ConversationEngine {
     }
 
     var isReady: Bool { stt != nil && tts != nil }
+    var isProcessing: Bool {
+        switch state {
+        case .listening, .thinking, .speaking: true
+        case .loadingModels, .idle, .error: false
+        }
+    }
 
     /// Streams the file's audio track through the STT actor exactly like a
     /// live mic turn will (beginTurn → repeated feed → endTurn), publishing
     /// incrementally finalized text to `partialTranscript` as it arrives.
     func transcribeFile(_ url: URL) {
-        guard let stt else {
-            state = .error("STT model not loaded.")
+        guard let stt, isReady else {
+            state = .error("Models are not loaded. Choose both model locations in Settings, then reload.")
             return
         }
-        turnTask?.cancel()
-        if let speechPipeline {
-            Task { await speechPipeline.cancel() }
-        }
+        cancelCurrentTurn()
+        let turnID = UUID()
+        activeTurnID = turnID
+        activeInput = .file
         partialTranscript = ""
         state = .listening
 
         turnTask = Task {
             do {
                 try await stt.beginTurn(lang: AppSettings.shared.sttLocale)
+                let sourcePlayer = SourceMediaPlayer()
+                sourceMediaPlayer = sourcePlayer
+                sourcePlayer.play(url)
                 let source = AudioFileInput(url: url)
                 var endpoint = EndpointDetector(rmsThreshold: AppSettings.shared.rmsThreshold,
                                                 silenceHangMs: AppSettings.shared.silenceHangMs)
                 for try await chunk in source.stream() {
                     try Task.checkCancellation()
                     let result = try await stt.feed(chunk)
+                    guard isCurrentTurn(turnID) else { return }
                     if !result.newText.isEmpty {
                         partialTranscript += result.newText
                     }
@@ -90,25 +108,105 @@ final class ConversationEngine {
                         break
                     }
                 }
-                let tail = try await stt.endTurn()
-                let finalText = (partialTranscript + tail)
-                    .trimmingCharacters(in: .whitespacesAndNewlines)
-                partialTranscript = ""
-                if !finalText.isEmpty {
-                    bubbles.append(ChatBubble(role: .user, text: finalText))
-                    try await requestAssistantReply()
-                } else {
-                    state = .idle
-                }
+                sourcePlayer.stop()
+                if sourceMediaPlayer === sourcePlayer { sourceMediaPlayer = nil }
+                try await finalizeSttTurn(stt, turnID: turnID)
             } catch is CancellationError {
-                state = .idle
+                finishTurn(turnID, with: .idle)
             } catch {
-                state = .error(error.localizedDescription)
+                finishTurn(turnID, with: .error(error.localizedDescription))
             }
         }
     }
 
-    private func requestAssistantReply() async throws {
+    /// Starts microphone capture for one spoken turn. When the assistant has
+    /// finished speaking, the same source automatically starts the next turn.
+    func startListening() {
+        guard isReady, !isProcessing else { return }
+        cancelCurrentTurn()
+        let turnID = UUID()
+        activeTurnID = turnID
+        activeInput = .microphone
+        partialTranscript = ""
+        inputRMS = 0
+        state = .listening
+
+        turnTask = Task {
+            guard await AudioInputManager.requestPermission() else {
+                finishTurn(turnID, with: .error("Microphone permission is required. Enable it in System Settings, then try again."))
+                return
+            }
+            guard let stt, isCurrentTurn(turnID) else { return }
+            do {
+                try await stt.beginTurn(lang: AppSettings.shared.sttLocale)
+                let input = AudioInputManager()
+                audioInput = input
+                let stream = try input.stream()
+                var endpoint = EndpointDetector(rmsThreshold: AppSettings.shared.rmsThreshold,
+                                                silenceHangMs: AppSettings.shared.silenceHangMs)
+                for try await chunk in stream {
+                    try Task.checkCancellation()
+                    guard isCurrentTurn(turnID) else { return }
+                    inputRMS = chunk.rms
+                    let result = try await stt.feed(chunk.samples)
+                    if !result.newText.isEmpty {
+                        partialTranscript += result.newText
+                    }
+                    if endpoint.process(chunk.samples, modelEOU: result.eou,
+                                        hasTranscript: !partialTranscript.isEmpty) {
+                        input.stop()
+                        break
+                    }
+                }
+                audioInput = nil
+                try Task.checkCancellation()
+                try await finalizeSttTurn(stt, turnID: turnID)
+            } catch is CancellationError {
+                finishTurn(turnID, with: .idle)
+            } catch {
+                finishTurn(turnID, with: .error(error.localizedDescription))
+            }
+        }
+    }
+
+    /// Sends typed text through the same LLM and sentence-level TTS pipeline
+    /// as a finalized spoken turn, without starting microphone capture.
+    @discardableResult
+    func sendText(_ text: String) -> Bool {
+        let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty, isReady, !isProcessing else { return false }
+
+        cancelCurrentTurn()
+        let turnID = UUID()
+        activeTurnID = turnID
+        activeInput = .text
+        bubbles.append(ChatBubble(role: .user, text: text))
+        state = .thinking
+        turnTask = Task {
+            do {
+                try await requestAssistantReply(turnID: turnID)
+            } catch is CancellationError {
+                finishTurn(turnID, with: .idle)
+            } catch {
+                finishTurn(turnID, with: .error(error.localizedDescription))
+            }
+        }
+        return true
+    }
+
+    func stop() {
+        cancelCurrentTurn()
+        partialTranscript = ""
+        inputRMS = 0
+        state = .idle
+    }
+
+    func resetConversation() {
+        stop()
+        bubbles.removeAll()
+    }
+
+    private func requestAssistantReply(turnID: UUID) async throws {
         guard let tts else {
             throw QwenTtsError.synthesizeFailed("TTS model not loaded.")
         }
@@ -134,26 +232,90 @@ final class ConversationEngine {
         }
         let pipeline = SpeechPipeline(tts: tts, player: player)
         speechPipeline = pipeline
-        defer { speechPipeline = nil }
+        defer {
+            if speechPipeline === pipeline { speechPipeline = nil }
+        }
         var chunker = SentenceChunker()
 
         for try await fragment in client.streamChat(messages: messages) {
             try Task.checkCancellation()
+            guard isCurrentTurn(turnID) else { throw CancellationError() }
             guard let index = bubbles.firstIndex(where: { $0.id == assistantID }) else { continue }
             bubbles[index].text += fragment
             for sentence in chunker.append(fragment) {
                 await pipeline.enqueue(sentence)
-                state = .speaking
+                if isCurrentTurn(turnID) { state = .speaking }
             }
         }
         for sentence in chunker.finish() {
             await pipeline.enqueue(sentence)
-            state = .speaking
+            if isCurrentTurn(turnID) { state = .speaking }
         }
+        guard isCurrentTurn(turnID) else { throw CancellationError() }
         if let index = bubbles.firstIndex(where: { $0.id == assistantID }), bubbles[index].text.isEmpty {
             bubbles.remove(at: index)
         }
         try await pipeline.finish()
-        state = .idle
+        finishTurn(turnID, with: .idle)
     }
+
+    private func isCurrentTurn(_ turnID: UUID) -> Bool {
+        activeTurnID == turnID
+    }
+
+    private func finalizeSttTurn(_ stt: ParakeetStt, turnID: UUID) async throws {
+        let tail = try await stt.endTurn()
+        guard isCurrentTurn(turnID) else { return }
+        let finalText = (partialTranscript + tail)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        partialTranscript = ""
+        if !finalText.isEmpty {
+            bubbles.append(ChatBubble(role: .user, text: finalText))
+            try await requestAssistantReply(turnID: turnID)
+        } else {
+            finishTurn(turnID, with: .idle)
+        }
+    }
+
+    private func finishTurn(_ turnID: UUID, with newState: ConversationState) {
+        guard isCurrentTurn(turnID) else { return }
+        let shouldResumeMicrophone = activeInput == .microphone && newState == .idle
+        activeTurnID = nil
+        activeInput = nil
+        turnTask = nil
+        audioInput?.stop()
+        audioInput = nil
+        sourceMediaPlayer?.stop()
+        sourceMediaPlayer = nil
+        inputRMS = 0
+        state = newState
+        if shouldResumeMicrophone {
+            Task { @MainActor [weak self] in self?.startListening() }
+        }
+    }
+
+    private func cancelCurrentTurn() {
+        turnTask?.cancel()
+        turnTask = nil
+        activeTurnID = nil
+        activeInput = nil
+        audioInput?.stop()
+        audioInput = nil
+        sourceMediaPlayer?.stop()
+        sourceMediaPlayer = nil
+        inputRMS = 0
+        let pipeline = speechPipeline
+        speechPipeline = nil
+        if let pipeline {
+            Task { await pipeline.cancel() }
+        } else if let audioPlayer {
+            audioPlayer.stopAndFlush()
+        }
+    }
+}
+
+private enum TurnInput {
+    case file
+    case microphone
+    case text
 }

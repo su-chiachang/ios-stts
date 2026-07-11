@@ -7,3 +7,4 @@ models/
 xcuserdata/
 .DS_Store
 .codebase-memory/
+.vscode/

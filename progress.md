@@ -8,15 +8,15 @@ macOS SwiftUI speech-to-speech conversation app. STT = parakeet.cpp, LLM = OpenA
 - qwen3-tts.cpp: https://github.com/predict-woo/qwen3-tts.cpp
 - whisper.cpp: https://github.com/ggml-org/whisper.cpp
 
-## Status: M0, M1, M2, M3, M4 done; starting M5
+## Status: M0–M6 implementation complete
 
 - [x] M0 — native foundation (build scripts, models, dual-engine smoke test)
 - [x] M1 — app skeleton (xcodegen project, views, model loading)
 - [x] M2 — file-based STT transcription (audio/video input; live mic moved to M6, see below)
 - [x] M3 — LLM round trip (endpoint detection + SSE client)
 - [x] M4 — voice output (TTS + sentence chunking + playback)
-- [ ] M5 — full loop + polish
-- [ ] M6 — live mic transcription (AVAudioEngine) — deferred from M2 by explicit user request
+- [x] M5 — full loop + polish
+- [x] M6 — live mic transcription (AVAudioEngine)
 
 **Milestone reorder**: originally M2 was "live mic transcription." User asked to build file-based (audio/video) input first instead — deterministic, no mic/permissions needed, lets the rest of the pipeline (LLM, TTS, conversation loop) get built and tested before dealing with AVAudioEngine capture. Live mic capture is now **M6**, done last, reusing the same `ParakeetStt` actor the file path already exercises.
 
@@ -35,7 +35,7 @@ macOS SwiftUI speech-to-speech conversation app. STT = parakeet.cpp, LLM = OpenA
 
 **Model sources** (in case download needs to be repeated / `fetch-models.sh` needs updating):
 - STT GGUFs: HF `mudler/parakeet-cpp-gguf` — `nemotron-3.5-asr-streaming-0.6b-q8_0.gguf` (984MB), `realtime_eou_120m-v1-q8_0.gguf` (176MB).
-- TTS GGUFs: HF `Volko76/Qwen3-TTS-12Hz-0.6B-Base-Qwen3tts.cpp_quants-GGUF` — `qwen3-tts-0.6b-f16.gguf` (1.8GB), `qwen3-tts-tokenizer-f16.gguf` (341MB). (Community conversion, filenames match what `qwen3_tts.cpp`'s loader expects. `fetch-models.sh --convert` runs the canonical `setup_pipeline_models.py` pipeline instead if the CoreML code predictor export is needed later.)
+- TTS GGUFs: HF `badlogicgames/qwen3-tts-0.6b-q8_0-gguf` — `qwen3-tts-0.6b-q8_0.gguf` (Q8, preferred by the native loader) and `qwen3-tts-tokenizer-f16.gguf` (341MB). The existing F16 talker remains a fallback until the Q8 download completes. `fetch-models.sh --convert` runs the canonical `setup_pipeline_models.py` pipeline instead if the CoreML code predictor export is needed later.
 
 ## M2 findings (locked in, don't re-derive)
 
@@ -79,7 +79,8 @@ stts/
   App/Audio/AudioPlayer.swift        # done — M4 AVAudioEngine/player-node buffer playback
   App/STT/EndpointDetector.swift     # done — M3
   App/LLM/OpenAIChatClient.swift     # done — M3
-  App/Audio/AudioInputManager.swift  # not yet written — M6 (live mic, deferred)
+  App/Audio/AudioInputManager.swift  # done — M6 mic → 16 kHz mono Float32 chunk stream
+  App/Audio/SourceMediaPlayer.swift  # done — selected file's original audio during subtitle transcription
 ```
 
 Xcode project builds successfully (`xcodegen generate && xcodebuild -project STTS.xcodeproj -scheme STTS build`). The M3/M4 file-input loop now streams STT → LLM → sentence TTS/playback; M5 adds controls and conversation-loop polish.
@@ -104,6 +105,22 @@ Test fixtures (gitignored, in `build/fixtures/`): `en.wav`/`zh.wav` (macOS `say`
 
 **Verified locally:** `SentenceChunker` handling of English, CJK, flush, and hard-split paths plus `LanguageDetect` routing pass in an isolated test. `AudioPlayer` successfully schedules and completes a 24 kHz mono buffer against the real audio engine. The initial test exposed a stereo-output/mono-buffer assertion, fixed by explicitly connecting the player node at Qwen's 24 kHz mono format and allowing the mixer to perform hardware-output conversion. The full production-source SPM tool and arm64 macOS app target build successfully.
 
-## Next up: M5 — full loop + polish
+## M5 findings (locked in)
 
-M5 scope: add Stop/Reset controls, cancellation and queue flushing, half-duplex state gating, automatic re-listening for the forthcoming microphone path, and final UI/error polish. M6 remains the live microphone implementation.
+**Every conversation turn is cancel-safe.** `ConversationEngine` assigns each file-driven turn an ID; late completions from cancelled STT, LLM, or TTS work can no longer overwrite a newer turn's state. Stop cancels the active task and `SpeechPipeline`, flushes queued playback, and returns to Ready. Reset additionally clears the transcript history. The file chooser remains disabled while a turn is active, preserving the half-duplex interaction model until M6 adds a microphone source.
+
+**The shipped app skips the known ggml Metal destructor race.** `AppDelegate.applicationWillTerminate` flushes standard I/O and calls `_exit(0)`, matching the already verified smoke-test and file-test mitigation. The OS reclaims process resources without allowing the two incompatible ggml static-destructor chains to race.
+
+## M6 findings (locked in)
+
+**Live and file transcription share the same turn semantics.** `AudioInputManager` taps AVAudioEngine's input node, uses `AVAudioConverter` to produce 16 kHz mono Float32 PCM, accumulates deterministic 100 ms chunks, and reports RMS with every chunk. The chunks feed the existing `ParakeetStt` actor and silence/EOU detector without a parallel STT path.
+
+**Microphone conversation is half-duplex and self-rearming.** Listen requests permission before capture. An endpoint stops capture before LLM/TTS work begins; after the assistant finishes playback, the engine automatically starts a fresh microphone turn. Stop cancels this rearm path as well as active capture and audio playback. The UI exposes Listen and live RMS alongside the existing threshold setting.
+
+**Verified locally:** the production-source SPM target and arm64 macOS app target build with the AVAudioEngine integration. Final hardware verification requires granting microphone access and using a configured OpenAI-compatible endpoint from the app, which was not automated in the workspace.
+
+**Post-MVP composer:** the conversation view includes a bottom multi-line text composer, Send control, and voice-input toggle. Typed text and finalized speech share the same LLM/TTS history; assistant bubbles are left-aligned with an assistant icon, while user bubbles are right-aligned with a user icon. Selected media now plays its original audio while realtime file transcription publishes subtitles. `qwen3-tts.cpp` prefers Q8 automatically when `qwen3-tts-0.6b-q8_0.gguf` is present, otherwise it falls back to F16.
+
+## MVP implementation complete
+
+For hands-on verification: choose both model paths in Settings, configure an LLM endpoint, press Listen, speak a short English or Chinese utterance, and confirm partial text, streamed response, sentence playback, and automatic return to Listening. Use Stop to cancel immediately.

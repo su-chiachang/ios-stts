@@ -5,7 +5,7 @@
 set -euo pipefail
 
 STTS_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-PARAKEET_SRC="${PARAKEET_SRC:-$(cd "$STTS_DIR/../parakeet.cpp" && pwd)}"
+PARAKEET_SRC="${PARAKEET_SRC:-$(cd "$STTS_DIR/parakeet.cpp" && pwd)}"
 BUILD_DIR="$STTS_DIR/build/parakeet"
 VENDOR="$STTS_DIR/vendor/parakeet"
 

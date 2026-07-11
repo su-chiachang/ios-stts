@@ -31,6 +31,14 @@ struct SettingsView: View {
                         Button("Choose…") { pickQwenModelDir() }
                     }
                 }
+                Picker("Qwen3-TTS quantization", selection: Binding(
+                    get: { settings.qwenModelVariant },
+                    set: { settings.qwenModelVariant = $0; reloadModels() }
+                )) {
+                    ForEach(QwenTtsVariant.allCases) { variant in
+                        Text(variant.displayName).tag(variant)
+                    }
+                }
                 Button("Reload Models") { reloadModels() }
                 if let modelMessage {
                     Text(modelMessage)
