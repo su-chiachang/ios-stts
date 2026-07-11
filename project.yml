@@ -1,0 +1,77 @@
+name: STTS
+options:
+  bundleIdPrefix: com.jiajing
+  deploymentTarget:
+    macOS: "15.0"
+configs:
+  Debug: debug
+  Release: release
+settings:
+  base:
+    SWIFT_VERSION: 5.0
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_ENTITLEMENTS: App/Resources/STTS.entitlements
+    INFOPLIST_KEY_NSMicrophoneUsageDescription: "STTS needs microphone access to listen to your voice."
+    GENERATE_INFOPLIST_FILE: YES
+    ENABLE_HARDENED_RUNTIME: YES
+    LD_RUNPATH_SEARCH_PATHS:
+      - "@executable_path/../Frameworks"
+    OTHER_LDFLAGS:
+      - "-L$(SRCROOT)/vendor/parakeet/lib"
+      - "-lparakeet"
+      - "-lggml"
+      - "-lggml-base"
+      - "-lggml-cpu"
+      - "-lggml-metal"
+      - "-lggml-blas"
+      - "-L$(SRCROOT)/vendor/qwen3tts/lib"
+      - "-lqwen3tts"
+      - "-lc++"
+
+packages:
+  NativeShims:
+    path: Packages/NativeShims
+
+targets:
+  STTS:
+    type: application
+    platform: macOS
+    sources:
+      - path: App
+        excludes:
+          - Resources/STTS.entitlements
+    dependencies:
+      - package: NativeShims
+        product: CParakeet
+      - package: NativeShims
+        product: CQwen3TTS
+      - sdk: Accelerate.framework
+      - sdk: Metal.framework
+      - sdk: MetalKit.framework
+      - sdk: CoreML.framework
+      - sdk: AVFoundation.framework
+    preBuildScripts:
+      - name: "Vendor libs present?"
+        script: |
+          set -e
+          for f in libparakeet.a libggml.a; do
+            if [ ! -f "$SRCROOT/vendor/parakeet/lib/$f" ]; then
+              echo "error: missing $SRCROOT/vendor/parakeet/lib/$f — run scripts/build-parakeet-macos.sh"
+              exit 1
+            fi
+          done
+          if [ ! -f "$SRCROOT/vendor/qwen3tts/lib/libqwen3tts.dylib" ]; then
+            echo "error: missing $SRCROOT/vendor/qwen3tts/lib/libqwen3tts.dylib — run scripts/build-qwen3tts-macos.sh"
+            exit 1
+          fi
+    postBuildScripts:
+      - name: "Embed qwen3tts dylibs"
+        script: |
+          set -e
+          dest="$CODESIGNING_FOLDER_PATH/Contents/Frameworks"
+          mkdir -p "$dest"
+          for lib in "$SRCROOT"/vendor/qwen3tts/lib/*.dylib; do
+            cp -f "$lib" "$dest/"
+            codesign --force --sign "$EXPANDED_CODE_SIGN_IDENTITY" --timestamp=none "$dest/$(basename "$lib")" || true
+          done
