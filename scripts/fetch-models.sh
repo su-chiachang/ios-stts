@@ -20,7 +20,7 @@
 set -euo pipefail
 
 STTS_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-QWEN_SRC="$(cd "$STTS_DIR/qwen3-tts.cpp" && pwd)"
+QWEN_SRC="$(cd "$STTS_DIR/third_party/qwen3-tts.cpp" && pwd)"
 PARAKEET_MODELS="$STTS_DIR/models/parakeet"
 QWEN_MODELS="$STTS_DIR/models/qwen3tts"
 HF="https://huggingface.co"
