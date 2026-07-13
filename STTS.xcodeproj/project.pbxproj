@@ -192,6 +192,8 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 25F8BD9F723968F53FF90016 /* Build configuration list for PBXNativeTarget "STTS" */;
 			buildPhases = (
+				A0B1C2D3E4F5060708090A01 /* Check parakeet */,
+				A0B1C2D3E4F5060708090A02 /* Check qwen3tts */,
 				71EB5C16D9852F20012EF07F /* Vendor libs present? */,
 				B027CFFE2DE6556D06FD7055 /* Sources */,
 				CBCD04A6CBF66FBE5A547FB0 /* Frameworks */,
@@ -244,6 +246,42 @@
 /* End PBXProject section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		A0B1C2D3E4F5060708090A01 /* Check parakeet */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Check parakeet";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "if [ ! -d \"$SRCROOT/third_party/parakeet\" ]; then\n  \"$SRCROOT/scripts/build-parakeet-macos.sh\"\nfi\n";
+		};
+		A0B1C2D3E4F5060708090A02 /* Check qwen3tts */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Check qwen3tts";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "if [ ! -d \"$SRCROOT/third_party/qwen3tts\" ]; then\n  \"$SRCROOT/scripts/build-qwen3tts-macos.sh\"\nfi\n";
+		};
 		71EB5C16D9852F20012EF07F /* Vendor libs present? */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
