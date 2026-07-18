@@ -9,6 +9,9 @@ struct SettingsView: View {
     @State private var qwenDirPath: String = ""
     @State private var modelMessage: String?
     @State private var modelMessageIsError = false
+    @State private var showDownloadModels = false
+    @State private var voiceMessage: String?
+    @State private var voiceMessageIsError = false
 
     var body: some View {
         Form {
@@ -39,7 +42,10 @@ struct SettingsView: View {
                         Text(variant.displayName).tag(variant)
                     }
                 }
-                Button("Reload Models") { reloadModels() }
+                HStack {
+                    Button("Download Models…") { showDownloadModels = true }
+                    Button("Reload Models") { reloadModels() }
+                }
                 if let modelMessage {
                     Text(modelMessage)
                         .font(.caption)
@@ -78,12 +84,53 @@ struct SettingsView: View {
                     Text("RMS threshold: \(settings.rmsThreshold, specifier: "%.3f")")
                 }
             }
+
+            Section("Custom voice (read aloud)") {
+                LabeledContent("Reference voice") {
+                    HStack {
+                        Text(settings.customVoiceName.isEmpty ? "Not set" : settings.customVoiceName)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                            .foregroundStyle(settings.customVoiceName.isEmpty ? .secondary : .primary)
+                        Button("Import…") { importCustomVoice() }
+                        if !settings.customVoiceName.isEmpty {
+                            Button("Remove") {
+                                settings.clearCustomVoice()
+                                voiceMessage = nil
+                            }
+                        }
+                    }
+                }
+                Toggle("Read typed text aloud in this voice", isOn: Binding(
+                    get: { settings.readAloudMode },
+                    set: { settings.readAloudMode = $0 }))
+                Text("When on, Send (or Return) speaks your exact text in the imported voice instead of asking the assistant. A 5–15 s clip works best; the words spoken in it don't matter.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let voiceMessage {
+                    Text(voiceMessage)
+                        .font(.caption)
+                        .foregroundStyle(voiceMessageIsError ? .red : .secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .textSelection(.enabled)
+                }
+            }
         }
         .formStyle(.grouped)
         .frame(width: 480, height: 520)
         .onAppear {
             parakeetPath = AppSettings.shared.parakeetModelURL()?.path ?? ""
             qwenDirPath = AppSettings.shared.qwenModelDirURL()?.path ?? ""
+        }
+        .sheet(isPresented: $showDownloadModels) {
+            DownloadModelsView(onModelsChanged: {
+                parakeetPath = AppSettings.shared.parakeetModelURL()?.path ?? ""
+                qwenDirPath = AppSettings.shared.qwenModelDirURL()?.path ?? ""
+                reloadModels()
+            })
         }
     }
 
@@ -114,6 +161,27 @@ struct SettingsView: View {
                 reloadModels()
             } catch {
                 showModelError(bookmarkErrorMessage("TTS model directory", error: error))
+            }
+        }
+    }
+
+    private func importCustomVoice() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowedContentTypes = [.audio, .wav, .mp3, .mpeg4Audio]
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        voiceMessage = "Importing voice…"
+        voiceMessageIsError = false
+        Task { @MainActor in
+            do {
+                try AppSettings.shared.importCustomVoice(from: url, displayName: url.lastPathComponent)
+                try await engine.warmCustomVoice()
+                voiceMessage = "Voice imported."
+                voiceMessageIsError = false
+            } catch {
+                voiceMessage = error.localizedDescription
+                voiceMessageIsError = true
             }
         }
     }

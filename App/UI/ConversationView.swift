@@ -3,6 +3,7 @@ import UniformTypeIdentifiers
 
 struct ConversationView: View {
     var engine: ConversationEngine
+    var settings = AppSettings.shared
     @State private var draft = ""
 
     var body: some View {
@@ -51,6 +52,11 @@ struct ConversationView: View {
             composer
         }
         .frame(minWidth: 420, minHeight: 500)
+        .onChange(of: engine.dictatedText) { _, text in
+            guard !text.isEmpty else { return }
+            draft = draft.isEmpty ? text : draft + " " + text
+            engine.clearDictatedText()
+        }
     }
 
     private var statusBar: some View {
@@ -90,6 +96,27 @@ struct ConversationView: View {
                 .padding(6)
                 .background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
                 .disabled(!engine.isReady || engine.isProcessing)
+                // Return sends (or reads aloud); Shift+Return inserts a newline.
+                .onKeyPress(phases: .down) { press in
+                    guard press.key == .return, !press.modifiers.contains(.shift) else {
+                        return .ignored
+                    }
+                    sendDraft()
+                    return .handled
+                }
+
+            Button(action: dictateFromFile) {
+                Image(systemName: "doc.badge.plus")
+            }
+            .help("Dictate: transcribe an audio file into the message box")
+            .disabled(!engine.isReady || engine.isProcessing)
+
+            Toggle(isOn: Binding(get: { settings.readAloudMode },
+                                 set: { settings.readAloudMode = $0 })) {
+                Image(systemName: "waveform")
+            }
+            .toggleStyle(.button)
+            .help(readAloudHelp)
 
             Button(action: toggleMicrophone) {
                 Image(systemName: engine.state == .listening ? "stop.fill" : "mic.fill")
@@ -98,14 +125,19 @@ struct ConversationView: View {
             .disabled(!canControlMicrophone)
 
             Button(action: sendDraft) {
-                Image(systemName: "arrow.up.circle.fill")
+                Image(systemName: settings.readAloudMode ? "speaker.wave.2.circle.fill" : "arrow.up.circle.fill")
                     .font(.title2)
             }
-            .help("Send message")
+            .help(settings.readAloudMode ? "Read aloud in my voice" : "Send message")
             .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                       || !engine.isReady || engine.isProcessing)
         }
         .padding()
+    }
+
+    private var readAloudHelp: String {
+        let voice = settings.customVoiceName.isEmpty ? "default voice" : settings.customVoiceName
+        return "Read-aloud mode: speak typed text verbatim in the custom voice (\(voice)) instead of asking the assistant"
     }
 
     private var canControlMicrophone: Bool {
@@ -113,7 +145,18 @@ struct ConversationView: View {
     }
 
     private func sendDraft() {
-        if engine.sendText(draft) { draft = "" }
+        let handled = settings.readAloudMode ? engine.speakText(draft) : engine.sendText(draft)
+        if handled { draft = "" }
+    }
+
+    private func dictateFromFile() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowedContentTypes = [.audio, .movie, .mpeg4Movie, .wav, .mp3]
+        if panel.runModal() == .OK, let url = panel.url {
+            engine.dictateFile(url)
+        }
     }
 
     private func toggleMicrophone() {

@@ -32,6 +32,22 @@ final class AppSettings {
         didSet { UserDefaults.standard.set(qwenModelVariant.rawValue, forKey: Keys.qwenModelVariant) }
     }
 
+    /// When on, typed text is read aloud verbatim in the custom voice instead
+    /// of being sent to the assistant LLM (the "speak as me" path).
+    var readAloudMode: Bool {
+        didSet { UserDefaults.standard.set(readAloudMode, forKey: Keys.readAloudMode) }
+    }
+    /// Display name of the imported custom voice (empty = none).
+    private(set) var customVoiceName: String {
+        didSet { UserDefaults.standard.set(customVoiceName, forKey: Keys.customVoiceName) }
+    }
+    /// Filename (under `customVoiceDirectory`) of the reference WAV. Uniquely
+    /// named per import so a replaced voice never collides with a cached
+    /// embedding (see QwenTts). Empty = none.
+    private(set) var customVoiceFilename: String {
+        didSet { UserDefaults.standard.set(customVoiceFilename, forKey: Keys.customVoiceFilename) }
+    }
+
     private enum Keys {
         static let llmBaseURL = "llmBaseURL"
         static let llmAPIKey = "llmAPIKey"
@@ -43,6 +59,9 @@ final class AppSettings {
         static let parakeetBookmark = "parakeetModelBookmark"
         static let qwenBookmark = "qwenModelDirBookmark"
         static let qwenModelVariant = "qwenModelVariant"
+        static let readAloudMode = "readAloudMode"
+        static let customVoiceName = "customVoiceName"
+        static let customVoiceFilename = "customVoiceFilename"
     }
 
     static let defaultSystemPrompt = """
@@ -61,12 +80,90 @@ final class AppSettings {
         silenceHangMs = d.object(forKey: Keys.silenceHangMs) as? Double ?? 800
         rmsThreshold = d.object(forKey: Keys.rmsThreshold) as? Double ?? 0.015
         qwenModelVariant = d.string(forKey: Keys.qwenModelVariant).flatMap(QwenTtsVariant.init(rawValue:)) ?? .q8_0
+        readAloudMode = d.bool(forKey: Keys.readAloudMode)
+        customVoiceName = d.string(forKey: Keys.customVoiceName) ?? ""
+        customVoiceFilename = d.string(forKey: Keys.customVoiceFilename) ?? ""
     }
 
-    // MARK: - Security-scoped model paths
+    // MARK: - Model locations
+    //
+    // Two ways a model can end up configured: the user points at an
+    // arbitrary file/folder via NSOpenPanel (stored as a security-scoped
+    // bookmark), or it was fetched in-app by the Download Models UI into
+    // this app's own sandbox container (needs no bookmark — the app always
+    // owns that directory). A bookmark, if set, wins.
 
-    func parakeetModelURL() -> URL? { resolveBookmark(Keys.parakeetBookmark) }
-    func qwenModelDirURL() -> URL? { resolveBookmark(Keys.qwenBookmark) }
+    /// Root directory downloaded models live under, mirroring the
+    /// models/parakeet and models/qwen3tts layout scripts/fetch-models.sh
+    /// uses in a dev checkout. See ModelCatalog.
+    static var modelsRootDirectory: URL {
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return base.appendingPathComponent("STTS/models", isDirectory: true)
+    }
+
+    /// Directory the imported custom-voice reference WAV lives in. Inside the
+    /// app's own container, so it needs no security-scoped bookmark.
+    static var customVoiceDirectory: URL {
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return base.appendingPathComponent("STTS/customVoice", isDirectory: true)
+    }
+
+    /// The imported reference WAV, or nil if none is set (or the file is gone).
+    func customVoiceReferenceURL() -> URL? {
+        guard !customVoiceFilename.isEmpty else { return nil }
+        let url = Self.customVoiceDirectory.appendingPathComponent(customVoiceFilename)
+        return FileManager.default.fileExists(atPath: url.path) ? url : nil
+    }
+
+    /// Imports `sourceURL` as the custom voice, converting it to the reference
+    /// WAV format and recording it, replacing any previous voice. Returns the
+    /// on-disk reference URL.
+    @discardableResult
+    func importCustomVoice(from sourceURL: URL, displayName: String) throws -> URL {
+        let dir = Self.customVoiceDirectory
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let filename = "reference-\(UUID().uuidString).wav"
+        let destination = dir.appendingPathComponent(filename)
+        try ReferenceAudioImporter.writeReferenceWav(from: sourceURL, to: destination)
+        let previous = customVoiceFilename
+        customVoiceFilename = filename
+        customVoiceName = displayName
+        if !previous.isEmpty, previous != filename {
+            try? FileManager.default.removeItem(at: dir.appendingPathComponent(previous))
+        }
+        return destination
+    }
+
+    /// Removes the custom voice and deletes its reference WAV.
+    func clearCustomVoice() {
+        let filename = customVoiceFilename
+        customVoiceFilename = ""
+        customVoiceName = ""
+        if !filename.isEmpty {
+            try? FileManager.default.removeItem(at: Self.customVoiceDirectory.appendingPathComponent(filename))
+        }
+    }
+
+    func parakeetModelURL() -> URL? {
+        resolveBookmark(Keys.parakeetBookmark) ?? downloadedParakeetModelURL()
+    }
+    func qwenModelDirURL() -> URL? {
+        resolveBookmark(Keys.qwenBookmark) ?? downloadedQwenModelDirURL()
+    }
+
+    private func downloadedParakeetModelURL() -> URL? {
+        let url = ModelCatalog.parakeetDirectory.appendingPathComponent("nemotron-3.5-asr-streaming-0.6b-q8_0.gguf")
+        return (try? url.checkResourceIsReachable()) == true ? url : nil
+    }
+
+    private func downloadedQwenModelDirURL() -> URL? {
+        guard let asset = ModelCatalog.ttsAsset(for: qwenModelVariant) else { return nil }
+        let fm = FileManager.default
+        let ready = asset.files.allSatisfy {
+            fm.fileExists(atPath: asset.destinationDirectory.appendingPathComponent($0.destinationFilename).path)
+        }
+        return ready ? ModelCatalog.qwenDirectory : nil
+    }
 
     func setParakeetModel(_ url: URL) throws { try storeBookmark(url, key: Keys.parakeetBookmark) }
     func setQwenModelDir(_ url: URL) throws { try storeBookmark(url, key: Keys.qwenBookmark) }

@@ -30,6 +30,9 @@ final class ConversationEngine {
     private(set) var state: ConversationState = .loadingModels
     private(set) var bubbles: [ChatBubble] = []
     private(set) var partialTranscript: String = ""
+    /// Result of the most recent `dictateFile` (STT-only, no LLM). The composer
+    /// picks this up into its draft, then calls `clearDictatedText`.
+    private(set) var dictatedText: String = ""
 
     private var stt: ParakeetStt?
     private var tts: QwenTts?
@@ -119,6 +122,52 @@ final class ConversationEngine {
         }
     }
 
+    /// Transcribes an audio file to text (STT only — no LLM, no TTS) and hands
+    /// the result to `dictatedText` for the composer to load into its draft.
+    /// Lets the user dictate the message they'll then read aloud in their own
+    /// voice instead of typing it. Unlike `transcribeFile`, this consumes the
+    /// whole clip (no endpoint cutoff) and never plays it back.
+    func dictateFile(_ url: URL) {
+        guard let stt, isReady else {
+            state = .error("Models are not loaded. Choose both model locations in Settings, then reload.")
+            return
+        }
+        cancelCurrentTurn()
+        let turnID = UUID()
+        activeTurnID = turnID
+        activeInput = .file
+        partialTranscript = ""
+        state = .listening
+
+        turnTask = Task {
+            do {
+                try await stt.beginTurn(lang: AppSettings.shared.sttLocale)
+                let source = AudioFileInput(url: url)
+                for try await chunk in source.stream() {
+                    try Task.checkCancellation()
+                    let result = try await stt.feed(chunk)
+                    guard isCurrentTurn(turnID) else { return }
+                    if !result.newText.isEmpty {
+                        partialTranscript += result.newText
+                    }
+                }
+                let tail = try await stt.endTurn()
+                guard isCurrentTurn(turnID) else { return }
+                let finalText = (partialTranscript + tail)
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                partialTranscript = ""
+                dictatedText = finalText
+                finishTurn(turnID, with: .idle)
+            } catch is CancellationError {
+                finishTurn(turnID, with: .idle)
+            } catch {
+                finishTurn(turnID, with: .error(error.localizedDescription))
+            }
+        }
+    }
+
+    func clearDictatedText() { dictatedText = "" }
+
     /// Starts microphone capture for one spoken turn. When the assistant has
     /// finished speaking, the same source automatically starts the next turn.
     func startListening() {
@@ -194,6 +243,40 @@ final class ConversationEngine {
         return true
     }
 
+    /// Reads typed text aloud verbatim in the custom voice, bypassing the LLM —
+    /// the "speak as me" path. Falls back to the model's default voice when no
+    /// custom voice is imported.
+    @discardableResult
+    func speakText(_ text: String) -> Bool {
+        let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty, isReady, !isProcessing else { return false }
+
+        cancelCurrentTurn()
+        let turnID = UUID()
+        activeTurnID = turnID
+        activeInput = .text
+        bubbles.append(ChatBubble(role: .user, text: text))
+        state = .speaking
+        turnTask = Task {
+            do {
+                try await readAloud(text, turnID: turnID)
+            } catch is CancellationError {
+                finishTurn(turnID, with: .idle)
+            } catch {
+                finishTurn(turnID, with: .error(error.localizedDescription))
+            }
+        }
+        return true
+    }
+
+    /// Pre-extracts the current custom voice's speaker embedding so the first
+    /// spoken sentence isn't delayed and import errors surface right away.
+    /// No-op when no voice is set or the model isn't loaded yet.
+    func warmCustomVoice() async throws {
+        guard let tts, let path = AppSettings.shared.customVoiceReferenceURL()?.path else { return }
+        try await tts.warmUpVoice(referenceWavPath: path)
+    }
+
     func stop() {
         cancelCurrentTurn()
         partialTranscript = ""
@@ -255,6 +338,37 @@ final class ConversationEngine {
         if let index = bubbles.firstIndex(where: { $0.id == assistantID }), bubbles[index].text.isEmpty {
             bubbles.remove(at: index)
         }
+        try await pipeline.finish()
+        finishTurn(turnID, with: .idle)
+    }
+
+    private func readAloud(_ text: String, turnID: UUID) async throws {
+        guard let tts else {
+            throw QwenTtsError.synthesizeFailed("TTS model not loaded.")
+        }
+        let player: AudioPlayer
+        if let audioPlayer {
+            player = audioPlayer
+        } else {
+            let newPlayer = try AudioPlayer()
+            audioPlayer = newPlayer
+            player = newPlayer
+        }
+        let referenceWavPath = AppSettings.shared.customVoiceReferenceURL()?.path
+        let pipeline = SpeechPipeline(tts: tts, player: player, referenceWavPath: referenceWavPath)
+        speechPipeline = pipeline
+        defer {
+            if speechPipeline === pipeline { speechPipeline = nil }
+        }
+
+        var chunker = SentenceChunker()
+        var sentences = chunker.append(text)
+        sentences += chunker.finish()
+        for sentence in sentences {
+            guard isCurrentTurn(turnID) else { throw CancellationError() }
+            await pipeline.enqueue(sentence)
+        }
+        guard isCurrentTurn(turnID) else { throw CancellationError() }
         try await pipeline.finish()
         finishTurn(turnID, with: .idle)
     }
