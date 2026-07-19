@@ -15,7 +15,8 @@ struct ModelAsset: Identifiable, Hashable {
     let destinationDirectory: URL
 }
 
-/// qwentts.cpp discovers the selected synthesis mode from talker metadata.
+/// The app exposes Base 0.6B and 1.7B talkers; qwentts.cpp discovers the
+/// checkpoint mode from talker metadata when advanced checkpoints are used.
 enum ModelCatalog {
     private static let hf = "https://huggingface.co"
 

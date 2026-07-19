@@ -25,7 +25,7 @@ struct DownloadModelsView: View {
                                   isSelected: asset.id == "tts.\(settings.qwenModelVariant.rawValue).\(settings.qwenModelQuantization.rawValue)",
                                   onFinished: notifyChanged)
                 }
-                Text("F16 downloads the upstream BF16 pair; Q8_0 is the recommended default, while Q4_K_M is the smallest option.")
+                Text("F16 downloads the upstream BF16 pair. Q4_K_M is the default compact option; Q8_0 uses more memory for higher precision.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

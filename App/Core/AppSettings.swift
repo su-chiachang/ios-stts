@@ -84,7 +84,7 @@ final class AppSettings {
         silenceHangMs = d.object(forKey: Keys.silenceHangMs) as? Double ?? 800
         rmsThreshold = d.object(forKey: Keys.rmsThreshold) as? Double ?? 0.015
         qwenModelVariant = d.string(forKey: Keys.qwenModelVariant).flatMap(QwenTtsVariant.init(rawValue:)) ?? .base06b
-        qwenModelQuantization = d.string(forKey: Keys.qwenModelQuantization).flatMap(QwenTtsQuantization.init(rawValue:)) ?? .q8_0
+        qwenModelQuantization = d.string(forKey: Keys.qwenModelQuantization).flatMap(QwenTtsQuantization.init(rawValue:)) ?? .q4_k_m
         readAloudMode = d.bool(forKey: Keys.readAloudMode)
         customVoiceName = d.string(forKey: Keys.customVoiceName) ?? ""
         customVoiceFilename = d.string(forKey: Keys.customVoiceFilename) ?? ""

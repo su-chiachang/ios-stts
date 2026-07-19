@@ -27,9 +27,6 @@ enum SpokenLanguage: String {
 enum QwenTtsVariant: String, CaseIterable, Identifiable {
     case base06b = "base-0.6b"
     case base17b = "base-1.7b"
-    case customVoice06b = "customvoice-0.6b"
-    case customVoice17b = "customvoice-1.7b"
-    case voiceDesign17b = "voicedesign-1.7b"
 
     var id: String { rawValue }
 
@@ -37,9 +34,6 @@ enum QwenTtsVariant: String, CaseIterable, Identifiable {
         switch self {
         case .base06b: "Base 0.6B"
         case .base17b: "Base 1.7B"
-        case .customVoice06b: "CustomVoice 0.6B"
-        case .customVoice17b: "CustomVoice 1.7B"
-        case .voiceDesign17b: "VoiceDesign 1.7B"
         }
     }
 
@@ -47,31 +41,27 @@ enum QwenTtsVariant: String, CaseIterable, Identifiable {
         switch self {
         case .base06b: "qwen-talker-0.6b-base"
         case .base17b: "qwen-talker-1.7b-base"
-        case .customVoice06b: "qwen-talker-0.6b-customvoice"
-        case .customVoice17b: "qwen-talker-1.7b-customvoice"
-        case .voiceDesign17b: "qwen-talker-1.7b-voicedesign"
         }
     }
 }
 
-/// The qwentts.cpp distribution calls its 16-bit artifact BF16. The app uses
-/// the familiar F16 label while preserving that exact upstream filename.
+/// qwentts.cpp publishes BF16 as its 16-bit artifact.
 enum QwenTtsQuantization: String, CaseIterable, Identifiable {
-    case f16
+    case bf16
     case q8_0
     case q4_k_m
 
     var id: String { rawValue }
     var displayName: String {
         switch self {
-        case .f16: "F16"
+        case .bf16: "BF16"
         case .q8_0: "Q8_0"
         case .q4_k_m: "Q4_K_M"
         }
     }
     var upstreamName: String {
         switch self {
-        case .f16: "BF16"
+        case .bf16: "BF16"
         case .q8_0: "Q8_0"
         case .q4_k_m: "Q4_K_M"
         }

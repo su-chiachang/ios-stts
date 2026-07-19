@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
 # Download the default STT model and qwentts.cpp's compact Base 0.6B pair.
-# Usage: scripts/fetch-models.sh [f16|q8_0|q4_k_m]
+# Usage: scripts/fetch-models.sh [bf16|q8_0|q4_k_m]
 set -euo pipefail
 
 STTS_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 PARAKEET_MODELS="$STTS_DIR/models/parakeet"
 QWEN_MODELS="$STTS_DIR/models/qwentts"
 HF="https://huggingface.co"
-QUANTIZATION="${1:-q8_0}"
+QUANTIZATION="${1:-q4_k_m}"
 
 case "$QUANTIZATION" in
-  f16) UPSTREAM_QUANTIZATION="BF16" ;; # qwentts.cpp publishes BF16, not F16
+  bf16|f16) UPSTREAM_QUANTIZATION="BF16" ;; # f16 remains a backwards-compatible alias
   q8_0) UPSTREAM_QUANTIZATION="Q8_0" ;;
   q4_k_m) UPSTREAM_QUANTIZATION="Q4_K_M" ;;
-  *) echo "usage: $0 [f16|q8_0|q4_k_m]"; exit 2 ;;
+  *) echo "usage: $0 [bf16|q8_0|q4_k_m]"; exit 2 ;;
 esac
 
 fetch() {

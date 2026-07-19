@@ -34,7 +34,7 @@ struct SettingsView: View {
                         Button("Choose…") { pickQwenModelDir() }
                     }
                 }
-                Picker("Qwen3-TTS checkpoint", selection: Binding(
+                Picker("Qwen3-TTS model size", selection: Binding(
                     get: { settings.qwenModelVariant },
                     set: { settings.qwenModelVariant = $0; reloadModels() }
                 )) {
