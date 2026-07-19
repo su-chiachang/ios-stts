@@ -33,6 +33,12 @@ final class ConversationEngine {
     /// Result of the most recent `dictateFile` (STT-only, no LLM). The composer
     /// picks this up into its draft, then calls `clearDictatedText`.
     private(set) var dictatedText: String = ""
+    /// Per-word timestamps from the most recent `transcribeFileTimestamped`
+    /// (the [stt] tab). Empty until a file has been processed.
+    private(set) var timestampedWords: [TranscriptWord] = []
+    /// Encoder frame stride (seconds) that accompanied `timestampedWords`;
+    /// used by `TranscriptSegmenter` to scale sentence-gap thresholds.
+    private(set) var timestampFrameSec: Double = 0
 
     private var stt: ParakeetStt?
     private var tts: QwenTts?
@@ -168,6 +174,44 @@ final class ConversationEngine {
 
     func clearDictatedText() { dictatedText = "" }
 
+    /// Transcribes a whole audio file to per-word timestamps for the [stt] tab
+    /// (STT only — no LLM, no playback). Decodes the entire clip to 16 kHz mono
+    /// PCM, then runs the batched timestamp path. Results land in
+    /// `timestampedWords` / `timestampFrameSec`.
+    func transcribeFileTimestamped(_ url: URL) {
+        guard let stt, isReady else {
+            state = .error("Models are not loaded. Choose both model locations in Settings, then reload.")
+            return
+        }
+        cancelCurrentTurn()
+        let turnID = UUID()
+        activeTurnID = turnID
+        activeInput = .file
+        timestampedWords = []
+        timestampFrameSec = 0
+        state = .listening
+
+        turnTask = Task {
+            do {
+                var samples: [Float] = []
+                for try await chunk in AudioFileInput(url: url).stream(realtime: false) {
+                    try Task.checkCancellation()
+                    samples.append(contentsOf: chunk)
+                }
+                let result = try await stt.transcribeFileWords(pcm: samples,
+                                                               lang: AppSettings.shared.sttLocale)
+                guard isCurrentTurn(turnID) else { return }
+                timestampedWords = result.words
+                timestampFrameSec = result.frameSec
+                finishTurn(turnID, with: .idle)
+            } catch is CancellationError {
+                finishTurn(turnID, with: .idle)
+            } catch {
+                finishTurn(turnID, with: .error(error.localizedDescription))
+            }
+        }
+    }
+
     /// Starts microphone capture for one spoken turn. When the assistant has
     /// finished speaking, the same source automatically starts the next turn.
     func startListening() {
@@ -259,7 +303,33 @@ final class ConversationEngine {
         state = .speaking
         turnTask = Task {
             do {
-                try await readAloud(text, turnID: turnID)
+                try await readAloud(text, turnID: turnID,
+                                    referenceWavPath: AppSettings.shared.customVoiceReferenceURL()?.path)
+            } catch is CancellationError {
+                finishTurn(turnID, with: .idle)
+            } catch {
+                finishTurn(turnID, with: .error(error.localizedDescription))
+            }
+        }
+        return true
+    }
+
+    /// Synthesizes `text` verbatim for the [tts] tab, without adding a chat
+    /// bubble. `referenceWavPath == nil` uses the model's default voice; a path
+    /// clones that reference voice.
+    @discardableResult
+    func speak(_ text: String, referenceWavPath: String?) -> Bool {
+        let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty, isReady, !isProcessing else { return false }
+
+        cancelCurrentTurn()
+        let turnID = UUID()
+        activeTurnID = turnID
+        activeInput = .text
+        state = .speaking
+        turnTask = Task {
+            do {
+                try await readAloud(text, turnID: turnID, referenceWavPath: referenceWavPath)
             } catch is CancellationError {
                 finishTurn(turnID, with: .idle)
             } catch {
@@ -342,7 +412,7 @@ final class ConversationEngine {
         finishTurn(turnID, with: .idle)
     }
 
-    private func readAloud(_ text: String, turnID: UUID) async throws {
+    private func readAloud(_ text: String, turnID: UUID, referenceWavPath: String?) async throws {
         guard let tts else {
             throw QwenTtsError.synthesizeFailed("TTS model not loaded.")
         }
@@ -354,7 +424,6 @@ final class ConversationEngine {
             audioPlayer = newPlayer
             player = newPlayer
         }
-        let referenceWavPath = AppSettings.shared.customVoiceReferenceURL()?.path
         let pipeline = SpeechPipeline(tts: tts, player: player, referenceWavPath: referenceWavPath)
         speechPipeline = pipeline
         defer {
