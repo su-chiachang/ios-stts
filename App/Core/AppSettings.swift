@@ -94,7 +94,7 @@ final class AppSettings {
     // owns that directory). A bookmark, if set, wins.
 
     /// Root directory downloaded models live under, mirroring the
-    /// models/parakeet and models/qwen3tts layout scripts/fetch-models.sh
+    /// models/parakeet and models/qwentts layout scripts/fetch-models.sh
     /// uses in a dev checkout. See ModelCatalog.
     static var modelsRootDirectory: URL {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]

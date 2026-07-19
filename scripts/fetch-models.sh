@@ -4,7 +4,7 @@ set -euo pipefail
 
 STTS_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 PARAKEET_MODELS="$STTS_DIR/models/parakeet"
-QWEN_MODELS="$STTS_DIR/models/qwen3tts"
+QWEN_MODELS="$STTS_DIR/models/qwentts"
 HF="https://huggingface.co"
 
 fetch() {

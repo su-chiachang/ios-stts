@@ -12,6 +12,7 @@ struct TtsView: View {
     @State private var message: String?
     @State private var isError = false
     @State private var presetSpeaker = "vivian"
+    @State private var presetSpeakers: [String] = []
     @State private var voiceInstruction = "warm, clear, and conversational"
 
     enum VoiceChoice: Hashable { case standard, cloned, preset, designed }
@@ -43,6 +44,11 @@ struct TtsView: View {
         .frame(minWidth: 420, minHeight: 500)
         .onChange(of: recorder.isRecording) { wasRecording, nowRecording in
             if wasRecording && !nowRecording { saveRecordedClip() }
+        }
+        .task(id: settings.qwenModelVariant) {
+            let speakers = await engine.availablePresetSpeakers()
+            presetSpeakers = speakers
+            if let first = speakers.first, !speakers.contains(presetSpeaker) { presetSpeaker = first }
         }
     }
 
@@ -82,9 +88,13 @@ struct TtsView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 if isCustomVoiceModel {
-                    TextField("Speaker", text: $presetSpeaker)
-                    Text("Examples: serena, vivian, uncle_fu, ryan, aiden, ono_anna, sohee, eric, dylan.")
-                        .font(.caption).foregroundStyle(.secondary)
+                    if presetSpeakers.isEmpty {
+                        TextField("Speaker", text: $presetSpeaker)
+                    } else {
+                        Picker("Speaker", selection: $presetSpeaker) {
+                            ForEach(presetSpeakers, id: \.self) { Text($0).tag($0) }
+                        }
+                    }
                 }
                 if isVoiceDesignModel {
                     TextField("Voice description", text: $voiceInstruction)

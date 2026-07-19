@@ -15,9 +15,7 @@ struct ModelAsset: Identifiable, Hashable {
     let destinationDirectory: URL
 }
 
-/// The app downloads the compact Base model. qwentts.cpp discovers the other
-/// supported modes (1.7B, CustomVoice, VoiceDesign) from talker metadata when
-/// their corresponding pair is placed in this same directory.
+/// qwentts.cpp discovers the selected synthesis mode from talker metadata.
 enum ModelCatalog {
     private static let hf = "https://huggingface.co"
 
@@ -26,7 +24,7 @@ enum ModelCatalog {
     }
 
     static var qwenDirectory: URL {
-        AppSettings.modelsRootDirectory.appendingPathComponent("qwen3tts", isDirectory: true)
+        AppSettings.modelsRootDirectory.appendingPathComponent("qwentts", isDirectory: true)
     }
 
     static let sttAssets: [ModelAsset] = [
@@ -48,20 +46,28 @@ enum ModelCatalog {
             destinationDirectory: parakeetDirectory),
     ]
 
-    static let ttsAssets: [ModelAsset] = [
+    private static func ttsAsset(_ variant: QwenTtsVariant) -> ModelAsset {
         ModelAsset(
-            id: "tts.base-0.6b-q8",
-            title: "Base 0.6B (Q8)",
-            subtitle: "qwen-talker-0.6b-base-Q8_0.gguf + qwen-tokenizer-12hz-Q8_0.gguf",
+            id: "tts.\(variant.rawValue)",
+            title: variant.displayName,
+            subtitle: "\(variant.talkerFilename) + \(variant.codecFilename)",
             files: [
                 ModelFile(
-                    remoteURL: URL(string: "\(hf)/Serveurperso/Qwen3-TTS-GGUF/resolve/main/qwen-talker-0.6b-base-Q8_0.gguf")!,
-                    destinationFilename: "qwen-talker-0.6b-base-Q8_0.gguf"),
+                    remoteURL: URL(string: "\(hf)/Serveurperso/Qwen3-TTS-GGUF/resolve/main/\(variant.talkerFilename)")!,
+                    destinationFilename: variant.talkerFilename),
                 ModelFile(
-                    remoteURL: URL(string: "\(hf)/Serveurperso/Qwen3-TTS-GGUF/resolve/main/qwen-tokenizer-12hz-Q8_0.gguf")!,
-                    destinationFilename: "qwen-tokenizer-12hz-Q8_0.gguf"),
+                    remoteURL: URL(string: "\(hf)/Serveurperso/Qwen3-TTS-GGUF/resolve/main/\(variant.codecFilename)")!,
+                    destinationFilename: variant.codecFilename),
             ],
-            destinationDirectory: qwenDirectory),
+            destinationDirectory: qwenDirectory)
+    }
+
+    static let ttsAssets: [ModelAsset] = [
+        ttsAsset(.base06bQ8),
+        ttsAsset(.base17bQ8),
+        ttsAsset(.customVoice06bQ8),
+        ttsAsset(.customVoice17bQ8),
+        ttsAsset(.voiceDesign17bQ8),
     ]
 
     static func ttsAsset(for variant: QwenTtsVariant) -> ModelAsset? {

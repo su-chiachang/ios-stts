@@ -25,7 +25,7 @@ struct DownloadModelsView: View {
                                   isSelected: asset.id == "tts.\(settings.qwenModelVariant.rawValue)",
                                   onFinished: notifyChanged)
                 }
-                Text("F16 and Q4 aren't available as a fast download — their prebuilt GGUFs use a tensor layout this app's loader can't read. Run scripts/fetch-models.sh --convert to produce them, then pick the file in Settings.")
+                Text("Download the talker/codec pair for the mode you want, then select that checkpoint in Settings.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

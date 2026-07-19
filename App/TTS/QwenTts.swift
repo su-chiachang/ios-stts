@@ -43,7 +43,7 @@ enum QwenTtsVariant: String, CaseIterable, Identifiable {
         }
     }
 
-    fileprivate var talkerFilename: String {
+    var talkerFilename: String {
         switch self {
         case .base06bQ8: "qwen-talker-0.6b-base-Q8_0.gguf"
         case .base17bQ8: "qwen-talker-1.7b-base-Q8_0.gguf"
@@ -53,7 +53,7 @@ enum QwenTtsVariant: String, CaseIterable, Identifiable {
         }
     }
 
-    fileprivate var codecFilename: String { "qwen-tokenizer-12hz-Q8_0.gguf" }
+    var codecFilename: String { "qwen-tokenizer-12hz-Q8_0.gguf" }
 }
 
 /// qwentts.cpp owns the native context; this actor serializes access because
@@ -134,6 +134,7 @@ actor QwenTts {
                             params.lang = languagePointer
                             params.instruct = instructionPointer
                             params.speaker = speakerPointer
+                            params.ref_text = transcriptPointer
                             if let referenceWavPath {
                                 let reference = try voiceReference(for: referenceWavPath)
                                 return reference.speakerEmbedding.withUnsafeBufferPointer { embedding in

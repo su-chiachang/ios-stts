@@ -360,6 +360,11 @@ final class ConversationEngine {
         try await tts.warmUpVoice(referenceWavPath: path)
     }
 
+    func availablePresetSpeakers() async -> [String] {
+        guard let tts else { return [] }
+        return await tts.availableSpeakers()
+    }
+
     func stop() {
         cancelCurrentTurn()
         partialTranscript = ""

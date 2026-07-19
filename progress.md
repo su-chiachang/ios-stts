@@ -1,11 +1,11 @@
 # STTS Progress
 
-macOS SwiftUI speech-to-speech conversation app. STT = parakeet.cpp, LLM = OpenAI-compatible API, TTS = qwen3-tts.cpp. Full plan: see `/Users/suchiachang/.claude/plans/swirling-wiggling-bonbon.md`.
+macOS SwiftUI speech-to-speech conversation app. STT = parakeet.cpp, LLM = OpenAI-compatible API, TTS = qwentts.cpp. Full plan: see `/Users/suchiachang/.claude/plans/swirling-wiggling-bonbon.md`.
 
 ## Reference repos
 - speech-to-speech: https://github.com/huggingface/speech-to-speech
 - parakeet.cpp: https://github.com/mudler/parakeet.cpp
-- qwen3-tts.cpp: https://github.com/predict-woo/qwen3-tts.cpp
+- qwentts.cpp: https://github.com/ServeurpersoCom/qwentts.cpp
 - whisper.cpp: https://github.com/ggml-org/whisper.cpp
 
 ## Status: M0–M6 implementation complete
@@ -22,7 +22,7 @@ macOS SwiftUI speech-to-speech conversation app. STT = parakeet.cpp, LLM = OpenA
 
 ## M0 findings (locked in, don't re-derive)
 
-**Linking strategy works**: parakeet built as static libs (ggml v0.13 baked into the app executable), qwen3-tts kept as its native shared build (`libqwen3tts.dylib` + ggml v0.15 dylibs, embedded in `Frameworks/`, resolved via `@rpath`). Verified both in `Tools/SmokeTest` and in the real Xcode app target — no symbol collisions, both Metal backends initialize in one process.
+**Linking strategy works**: parakeet is built as static libs (ggml v0.13 baked into the app executable); qwentts is a native shared build (`libqwen.dylib` + ggml v0.15 dylibs, embedded in `Frameworks/`, resolved via `@rpath`). Verified both in `Tools/SmokeTest` and in the real Xcode app target.
 
 **STT model decision**: use `nemotron-3.5-asr-streaming-0.6b` (q8_0) for both languages.
 - Chinese locale key is **`zh-CN`**, not bare `zh` (bare `zh` errors: "unknown target_lang"). English is `en`.
@@ -35,7 +35,7 @@ macOS SwiftUI speech-to-speech conversation app. STT = parakeet.cpp, LLM = OpenA
 
 **Model sources** (in case download needs to be repeated / `fetch-models.sh` needs updating):
 - STT GGUFs: HF `mudler/parakeet-cpp-gguf` — `nemotron-3.5-asr-streaming-0.6b-q8_0.gguf` (984MB), `realtime_eou_120m-v1-q8_0.gguf` (176MB).
-- TTS GGUFs: HF `badlogicgames/qwen3-tts-0.6b-q8_0-gguf` — `qwen3-tts-0.6b-q8_0.gguf` (Q8, preferred by the native loader) and `qwen3-tts-tokenizer-f16.gguf` (341MB). The existing F16 talker remains a fallback until the Q8 download completes. `fetch-models.sh --convert` runs the canonical `setup_pipeline_models.py` pipeline instead if the CoreML code predictor export is needed later.
+- TTS GGUFs: HF `Serveurperso/Qwen3-TTS-GGUF` — select a qwentts talker (`qwen-talker-{size}-{mode}-Q8_0.gguf`) and the shared `qwen-tokenizer-12hz-Q8_0.gguf` codec. The app supports Base, CustomVoice, and VoiceDesign checkpoints.
 
 ## M2 findings (locked in, don't re-derive)
 
@@ -48,7 +48,7 @@ macOS SwiftUI speech-to-speech conversation app. STT = parakeet.cpp, LLM = OpenA
 Result: real transcripts, tag-stripping confirmed clean, `.wav`/`.mp4` parity confirmed. Exact commands are in shell history; rerun via:
 ```
 cd stts/Tools/FileTranscribeTest && swift build
-./.build/debug/FileTranscribeTest <parakeet.gguf> <qwen3tts-model-dir> <file1> [file2 ...]
+./.build/debug/FileTranscribeTest <parakeet.gguf> <qwentts-model-dir> <file1> [file2 ...]
 ```
 
 ## What exists on disk
@@ -56,10 +56,10 @@ cd stts/Tools/FileTranscribeTest && swift build
 ```
 stts/
   scripts/build-parakeet-macos.sh    # done, tested
-  scripts/build-qwen3tts-macos.sh    # done, tested (flattens versioned dylib names, fixes install names to @rpath)
+  scripts/build-qwentts-macos.sh     # done, tested (flattens versioned dylib names, fixes install names to @rpath)
   scripts/fetch-models.sh            # done, tested
   vendor/, models/, build/           # gitignored, populated
-  Packages/NativeShims/              # CParakeet + CQwen3TTS SPM C shims, done
+  Packages/NativeShims/              # CParakeet + CQwenTTS SPM C shims, done
   Tools/SmokeTest/                   # M0 dual-engine verification tool, done — keep for regression checks
   Tools/FileTranscribeTest/          # M2 verification tool — symlinks real App/ sources, keep for regression checks
   project.yml                        # xcodegen spec, done
@@ -85,7 +85,7 @@ stts/
 
 Xcode project builds successfully (`xcodegen generate && xcodebuild -project STTS.xcodeproj -scheme STTS build`). The M3/M4 file-input loop now streams STT → LLM → sentence TTS/playback; M5 adds controls and conversation-loop polish.
 
-Own git repo at `stts/.git` (separate from the parent `qwen3-tts.cpp` repo, which now ignores `stts/`). Nothing committed yet.
+Own git repo at `stts/.git`, with native engines tracked as submodules.
 
 Test fixtures (gitignored, in `build/fixtures/`): `en.wav`/`zh.wav` (macOS `say` synthesized), `en_pad.wav`/`zh_pad.wav` (+1.5s trailing silence, for EOU testing), `en.mp4` (ffmpeg-muxed video+audio, for video-container testing). Regenerate with `say -v <voice> "<text>" -o x.aiff && afconvert x.aiff x.wav -d LEI16@16000 -c 1 -f WAVE`.
 
@@ -119,7 +119,7 @@ Test fixtures (gitignored, in `build/fixtures/`): `en.wav`/`zh.wav` (macOS `say`
 
 **Verified locally:** the production-source SPM target and arm64 macOS app target build with the AVAudioEngine integration. Final hardware verification requires granting microphone access and using a configured OpenAI-compatible endpoint from the app, which was not automated in the workspace.
 
-**Post-MVP composer:** the conversation view includes a bottom multi-line text composer, Send control, and voice-input toggle. Typed text and finalized speech share the same LLM/TTS history; assistant bubbles are left-aligned with an assistant icon, while user bubbles are right-aligned with a user icon. Selected media now plays its original audio while realtime file transcription publishes subtitles. `qwen3-tts.cpp` prefers Q8 automatically when `qwen3-tts-0.6b-q8_0.gguf` is present, otherwise it falls back to F16.
+**Post-MVP composer:** the conversation view includes a bottom multi-line text composer, Send control, and voice-input toggle. Typed text and finalized speech share the same LLM/TTS history; assistant bubbles are left-aligned with an assistant icon, while user bubbles are right-aligned with a user icon. Selected media now plays its original audio while realtime file transcription publishes subtitles.
 
 ## MVP implementation complete
 
