@@ -12,7 +12,6 @@ struct TtsView: View {
     @State private var text = "Hello world"
     @State private var voice: VoiceChoice = .standard
     @State private var recorder = VoiceClipRecorder()
-    @State private var showImporter = false
     @State private var message: String?
     @State private var isError = false
 
@@ -36,10 +35,6 @@ struct TtsView: View {
             .padding()
         }
         .frame(minWidth: 420, minHeight: 500)
-        .fileImporter(isPresented: $showImporter,
-                      allowedContentTypes: [.audio, .wav, .mp3, .mpeg4Audio]) { result in
-            handleImport(result)
-        }
         .onChange(of: recorder.isRecording) { wasRecording, nowRecording in
             if wasRecording && !nowRecording { saveRecordedClip() }
         }
@@ -62,7 +57,7 @@ struct TtsView: View {
                         .lineLimit(1)
                         .truncationMode(.middle)
                     Spacer()
-                    Button("Import clip…") { showImporter = true }
+                    Button("Import clip…") { importClip() }
                         .disabled(recorder.isRecording)
                     Button(recorder.isRecording
                            ? String(format: "Recording %.0fs…", recorder.elapsed)
@@ -162,11 +157,14 @@ struct TtsView: View {
         }
     }
 
-    private func handleImport(_ result: Result<URL, Error>) {
-        guard case .success(let url) = result else {
-            if case .failure(let error) = result { message = error.localizedDescription; isError = true }
-            return
-        }
+    // NSOpenPanel to match SettingsView's voice import (and the rest of the app);
+    // .fileImporter doesn't reliably fire in this AppKit-hosted app.
+    private func importClip() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowedContentTypes = [.audio, .wav, .mp3, .mpeg4Audio]
+        guard panel.runModal() == .OK, let url = panel.url else { return }
         message = "Importing voice…"
         isError = false
         Task { @MainActor in

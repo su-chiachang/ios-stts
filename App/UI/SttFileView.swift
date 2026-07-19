@@ -7,8 +7,6 @@ import UniformTypeIdentifiers
 struct SttFileView: View {
     var engine: ConversationEngine
     @State private var granularity: Granularity = .sentence
-    @State private var showImporter = false
-    @State private var importError: String?
 
     enum Granularity: String, CaseIterable, Identifiable {
         case sentence = "Sentence"
@@ -27,10 +25,6 @@ struct SttFileView: View {
             content
         }
         .frame(minWidth: 420, minHeight: 500)
-        .fileImporter(isPresented: $showImporter,
-                      allowedContentTypes: [.audio, .wav, .mp3, .mpeg4Movie, .movie]) { result in
-            handleImport(result)
-        }
     }
 
     private var header: some View {
@@ -45,7 +39,7 @@ struct SttFileView: View {
             .frame(width: 180)
             .disabled(engine.timestampedWords.isEmpty)
 
-            Button("Transcribe File…") { showImporter = true }
+            Button("Transcribe File…") { pickFile() }
                 .disabled(!engine.isReady || engine.isProcessing)
         }
         .padding()
@@ -59,8 +53,6 @@ struct SttFileView: View {
                 Text("Transcribing…").foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if let importError {
-            message(importError, isError: true)
         } else if case .error(let msg) = engine.state {
             message(msg, isError: true)
         } else if engine.timestampedWords.isEmpty {
@@ -118,28 +110,18 @@ struct SttFileView: View {
             .padding()
     }
 
-    private func handleImport(_ result: Result<URL, Error>) {
-        importError = nil
-        guard case .success(let url) = result else {
-            if case .failure(let error) = result { importError = error.localizedDescription }
-            return
-        }
-        // fileImporter hands back a security-scoped URL; copy it into our own
-        // container while access is granted, then transcribe the copy (the read
-        // happens asynchronously, outside the scoped-access window). A single
-        // fixed path (per extension) is reused and overwritten each import, so
-        // temp copies never accumulate — only one input clip is ever on disk.
-        let scoped = url.startAccessingSecurityScopedResource()
-        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-        do {
-            let ext = url.pathExtension.isEmpty ? "audio" : url.pathExtension
-            let temp = FileManager.default.temporaryDirectory
-                .appendingPathComponent("stt-import-input.\(ext)")
-            try? FileManager.default.removeItem(at: temp)
-            try FileManager.default.copyItem(at: url, to: temp)
-            engine.transcribeFileTimestamped(temp)
-        } catch {
-            importError = error.localizedDescription
+    // Uses NSOpenPanel (not SwiftUI's .fileImporter) to match the rest of this
+    // AppKit-hosted app: its panel-selected URLs are authorized for the process
+    // by the sandbox's user-selected read-only entitlement, so the engine can
+    // read them directly — no security-scoped copy needed. This is the same
+    // pattern ConversationView's Transcribe/Dictate buttons use.
+    private func pickFile() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowedContentTypes = [.audio, .movie, .mpeg4Movie, .wav, .mp3]
+        if panel.runModal() == .OK, let url = panel.url {
+            engine.transcribeFileTimestamped(url)
         }
     }
 
