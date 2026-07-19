@@ -65,6 +65,16 @@ targets:
             echo "error: missing $SRCROOT/vendor/qwen3tts/lib/libqwen3tts.dylib — run scripts/build-qwen3tts-macos.sh"
             exit 1
           fi
+      - name: "Check parakeet"
+        script: |
+          if [ ! -d "$SRCROOT/third_party/parakeet" ]; then
+            "$SRCROOT/scripts/build-parakeet-macos.sh"
+          fi
+      - name: "Check qwen3tts"
+        script: |
+          if [ ! -d "$SRCROOT/third_party/qwen3tts" ]; then
+            "$SRCROOT/scripts/build-qwen3tts-macos.sh"
+          fi
     postBuildScripts:
       - name: "Embed qwen3tts dylibs"
         script: |

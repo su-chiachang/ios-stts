@@ -85,6 +85,13 @@ actor QwenTts {
 
     private var tts: OpaquePointer?
 
+    /// Memoized speaker embedding for the last reference WAV. Extracting it is
+    /// an encoder pass; caching lets per-sentence synthesis reuse it via
+    /// `qwen3_tts_synthesize_with_embedding`. Keyed by path — importing a new
+    /// voice writes a uniquely-named file, so a changed voice never hits a
+    /// stale entry.
+    private var cachedEmbedding: (referencePath: String, values: [Float])?
+
     init(modelDir: String, variant: QwenTtsVariant, threads: Int32 = 4) throws {
         let staged = try Self.stagedModelDir(sourceDir: modelDir, variant: variant)
         guard let tts = qwen3_tts_create(staged.path, threads) else {
@@ -129,19 +136,55 @@ actor QwenTts {
         return String(cString: cstr)
     }
 
-    func synthesize(_ text: String, language: SpokenLanguage, maxAudioTokens: Int32 = 1200) throws -> Chunk {
+    /// Synthesizes `text`. When `referenceWavPath` is non-nil the output is
+    /// spoken in that reference voice (voice cloning); otherwise the model's
+    /// default voice is used.
+    func synthesize(_ text: String, language: SpokenLanguage,
+                    referenceWavPath: String? = nil,
+                    maxAudioTokens: Int32 = 1200) throws -> Chunk {
         guard let tts else { throw QwenTtsError.synthesizeFailed("model not loaded") }
         var params = Qwen3TtsParams()
         qwen3_tts_default_params(&params)
         params.language_id = language.rawValue
         params.max_audio_tokens = maxAudioTokens
 
-        guard let audio = qwen3_tts_synthesize(tts, text, &params) else {
-            throw QwenTtsError.synthesizeFailed(lastError())
+        let audio: UnsafeMutablePointer<Qwen3TtsAudio>?
+        if let referenceWavPath {
+            let embedding = try speakerEmbedding(forReferenceWav: referenceWavPath)
+            audio = embedding.withUnsafeBufferPointer { buffer in
+                qwen3_tts_synthesize_with_embedding(tts, text, buffer.baseAddress,
+                                                    Int32(buffer.count), &params)
+            }
+        } else {
+            audio = qwen3_tts_synthesize(tts, text, &params)
         }
+        guard let audio else { throw QwenTtsError.synthesizeFailed(lastError()) }
         defer { qwen3_tts_free_audio(audio) }
         let n = Int(audio.pointee.n_samples)
         let samples = Array(UnsafeBufferPointer(start: audio.pointee.samples, count: n))
         return Chunk(samples: samples, sampleRate: Double(audio.pointee.sample_rate))
+    }
+
+    /// Pre-extracts (and caches) the speaker embedding for a reference WAV so
+    /// the first spoken sentence isn't slowed by the encoder pass, and so a bad
+    /// reference clip surfaces its error at import time rather than mid-speech.
+    func warmUpVoice(referenceWavPath: String) throws {
+        _ = try speakerEmbedding(forReferenceWav: referenceWavPath)
+    }
+
+    private func speakerEmbedding(forReferenceWav path: String) throws -> [Float] {
+        if let cachedEmbedding, cachedEmbedding.referencePath == path {
+            return cachedEmbedding.values
+        }
+        guard let tts else { throw QwenTtsError.synthesizeFailed("model not loaded") }
+        // Embedding is ~1024 floats; a 4096 buffer leaves generous headroom.
+        var buffer = [Float](repeating: 0, count: 4_096)
+        let size = qwen3_tts_extract_embedding_file(tts, path, &buffer, Int32(buffer.count))
+        guard size > 0 else {
+            throw QwenTtsError.synthesizeFailed("Failed to extract speaker embedding: \(lastError())")
+        }
+        let values = Array(buffer.prefix(Int(size)))
+        cachedEmbedding = (path, values)
+        return values
     }
 }

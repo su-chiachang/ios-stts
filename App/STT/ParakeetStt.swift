@@ -81,6 +81,63 @@ actor ParakeetStt {
                            eob: eou & Int32(PARAKEET_EVENT_EOB) != 0)
     }
 
+    /// Result of a whole-file timestamped transcription: recognized words with
+    /// per-word timing plus the encoder frame stride (seconds) used to scale
+    /// sentence-gap thresholds during segmentation.
+    struct TimestampedResult {
+        let words: [TranscriptWord]
+        let frameSec: Double
+    }
+
+    /// Transcribes a whole clip (16 kHz mono Float32 PCM) in one shot, returning
+    /// per-word timestamps + confidence. Uses the batched JSON C API (which
+    /// accepts raw PCM, so any AVFoundation-decodable input — mp3/wav/mp4 —
+    /// works) rather than the streaming path used for interactive turns.
+    /// `lang` is a locale key ("en", "zh-CN", "auto", …) or nil for the model
+    /// default.
+    func transcribeFileWords(pcm: [Float], lang: String?) throws -> TimestampedResult {
+        guard let ctx else { throw ParakeetError.callFailed("context not loaded") }
+        guard !pcm.isEmpty else { return TimestampedResult(words: [], frameSec: 0) }
+
+        func run(_ langPtr: UnsafePointer<CChar>?) -> UnsafeMutablePointer<CChar>? {
+            var counts: [Int32] = [Int32(pcm.count)]
+            return pcm.withUnsafeBufferPointer { pbuf in
+                counts.withUnsafeBufferPointer { cbuf in
+                    parakeet_capi_transcribe_pcm_batch_json_lang(
+                        ctx, pbuf.baseAddress, cbuf.baseAddress, 1, 16_000, 0, langPtr)
+                }
+            }
+        }
+
+        let cstr: UnsafeMutablePointer<CChar>?
+        if let lang, lang != "auto" {
+            cstr = lang.withCString { run($0) }
+        } else {
+            cstr = run(nil)
+        }
+        guard let cstr else { throw ParakeetError.callFailed(lastError()) }
+        defer { parakeet_capi_free_string(cstr) }
+
+        let clips = try JSONDecoder().decode([JSONClip].self, from: Data(String(cString: cstr).utf8))
+        guard let clip = clips.first else { return TimestampedResult(words: [], frameSec: 0) }
+        let words = clip.words.map {
+            TranscriptWord(text: Self.strippingLanguageTag($0.w),
+                           start: $0.start, end: $0.end, confidence: $0.conf)
+        }
+        return TimestampedResult(words: words, frameSec: clip.frame_sec)
+    }
+
+    private struct JSONClip: Decodable {
+        let frame_sec: Double
+        let words: [JSONWord]
+    }
+    private struct JSONWord: Decodable {
+        let w: String
+        let start: Double
+        let end: Double
+        let conf: Double
+    }
+
     /// Flush the tail of the current turn and free the stream.
     @discardableResult
     func endTurn() throws -> String {

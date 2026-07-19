@@ -19,7 +19,7 @@ struct STTSApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ConversationView(engine: engine)
+            RootTabView(engine: engine)
                 .task { await engine.loadModels() }
         }
         .windowResizability(.contentSize)

@@ -7,16 +7,30 @@
 #     (Q8 talker and F16 tokenizer with the exact filenames qwen3_tts.cpp's
 #     loader prefers)
 #
+# Only this Q8 pair has a verified-compatible HF source: qwen3_tts.cpp's
+# vendored loader (see App/TTS/QwenTts.swift and third_party/qwen3-tts.cpp's
+# TTSTransformer::create_tensors) hardcodes lookups for tensor names like
+# "talker.blk.N...weight" — a convention specific to how this talker was
+# converted to GGUF. Other GGUF exports of the same model (e.g.
+# hans00/Qwen3-TTS-12Hz-0.6B-GGUF) use a different, more generic tensor
+# naming (plain "blk.N...weight") that this loader silently fails to match
+# — it ends up with zero tensors and a misleading "Failed to allocate
+# tensor buffer" error, not a clear "unrecognized schema" one. Don't wire up
+# a new prebuilt source here without first confirming its tensor names carry
+# the "talker." prefix (dump the GGUF header, e.g. via `gguf-dump` or a
+# quick manual KV/tensor-list parse).
+#
 # The app also supports two other talker/tokenizer quantization pairs,
 # selectable in Settings, if these files are placed in $QWEN_MODELS by hand
 # (no verified HF source for them is wired up here yet):
 #   - F16:  qwen3-tts-0.6b-f16.gguf          + qwen3-tts-tokenizer-f16.gguf
-#   - Q4:   qwen3-tts-0.6b-q4-k-m.gguf       + qwen3-tts-tokenizer-0.6b-q4-k-m.gguf
+#.  - Q4:   qwen3-tts-0.6b-q4-k-m.gguf       + qwen3-tts-tokenizer-0.6b-q4-k-m.gguf
 #
 # --convert: instead run the canonical qwen3-tts.cpp conversion pipeline
 #   (downloads safetensors + torch, also exports the CoreML code predictor,
 #   which the fast path does not provide). Pass --type q4_k to
-#   convert_tts_to_gguf.py for the Q4 talker.
+#   convert_tts_to_gguf.py for the Q4 talker. This is the only verified way
+#   to get F16 or Q4 talkers today.
 set -euo pipefail
 
 STTS_DIR="$(cd "$(dirname "$0")/.." && pwd)"

@@ -42,6 +42,32 @@ for path in args.dropFirst(3) {
     } else {
         print("   (\(elapsed)) bubbles: \(bubbles.map(\.text))")
     }
+
+    // [stt] tab path: per-word timestamps + sentence grouping.
+    print("== timestamps \(url.lastPathComponent)")
+    await engine.transcribeFileTimestamped(url)
+    while await engine.state == .listening {
+        try await Task.sleep(for: .milliseconds(50))
+    }
+    let words = await engine.timestampedWords
+    let frameSec = await engine.timestampFrameSec
+    if case .error(let msg) = await engine.state {
+        print("   ERROR: \(msg)")
+    } else {
+        print("   frame_sec=\(frameSec) words=\(words.count)")
+        for w in words.prefix(8) {
+            print(String(format: "     %.2f–%.2f  conf=%.2f  %@", w.start, w.end, w.confidence, w.text))
+        }
+        let sentences = TranscriptSegmenter.sentences(from: words, frameSec: frameSec)
+        for s in sentences {
+            print(String(format: "   [%.2f–%.2f] %@", s.start, s.end, s.text))
+        }
+        // Sanity: timings must be monotonic and non-negative.
+        var ok = true
+        for w in words where w.start < 0 || w.end < w.start { ok = false }
+        for pair in zip(words, words.dropFirst()) where pair.1.start < pair.0.start { ok = false }
+        print("   monotonic=\(ok)")
+    }
 }
 
 print("== FILE TRANSCRIBE TEST DONE")
