@@ -1,19 +1,52 @@
 #!/usr/bin/env bash
-# Download the default STT model and qwentts.cpp's compact Base 0.6B pair.
-# Usage: scripts/fetch-models.sh [bf16|q8_0|q4_k_m]
+# Download the default STT model and a qwentts.cpp Base talker/codec pair.
+# Usage: scripts/fetch-models.sh [-m 0.6b|1.7b] [-q bf16|q8_0|q4_k_m]
 set -euo pipefail
 
 STTS_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 PARAKEET_MODELS="$STTS_DIR/models/parakeet"
 QWEN_MODELS="$STTS_DIR/models/qwentts"
 HF="https://huggingface.co"
-QUANTIZATION="${1:-q4_k_m}"
+MODEL_SIZE="0.6b"
+QUANTIZATION="q4_k_m"
+
+usage() {
+  echo "usage: $0 [-m 0.6b|1.7b] [-q bf16|q8_0|q4_k_m]"
+}
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -m)
+      [ "$#" -ge 2 ] || { usage; exit 2; }
+      MODEL_SIZE="$2"
+      shift 2
+      ;;
+    -q)
+      [ "$#" -ge 2 ] || { usage; exit 2; }
+      QUANTIZATION="$2"
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      usage
+      exit 2
+      ;;
+  esac
+done
+
+case "$MODEL_SIZE" in
+  0.6b|1.7b) ;;
+  *) usage; exit 2 ;;
+esac
 
 case "$QUANTIZATION" in
-  bf16|f16) UPSTREAM_QUANTIZATION="BF16" ;; # f16 remains a backwards-compatible alias
+  bf16) UPSTREAM_QUANTIZATION="BF16" ;;
   q8_0) UPSTREAM_QUANTIZATION="Q8_0" ;;
   q4_k_m) UPSTREAM_QUANTIZATION="Q4_K_M" ;;
-  *) echo "usage: $0 [bf16|q8_0|q4_k_m]"; exit 2 ;;
+  *) usage; exit 2 ;;
 esac
 
 fetch() {
@@ -34,8 +67,8 @@ fetch "$HF/mudler/parakeet-cpp-gguf/resolve/main/realtime_eou_120m-v1-q8_0.gguf"
 # CustomVoice, or VoiceDesign, add that talker pair to this directory and
 # select it in Settings.
 TTS_REPO="Serveurperso/Qwen3-TTS-GGUF"
-fetch "$HF/$TTS_REPO/resolve/main/qwen-talker-0.6b-base-$UPSTREAM_QUANTIZATION.gguf" \
-      "$QWEN_MODELS/qwen-talker-0.6b-base-$UPSTREAM_QUANTIZATION.gguf"
+fetch "$HF/$TTS_REPO/resolve/main/qwen-talker-$MODEL_SIZE-base-$UPSTREAM_QUANTIZATION.gguf" \
+      "$QWEN_MODELS/qwen-talker-$MODEL_SIZE-base-$UPSTREAM_QUANTIZATION.gguf"
 fetch "$HF/$TTS_REPO/resolve/main/qwen-tokenizer-12hz-$UPSTREAM_QUANTIZATION.gguf" \
       "$QWEN_MODELS/qwen-tokenizer-12hz-$UPSTREAM_QUANTIZATION.gguf"
 
