@@ -1,190 +1,230 @@
-import CQwen3TTS
+@preconcurrency import AVFoundation
+import CQwenTTS
 import Foundation
 
 enum QwenTtsError: Error, LocalizedError {
     case loadFailed(String)
     case synthesizeFailed(String)
+    case invalidReferenceAudio
 
     var errorDescription: String? {
         switch self {
-        case .loadFailed(let m): "Failed to load qwen3-tts models: \(m)"
-        case .synthesizeFailed(let m): m
+        case .loadFailed(let message): "Failed to load qwentts.cpp models: \(message)"
+        case .synthesizeFailed(let message): message
+        case .invalidReferenceAudio: "Could not decode the reference audio as 24 kHz mono PCM."
         }
     }
 }
 
-enum SpokenLanguage: Int32 {
-    case en = 2050
-    case zh = 2055
-    case ja = 2058
+enum SpokenLanguage: String {
+    case en = "English"
+    case zh = "Chinese"
+    case ja = "Japanese"
 }
 
-/// Talker/tokenizer quantization pairing. qwen3-tts.cpp's loader always
-/// pairs a given talker with a specific vocoder ("tokenizer") file — the two
-/// aren't independently selectable, so this enum is the unit of choice.
-///
-/// The vendored loader (unmodified — see qwen3-tts.cpp/src/qwen3tts_c_api.h)
-/// takes no variant argument. It hardcodes what it scans `model_dir` for: a
-/// talker named "qwen3-tts-0.6b-q8_0.gguf" (preferred if present) or
-/// "qwen3-tts-0.6b-f16.gguf" (fallback), paired with a tokenizer always
-/// literally named "qwen3-tts-tokenizer-f16.gguf". `QwenTts.init` stages
-/// symlinks under those exact expected names so this unmodified loader picks
-/// up whichever real variant the user selected — see `stagedModelDir`.
+/// A matched qwentts.cpp talker/codec pair.  The selected talker determines
+/// whether synthesis is Base, CustomVoice, or VoiceDesign.
 enum QwenTtsVariant: String, CaseIterable, Identifiable {
-    case f16
-    case q8_0
-    case q4_k_m
+    case base06bQ8 = "base-0.6b-q8"
+    case base17bQ8 = "base-1.7b-q8"
+    case customVoice06bQ8 = "customvoice-0.6b-q8"
+    case customVoice17bQ8 = "customvoice-1.7b-q8"
+    case voiceDesign17bQ8 = "voicedesign-1.7b-q8"
 
     var id: String { rawValue }
 
     var displayName: String {
         switch self {
-        case .f16: "F16 (talker + tokenizer)"
-        case .q8_0: "Q8 (talker) + F16 (tokenizer)"
-        case .q4_k_m: "Q4 (talker + tokenizer)"
+        case .base06bQ8: "Base 0.6B (Q8)"
+        case .base17bQ8: "Base 1.7B (Q8)"
+        case .customVoice06bQ8: "CustomVoice 0.6B (Q8)"
+        case .customVoice17bQ8: "CustomVoice 1.7B (Q8)"
+        case .voiceDesign17bQ8: "VoiceDesign 1.7B (Q8)"
         }
     }
 
-    /// Real on-disk filenames, as published by scripts/fetch-models.sh.
     fileprivate var talkerFilename: String {
         switch self {
-        case .f16: "qwen3-tts-0.6b-f16.gguf"
-        case .q8_0: "qwen3-tts-0.6b-q8_0.gguf"
-        case .q4_k_m: "qwen3-tts-0.6b-q4-k-m.gguf"
+        case .base06bQ8: "qwen-talker-0.6b-base-Q8_0.gguf"
+        case .base17bQ8: "qwen-talker-1.7b-base-Q8_0.gguf"
+        case .customVoice06bQ8: "qwen-talker-0.6b-customvoice-Q8_0.gguf"
+        case .customVoice17bQ8: "qwen-talker-1.7b-customvoice-Q8_0.gguf"
+        case .voiceDesign17bQ8: "qwen-talker-1.7b-voicedesign-Q8_0.gguf"
         }
     }
 
-    fileprivate var tokenizerFilename: String {
-        switch self {
-        case .f16, .q8_0: "qwen3-tts-tokenizer-f16.gguf"
-        case .q4_k_m: "qwen3-tts-tokenizer-0.6b-q4-k-m.gguf"
-        }
-    }
-
-    /// Filename the unmodified loader must see the talker under to make it
-    /// load this variant: the fixed "f16" name for .f16, or the fixed
-    /// "q8_0" name (which the loader always prefers when present) for
-    /// anything else — GGUF is self-describing, so a q4_k_m talker loads
-    /// fine under that name despite it not saying "q4".
-    fileprivate var stagedTalkerFilename: String {
-        self == .f16 ? "qwen3-tts-0.6b-f16.gguf" : "qwen3-tts-0.6b-q8_0.gguf"
-    }
-
-    /// The loader only ever opens a tokenizer at this fixed path.
-    fileprivate static let stagedTokenizerFilename = "qwen3-tts-tokenizer-f16.gguf"
+    fileprivate var codecFilename: String { "qwen-tokenizer-12hz-Q8_0.gguf" }
 }
 
-/// Wraps the qwen3-tts C API. `actor` because the opaque handle is not
-/// documented as thread-safe. Synthesis is full-utterance only (no
-/// streaming) — see SentenceChunker for how the app hides this latency.
+/// qwentts.cpp owns the native context; this actor serializes access because
+/// the model contexts are not documented as safe for concurrent synthesis.
 actor QwenTts {
     struct Chunk {
         let samples: [Float]
         let sampleRate: Double
     }
 
-    private var tts: OpaquePointer?
-
-    /// Memoized speaker embedding for the last reference WAV. Extracting it is
-    /// an encoder pass; caching lets per-sentence synthesis reuse it via
-    /// `qwen3_tts_synthesize_with_embedding`. Keyed by path — importing a new
-    /// voice writes a uniquely-named file, so a changed voice never hits a
-    /// stale entry.
-    private var cachedEmbedding: (referencePath: String, values: [Float])?
-
-    init(modelDir: String, variant: QwenTtsVariant, threads: Int32 = 4) throws {
-        let staged = try Self.stagedModelDir(sourceDir: modelDir, variant: variant)
-        guard let tts = qwen3_tts_create(staged.path, threads) else {
-            throw QwenTtsError.loadFailed("qwen3_tts_create returned NULL for \(staged.path) (variant: \(variant.rawValue))")
-        }
-        self.tts = tts
+    private struct CachedVoiceReference {
+        let path: String
+        let speakerEmbedding: [Float]
+        let codes: [Int32]
+        let frameCount: Int
     }
 
-    /// Symlinks the chosen variant's real model files into a per-variant
-    /// scratch directory under the fixed names the unmodified loader scans
-    /// for (see QwenTtsVariant doc comment).
-    private static func stagedModelDir(sourceDir: String, variant: QwenTtsVariant) throws -> URL {
+    private var context: OpaquePointer?
+    private var cachedVoiceReference: CachedVoiceReference?
+
+    init(modelDir: String, variant: QwenTtsVariant) throws {
+        let modelDirectory = URL(fileURLWithPath: modelDir, isDirectory: true)
+        let talker = modelDirectory.appendingPathComponent(variant.talkerFilename)
+        let codec = modelDirectory.appendingPathComponent(variant.codecFilename)
         let fm = FileManager.default
-        let source = URL(fileURLWithPath: sourceDir)
-        let talkerSource = source.appendingPathComponent(variant.talkerFilename)
-        let tokenizerSource = source.appendingPathComponent(variant.tokenizerFilename)
-        for path in [talkerSource, tokenizerSource] where !fm.fileExists(atPath: path.path) {
-            throw QwenTtsError.loadFailed("missing \(path.lastPathComponent) in \(sourceDir) for variant \(variant.rawValue)")
+        for path in [talker, codec] where !fm.fileExists(atPath: path.path) {
+            throw QwenTtsError.loadFailed("missing \(path.lastPathComponent) in \(modelDir) for \(variant.displayName)")
         }
 
-        let staged = fm.temporaryDirectory
-            .appendingPathComponent("QwenTtsStaged", isDirectory: true)
-            .appendingPathComponent(variant.rawValue, isDirectory: true)
-        try fm.createDirectory(at: staged, withIntermediateDirectories: true)
-        try relink(talkerSource, to: staged.appendingPathComponent(variant.stagedTalkerFilename))
-        try relink(tokenizerSource, to: staged.appendingPathComponent(QwenTtsVariant.stagedTokenizerFilename))
-        return staged
-    }
-
-    private static func relink(_ source: URL, to link: URL) throws {
-        let fm = FileManager.default
-        try? fm.removeItem(at: link)
-        try fm.createSymbolicLink(at: link, withDestinationURL: source)
+        var params = qt_init_params()
+        qt_init_default_params(&params)
+        let loaded: OpaquePointer? = talker.path.withCString { talkerPath in
+            codec.path.withCString { codecPath in
+                params.talker_path = talkerPath
+                params.codec_path = codecPath
+                return qt_init(&params)
+            }
+        }
+        guard let loaded else { throw QwenTtsError.loadFailed(Self.lastError()) }
+        context = loaded
     }
 
     deinit {
-        if let tts { qwen3_tts_destroy(tts) }
+        qt_free(context)
     }
 
-    private func lastError() -> String {
-        guard let tts, let cstr = qwen3_tts_get_error(tts) else { return "unknown error" }
-        return String(cString: cstr)
+    func availableSpeakers() -> [String] {
+        guard let context else { return [] }
+        return (0..<Int(qt_n_speakers(context))).compactMap { index in
+            qt_speaker_name(context, Int32(index)).map(String.init(cString:))
+        }
     }
 
-    /// Synthesizes `text`. When `referenceWavPath` is non-nil the output is
-    /// spoken in that reference voice (voice cloning); otherwise the model's
-    /// default voice is used.
-    func synthesize(_ text: String, language: SpokenLanguage,
-                    referenceWavPath: String? = nil,
-                    maxAudioTokens: Int32 = 1200) throws -> Chunk {
-        guard let tts else { throw QwenTtsError.synthesizeFailed("model not loaded") }
-        var params = Qwen3TtsParams()
-        qwen3_tts_default_params(&params)
-        params.language_id = language.rawValue
-        params.max_audio_tokens = maxAudioTokens
+    /// For Base models, reference audio enables x-vector cloning. Passing a
+    /// matching reference transcript additionally enables ICL cloning. For
+    /// CustomVoice use `speaker`; VoiceDesign requires `instruction`.
+    func synthesize(
+        _ text: String,
+        language: SpokenLanguage,
+        referenceWavPath: String? = nil,
+        referenceTranscript: String? = nil,
+        speaker: String? = nil,
+        instruction: String? = nil,
+        maxAudioTokens: Int32 = 1200
+    ) throws -> Chunk {
+        guard let context else { throw QwenTtsError.synthesizeFailed("model not loaded") }
+        var params = qt_tts_params()
+        qt_tts_default_params(&params)
+        params.max_new_tokens = maxAudioTokens
 
-        let audio: UnsafeMutablePointer<Qwen3TtsAudio>?
-        if let referenceWavPath {
-            let embedding = try speakerEmbedding(forReferenceWav: referenceWavPath)
-            audio = embedding.withUnsafeBufferPointer { buffer in
-                qwen3_tts_synthesize_with_embedding(tts, text, buffer.baseAddress,
-                                                    Int32(buffer.count), &params)
+        var audio = qt_audio()
+        let status = try text.withCString { textPointer in
+            try language.rawValue.withCString { languagePointer in
+                try withOptionalCString(instruction) { instructionPointer in
+                    try withOptionalCString(speaker) { speakerPointer in
+                        try withOptionalCString(referenceTranscript) { transcriptPointer in
+                            params.text = textPointer
+                            params.lang = languagePointer
+                            params.instruct = instructionPointer
+                            params.speaker = speakerPointer
+                            if let referenceWavPath {
+                                let reference = try voiceReference(for: referenceWavPath)
+                                return reference.speakerEmbedding.withUnsafeBufferPointer { embedding in
+                                    params.ref_spk_emb = embedding.baseAddress
+                                    params.ref_spk_dim = Int32(embedding.count)
+                                    guard transcriptPointer != nil else {
+                                        return qt_synthesize(context, &params, &audio)
+                                    }
+                                    return reference.codes.withUnsafeBufferPointer { codes in
+                                        params.ref_codes = codes.baseAddress
+                                        params.ref_T = Int32(reference.frameCount)
+                                        return qt_synthesize(context, &params, &audio)
+                                    }
+                                }
+                            }
+                            return qt_synthesize(context, &params, &audio)
+                        }
+                    }
+                }
             }
-        } else {
-            audio = qwen3_tts_synthesize(tts, text, &params)
         }
-        guard let audio else { throw QwenTtsError.synthesizeFailed(lastError()) }
-        defer { qwen3_tts_free_audio(audio) }
-        let n = Int(audio.pointee.n_samples)
-        let samples = Array(UnsafeBufferPointer(start: audio.pointee.samples, count: n))
-        return Chunk(samples: samples, sampleRate: Double(audio.pointee.sample_rate))
+        guard status == QT_STATUS_OK else { throw QwenTtsError.synthesizeFailed(Self.lastError()) }
+        defer { qt_audio_free(&audio) }
+        guard let samples = audio.samples, audio.n_samples > 0 else {
+            throw QwenTtsError.synthesizeFailed("qwentts.cpp returned no audio")
+        }
+        return Chunk(samples: Array(UnsafeBufferPointer(start: samples, count: Int(audio.n_samples))),
+                     sampleRate: Double(audio.sample_rate))
     }
 
-    /// Pre-extracts (and caches) the speaker embedding for a reference WAV so
-    /// the first spoken sentence isn't slowed by the encoder pass, and so a bad
-    /// reference clip surfaces its error at import time rather than mid-speech.
     func warmUpVoice(referenceWavPath: String) throws {
-        _ = try speakerEmbedding(forReferenceWav: referenceWavPath)
+        _ = try voiceReference(for: referenceWavPath)
     }
 
-    private func speakerEmbedding(forReferenceWav path: String) throws -> [Float] {
-        if let cachedEmbedding, cachedEmbedding.referencePath == path {
-            return cachedEmbedding.values
+    private func voiceReference(for path: String) throws -> CachedVoiceReference {
+        if let cachedVoiceReference, cachedVoiceReference.path == path { return cachedVoiceReference }
+        guard let context else { throw QwenTtsError.synthesizeFailed("model not loaded") }
+        let samples = try Self.referenceSamples(at: URL(fileURLWithPath: path))
+        var extracted = qt_voice_ref()
+        let status = samples.withUnsafeBufferPointer {
+            qt_extract_voice_ref(context, $0.baseAddress, Int32($0.count), &extracted)
         }
-        guard let tts else { throw QwenTtsError.synthesizeFailed("model not loaded") }
-        // Embedding is ~1024 floats; a 4096 buffer leaves generous headroom.
-        var buffer = [Float](repeating: 0, count: 4_096)
-        let size = qwen3_tts_extract_embedding_file(tts, path, &buffer, Int32(buffer.count))
-        guard size > 0 else {
-            throw QwenTtsError.synthesizeFailed("Failed to extract speaker embedding: \(lastError())")
+        guard status == QT_STATUS_OK,
+              let embedding = extracted.ref_spk_emb,
+              let codes = extracted.ref_codes,
+              extracted.ref_spk_dim > 0,
+              extracted.ref_T > 0,
+              extracted.num_codebooks > 0 else {
+            qt_voice_ref_free(&extracted)
+            throw QwenTtsError.synthesizeFailed(Self.lastError())
         }
-        let values = Array(buffer.prefix(Int(size)))
-        cachedEmbedding = (path, values)
-        return values
+        defer { qt_voice_ref_free(&extracted) }
+        let reference = CachedVoiceReference(
+            path: path,
+            speakerEmbedding: Array(UnsafeBufferPointer(start: embedding, count: Int(extracted.ref_spk_dim))),
+            codes: Array(UnsafeBufferPointer(start: codes,
+                                              count: Int(extracted.ref_T * extracted.num_codebooks))),
+            frameCount: Int(extracted.ref_T))
+        cachedVoiceReference = reference
+        return reference
+    }
+
+    private static func lastError() -> String {
+        qt_last_error().map(String.init(cString:)) ?? "unknown qwentts.cpp error"
+    }
+
+    private func withOptionalCString<T>(_ value: String?, _ body: (UnsafePointer<CChar>?) throws -> T) rethrows -> T {
+        if let value { return try value.withCString { try body($0) } }
+        return try body(nil)
+    }
+
+    private static func referenceSamples(at url: URL) throws -> [Float] {
+        guard let file = try? AVAudioFile(forReading: url) else { throw QwenTtsError.invalidReferenceAudio }
+        let source = file.processingFormat
+        let target = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 24_000,
+                                   channels: 1, interleaved: false)!
+        let input = AVAudioPCMBuffer(pcmFormat: source, frameCapacity: AVAudioFrameCount(file.length))!
+        try file.read(into: input)
+        let output = AVAudioPCMBuffer(pcmFormat: target,
+                                      frameCapacity: AVAudioFrameCount(Double(input.frameLength) * 24_000 / source.sampleRate) + 4_096)!
+        guard let converter = AVAudioConverter(from: source, to: target) else { throw QwenTtsError.invalidReferenceAudio }
+        var supplied = false
+        var conversionError: NSError?
+        let status = converter.convert(to: output, error: &conversionError) { _, outStatus in
+            guard !supplied else { outStatus.pointee = .endOfStream; return nil }
+            supplied = true
+            outStatus.pointee = .haveData
+            return input
+        }
+        guard status != .error, conversionError == nil, output.frameLength > 0,
+              let channel = output.floatChannelData?[0] else { throw QwenTtsError.invalidReferenceAudio }
+        return Array(UnsafeBufferPointer(start: channel, count: Int(output.frameLength)))
     }
 }

@@ -2,7 +2,7 @@
 // (AudioFileInput → ParakeetStt.beginTurn/feed/endTurn → bubble) against
 // arbitrary audio/video fixtures, unsandboxed.
 //
-// Usage: filetranscribetest <parakeet.gguf> <qwen3tts-model-dir> <file> [file2 ...]
+// Usage: filetranscribetest <parakeet.gguf> <qwentts-model-dir> <file> [file2 ...]
 
 import Darwin
 import Foundation
@@ -14,7 +14,7 @@ func fail(_ msg: String) -> Never {
 
 let args = CommandLine.arguments
 guard args.count >= 4 else {
-    fail("usage: filetranscribetest <parakeet.gguf> <qwen3tts-model-dir> <file> [file2 ...]")
+    fail("usage: filetranscribetest <parakeet.gguf> <qwentts-model-dir> <file> [file2 ...]")
 }
 
 try AppSettings.shared.setParakeetModel(URL(fileURLWithPath: args[1]))

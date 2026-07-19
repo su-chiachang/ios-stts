@@ -79,7 +79,7 @@ final class AppSettings {
         sttLocale = d.string(forKey: Keys.sttLocale) ?? "auto"
         silenceHangMs = d.object(forKey: Keys.silenceHangMs) as? Double ?? 800
         rmsThreshold = d.object(forKey: Keys.rmsThreshold) as? Double ?? 0.015
-        qwenModelVariant = d.string(forKey: Keys.qwenModelVariant).flatMap(QwenTtsVariant.init(rawValue:)) ?? .q8_0
+        qwenModelVariant = d.string(forKey: Keys.qwenModelVariant).flatMap(QwenTtsVariant.init(rawValue:)) ?? .base06bQ8
         readAloudMode = d.bool(forKey: Keys.readAloudMode)
         customVoiceName = d.string(forKey: Keys.customVoiceName) ?? ""
         customVoiceFilename = d.string(forKey: Keys.customVoiceFilename) ?? ""

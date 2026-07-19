@@ -24,16 +24,16 @@ let package = Package(
             name: "FileTranscribeTest",
             dependencies: [
                 .product(name: "CParakeet", package: "NativeShims"),
-                .product(name: "CQwen3TTS", package: "NativeShims"),
+                .product(name: "CQwenTTS", package: "NativeShims"),
             ],
             linkerSettings: [
                 .unsafeFlags([
                     "-L\(sttsRoot)/vendor/parakeet/lib",
                     "-lparakeet", "-lggml", "-lggml-base", "-lggml-cpu",
                     "-lggml-metal", "-lggml-blas",
-                    "-L\(sttsRoot)/vendor/qwen3tts/lib",
-                    "-lqwen3tts",
-                    "-Xlinker", "-rpath", "-Xlinker", "\(sttsRoot)/vendor/qwen3tts/lib",
+                    "-L\(sttsRoot)/vendor/qwentts/lib",
+                    "-lqwen",
+                    "-Xlinker", "-rpath", "-Xlinker", "\(sttsRoot)/vendor/qwentts/lib",
                 ]),
                 .linkedLibrary("c++"),
                 .linkedFramework("Accelerate"),

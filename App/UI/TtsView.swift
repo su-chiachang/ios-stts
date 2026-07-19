@@ -2,10 +2,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 /// The [tts] tab: type text, choose a voice, and hear it spoken. Voice modes are
-/// scoped to what the local qwen3-tts.cpp port supports — the model's default
-/// voice and zero-shot cloning (import or record a 3–5 s reference clip).
-/// Preset voices and text-prompt voice design aren't in the local model and are
-/// surfaced as a disabled "coming soon" note.
+/// adapts its controls to the qwentts.cpp checkpoint selected in Settings.
 struct TtsView: View {
     var engine: ConversationEngine
     var settings = AppSettings.shared
@@ -14,17 +11,26 @@ struct TtsView: View {
     @State private var recorder = VoiceClipRecorder()
     @State private var message: String?
     @State private var isError = false
+    @State private var presetSpeaker = "vivian"
+    @State private var voiceInstruction = "warm, clear, and conversational"
 
-    enum VoiceChoice: Hashable { case standard, cloned }
+    enum VoiceChoice: Hashable { case standard, cloned, preset, designed }
 
     private var hasClonedVoice: Bool { settings.customVoiceReferenceURL() != nil }
+    private var isBaseModel: Bool {
+        settings.qwenModelVariant == .base06bQ8 || settings.qwenModelVariant == .base17bQ8
+    }
+    private var isCustomVoiceModel: Bool {
+        settings.qwenModelVariant == .customVoice06bQ8 || settings.qwenModelVariant == .customVoice17bQ8
+    }
+    private var isVoiceDesignModel: Bool { settings.qwenModelVariant == .voiceDesign17bQ8 }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 voiceSection
                 textSection
-                comingSoonSection
+                capabilitySection
                 if let message {
                     Text(message)
                         .font(.caption)
@@ -44,31 +50,47 @@ struct TtsView: View {
         GroupBox("Voice") {
             VStack(alignment: .leading, spacing: 10) {
                 Picker("", selection: $voice) {
-                    Text("Default").tag(VoiceChoice.standard)
-                    Text(hasClonedVoice ? "My voice" : "My voice (none)").tag(VoiceChoice.cloned)
+                    if isBaseModel {
+                        Text("Default").tag(VoiceChoice.standard)
+                        Text(hasClonedVoice ? "My voice" : "My voice (none)").tag(VoiceChoice.cloned)
+                    }
+                    if isCustomVoiceModel { Text("Preset voice").tag(VoiceChoice.preset) }
+                    if isVoiceDesignModel { Text("Designed voice").tag(VoiceChoice.designed) }
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
 
-                HStack {
-                    Text(hasClonedVoice ? "Reference: \(settings.customVoiceName)" : "No cloned voice yet")
+                if isBaseModel {
+                    HStack {
+                        Text(hasClonedVoice ? "Reference: \(settings.customVoiceName)" : "No cloned voice yet")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                        Spacer()
+                        Button("Import clip…") { importClip() }
+                            .disabled(recorder.isRecording)
+                        Button(recorder.isRecording
+                               ? String(format: "Recording %.0fs…", recorder.elapsed)
+                               : "Record 3–5s") {
+                            toggleRecording()
+                        }
+                    }
+                    Text("Zero-shot cloning uses a 3–5 s clip. A matching transcript can also enable ICL through the native API.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                    Spacer()
-                    Button("Import clip…") { importClip() }
-                        .disabled(recorder.isRecording)
-                    Button(recorder.isRecording
-                           ? String(format: "Recording %.0fs…", recorder.elapsed)
-                           : "Record 3–5s") {
-                        toggleRecording()
-                    }
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                Text("Zero-shot cloning: a 3–5 s clip of your voice is enough; the words spoken in it don't matter.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                if isCustomVoiceModel {
+                    TextField("Speaker", text: $presetSpeaker)
+                    Text("Examples: serena, vivian, uncle_fu, ryan, aiden, ono_anna, sohee, eric, dylan.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                if isVoiceDesignModel {
+                    TextField("Voice description", text: $voiceInstruction)
+                    Text("Describe gender, age, pitch, style, or delivery.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -100,31 +122,34 @@ struct TtsView: View {
         }
     }
 
-    private var comingSoonSection: some View {
-        GroupBox("Coming soon") {
+    private var capabilitySection: some View {
+        GroupBox("Model capabilities") {
             VStack(alignment: .leading, spacing: 6) {
-                Label("Preset voices (Vivian, Uncle_Fu, Dylan…)", systemImage: "person.2")
-                Label("Voice design — describe a voice in words", systemImage: "wand.and.stars")
-                Text("Not available in the local model.")
+                Label("Base: default voice, x-vector cloning, and ICL cloning", systemImage: "person.wave.2")
+                Label("CustomVoice: named preset speakers", systemImage: "person.2")
+                Label("VoiceDesign: describe a voice in words", systemImage: "wand.and.stars")
+                Text("Available controls follow the selected qwentts.cpp checkpoint.")
                     .font(.caption)
-                    .foregroundStyle(.tertiary)
             }
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .disabled(true)
     }
 
     private var canSpeak: Bool {
         engine.isReady && !engine.isProcessing
             && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && (voice == .standard || hasClonedVoice)
+            && (voice == .standard || (voice == .cloned && hasClonedVoice)
+                || (voice == .preset && !presetSpeaker.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                || (voice == .designed && !voiceInstruction.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty))
     }
 
     private func speak() {
         message = nil
         let reference = voice == .cloned ? settings.customVoiceReferenceURL()?.path : nil
-        engine.speak(text, referenceWavPath: reference)
+        engine.speak(text, referenceWavPath: reference,
+                     speaker: voice == .preset ? presetSpeaker : nil,
+                     instruction: voice == .designed ? voiceInstruction : nil)
     }
 
     private func toggleRecording() {
