@@ -118,8 +118,7 @@ actor ParakeetStt {
         guard let cstr else { throw ParakeetError.callFailed(lastError()) }
         defer { parakeet_capi_free_string(cstr) }
 
-        let data = Data(String(cString: cstr).utf8)
-        let clips = try JSONDecoder().decode([JSONClip].self, from: data)
+        let clips = try JSONDecoder().decode([JSONClip].self, from: Data(String(cString: cstr).utf8))
         guard let clip = clips.first else { return TimestampedResult(words: [], frameSec: 0) }
         let words = clip.words.map {
             TranscriptWord(text: Self.strippingLanguageTag($0.w),

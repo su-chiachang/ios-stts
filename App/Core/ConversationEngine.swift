@@ -208,8 +208,10 @@ final class ConversationEngine {
                 timestampFrameSec = result.frameSec
                 if result.words.isEmpty {
                     // Don't fail silently — the [stt] tab would just revert to its
-                    // empty prompt, looking like nothing happened.
-                    finishTurn(turnID, with: .error("No speech was recognized in this file."))
+                    // empty prompt, looking like nothing happened. The usual cause
+                    // is the wrong STT model (e.g. the EOU model, which can't
+                    // transcribe); point the user at Settings.
+                    finishTurn(turnID, with: .error("No speech was recognized. Check the STT model in Settings — use nemotron-3.5-asr, not the EOU model."))
                 } else {
                     finishTurn(turnID, with: .idle)
                 }
