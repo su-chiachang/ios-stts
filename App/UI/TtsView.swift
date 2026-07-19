@@ -19,12 +19,12 @@ struct TtsView: View {
 
     private var hasClonedVoice: Bool { settings.customVoiceReferenceURL() != nil }
     private var isBaseModel: Bool {
-        settings.qwenModelVariant == .base06bQ8 || settings.qwenModelVariant == .base17bQ8
+        settings.qwenModelVariant == .base06b || settings.qwenModelVariant == .base17b
     }
     private var isCustomVoiceModel: Bool {
-        settings.qwenModelVariant == .customVoice06bQ8 || settings.qwenModelVariant == .customVoice17bQ8
+        settings.qwenModelVariant == .customVoice06b || settings.qwenModelVariant == .customVoice17b
     }
-    private var isVoiceDesignModel: Bool { settings.qwenModelVariant == .voiceDesign17bQ8 }
+    private var isVoiceDesignModel: Bool { settings.qwenModelVariant == .voiceDesign17b }
 
     var body: some View {
         ScrollView {

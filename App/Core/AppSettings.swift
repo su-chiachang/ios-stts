@@ -31,6 +31,9 @@ final class AppSettings {
     var qwenModelVariant: QwenTtsVariant {
         didSet { UserDefaults.standard.set(qwenModelVariant.rawValue, forKey: Keys.qwenModelVariant) }
     }
+    var qwenModelQuantization: QwenTtsQuantization {
+        didSet { UserDefaults.standard.set(qwenModelQuantization.rawValue, forKey: Keys.qwenModelQuantization) }
+    }
 
     /// When on, typed text is read aloud verbatim in the custom voice instead
     /// of being sent to the assistant LLM (the "speak as me" path).
@@ -59,6 +62,7 @@ final class AppSettings {
         static let parakeetBookmark = "parakeetModelBookmark"
         static let qwenBookmark = "qwenModelDirBookmark"
         static let qwenModelVariant = "qwenModelVariant"
+        static let qwenModelQuantization = "qwenModelQuantization"
         static let readAloudMode = "readAloudMode"
         static let customVoiceName = "customVoiceName"
         static let customVoiceFilename = "customVoiceFilename"
@@ -79,7 +83,8 @@ final class AppSettings {
         sttLocale = d.string(forKey: Keys.sttLocale) ?? "auto"
         silenceHangMs = d.object(forKey: Keys.silenceHangMs) as? Double ?? 800
         rmsThreshold = d.object(forKey: Keys.rmsThreshold) as? Double ?? 0.015
-        qwenModelVariant = d.string(forKey: Keys.qwenModelVariant).flatMap(QwenTtsVariant.init(rawValue:)) ?? .base06bQ8
+        qwenModelVariant = d.string(forKey: Keys.qwenModelVariant).flatMap(QwenTtsVariant.init(rawValue:)) ?? .base06b
+        qwenModelQuantization = d.string(forKey: Keys.qwenModelQuantization).flatMap(QwenTtsQuantization.init(rawValue:)) ?? .q8_0
         readAloudMode = d.bool(forKey: Keys.readAloudMode)
         customVoiceName = d.string(forKey: Keys.customVoiceName) ?? ""
         customVoiceFilename = d.string(forKey: Keys.customVoiceFilename) ?? ""
@@ -157,7 +162,7 @@ final class AppSettings {
     }
 
     private func downloadedQwenModelDirURL() -> URL? {
-        guard let asset = ModelCatalog.ttsAsset(for: qwenModelVariant) else { return nil }
+        guard let asset = ModelCatalog.ttsAsset(for: qwenModelVariant, quantization: qwenModelQuantization) else { return nil }
         let fm = FileManager.default
         let ready = asset.files.allSatisfy {
             fm.fileExists(atPath: asset.destinationDirectory.appendingPathComponent($0.destinationFilename).path)

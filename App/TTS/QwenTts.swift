@@ -25,35 +25,61 @@ enum SpokenLanguage: String {
 /// A matched qwentts.cpp talker/codec pair.  The selected talker determines
 /// whether synthesis is Base, CustomVoice, or VoiceDesign.
 enum QwenTtsVariant: String, CaseIterable, Identifiable {
-    case base06bQ8 = "base-0.6b-q8"
-    case base17bQ8 = "base-1.7b-q8"
-    case customVoice06bQ8 = "customvoice-0.6b-q8"
-    case customVoice17bQ8 = "customvoice-1.7b-q8"
-    case voiceDesign17bQ8 = "voicedesign-1.7b-q8"
+    case base06b = "base-0.6b"
+    case base17b = "base-1.7b"
+    case customVoice06b = "customvoice-0.6b"
+    case customVoice17b = "customvoice-1.7b"
+    case voiceDesign17b = "voicedesign-1.7b"
 
     var id: String { rawValue }
 
     var displayName: String {
         switch self {
-        case .base06bQ8: "Base 0.6B (Q8)"
-        case .base17bQ8: "Base 1.7B (Q8)"
-        case .customVoice06bQ8: "CustomVoice 0.6B (Q8)"
-        case .customVoice17bQ8: "CustomVoice 1.7B (Q8)"
-        case .voiceDesign17bQ8: "VoiceDesign 1.7B (Q8)"
+        case .base06b: "Base 0.6B"
+        case .base17b: "Base 1.7B"
+        case .customVoice06b: "CustomVoice 0.6B"
+        case .customVoice17b: "CustomVoice 1.7B"
+        case .voiceDesign17b: "VoiceDesign 1.7B"
         }
     }
 
-    var talkerFilename: String {
+    var talkerStem: String {
         switch self {
-        case .base06bQ8: "qwen-talker-0.6b-base-Q8_0.gguf"
-        case .base17bQ8: "qwen-talker-1.7b-base-Q8_0.gguf"
-        case .customVoice06bQ8: "qwen-talker-0.6b-customvoice-Q8_0.gguf"
-        case .customVoice17bQ8: "qwen-talker-1.7b-customvoice-Q8_0.gguf"
-        case .voiceDesign17bQ8: "qwen-talker-1.7b-voicedesign-Q8_0.gguf"
+        case .base06b: "qwen-talker-0.6b-base"
+        case .base17b: "qwen-talker-1.7b-base"
+        case .customVoice06b: "qwen-talker-0.6b-customvoice"
+        case .customVoice17b: "qwen-talker-1.7b-customvoice"
+        case .voiceDesign17b: "qwen-talker-1.7b-voicedesign"
         }
     }
+}
 
-    var codecFilename: String { "qwen-tokenizer-12hz-Q8_0.gguf" }
+/// The qwentts.cpp distribution calls its 16-bit artifact BF16. The app uses
+/// the familiar F16 label while preserving that exact upstream filename.
+enum QwenTtsQuantization: String, CaseIterable, Identifiable {
+    case f16
+    case q8_0
+    case q4_k_m
+
+    var id: String { rawValue }
+    var displayName: String {
+        switch self {
+        case .f16: "F16"
+        case .q8_0: "Q8_0"
+        case .q4_k_m: "Q4_K_M"
+        }
+    }
+    var upstreamName: String {
+        switch self {
+        case .f16: "BF16"
+        case .q8_0: "Q8_0"
+        case .q4_k_m: "Q4_K_M"
+        }
+    }
+    func talkerFilename(for variant: QwenTtsVariant) -> String {
+        "\(variant.talkerStem)-\(upstreamName).gguf"
+    }
+    var codecFilename: String { "qwen-tokenizer-12hz-\(upstreamName).gguf" }
 }
 
 /// qwentts.cpp owns the native context; this actor serializes access because
@@ -74,10 +100,10 @@ actor QwenTts {
     private var context: OpaquePointer?
     private var cachedVoiceReference: CachedVoiceReference?
 
-    init(modelDir: String, variant: QwenTtsVariant) throws {
+    init(modelDir: String, variant: QwenTtsVariant, quantization: QwenTtsQuantization) throws {
         let modelDirectory = URL(fileURLWithPath: modelDir, isDirectory: true)
-        let talker = modelDirectory.appendingPathComponent(variant.talkerFilename)
-        let codec = modelDirectory.appendingPathComponent(variant.codecFilename)
+        let talker = modelDirectory.appendingPathComponent(quantization.talkerFilename(for: variant))
+        let codec = modelDirectory.appendingPathComponent(quantization.codecFilename)
         let fm = FileManager.default
         for path in [talker, codec] where !fm.fileExists(atPath: path.path) {
             throw QwenTtsError.loadFailed("missing \(path.lastPathComponent) in \(modelDir) for \(variant.displayName)")

@@ -66,7 +66,9 @@ final class ConversationEngine {
         }
         do {
             stt = try ParakeetStt(modelPath: parakeetURL.path)
-            tts = try QwenTts(modelDir: qwenDirURL.path, variant: AppSettings.shared.qwenModelVariant)
+            tts = try QwenTts(modelDir: qwenDirURL.path,
+                              variant: AppSettings.shared.qwenModelVariant,
+                              quantization: AppSettings.shared.qwenModelQuantization)
             state = .idle
         } catch {
             state = .error(error.localizedDescription)

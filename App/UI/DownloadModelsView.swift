@@ -22,10 +22,10 @@ struct DownloadModelsView: View {
             Section("Text-to-speech") {
                 ForEach(ModelCatalog.ttsAssets) { asset in
                     ModelAssetRow(asset: asset, manager: manager,
-                                  isSelected: asset.id == "tts.\(settings.qwenModelVariant.rawValue)",
+                                  isSelected: asset.id == "tts.\(settings.qwenModelVariant.rawValue).\(settings.qwenModelQuantization.rawValue)",
                                   onFinished: notifyChanged)
                 }
-                Text("Download the talker/codec pair for the mode you want, then select that checkpoint in Settings.")
+                Text("F16 downloads the upstream BF16 pair; Q8_0 is the recommended default, while Q4_K_M is the smallest option.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

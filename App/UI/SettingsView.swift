@@ -34,12 +34,20 @@ struct SettingsView: View {
                         Button("Choose…") { pickQwenModelDir() }
                     }
                 }
-                Picker("Qwen3-TTS quantization", selection: Binding(
+                Picker("Qwen3-TTS checkpoint", selection: Binding(
                     get: { settings.qwenModelVariant },
                     set: { settings.qwenModelVariant = $0; reloadModels() }
                 )) {
                     ForEach(QwenTtsVariant.allCases) { variant in
                         Text(variant.displayName).tag(variant)
+                    }
+                }
+                Picker("Model quantization", selection: Binding(
+                    get: { settings.qwenModelQuantization },
+                    set: { settings.qwenModelQuantization = $0; reloadModels() }
+                )) {
+                    ForEach(QwenTtsQuantization.allCases) { quantization in
+                        Text(quantization.displayName).tag(quantization)
                     }
                 }
                 HStack {

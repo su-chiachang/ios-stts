@@ -46,31 +46,31 @@ enum ModelCatalog {
             destinationDirectory: parakeetDirectory),
     ]
 
-    private static func ttsAsset(_ variant: QwenTtsVariant) -> ModelAsset {
-        ModelAsset(
-            id: "tts.\(variant.rawValue)",
-            title: variant.displayName,
-            subtitle: "\(variant.talkerFilename) + \(variant.codecFilename)",
+    private static func ttsAsset(_ variant: QwenTtsVariant,
+                                 quantization: QwenTtsQuantization) -> ModelAsset {
+        let talkerFilename = quantization.talkerFilename(for: variant)
+        let codecFilename = quantization.codecFilename
+        return ModelAsset(
+            id: "tts.\(variant.rawValue).\(quantization.rawValue)",
+            title: "\(variant.displayName) (\(quantization.displayName))",
+            subtitle: "\(talkerFilename) + \(codecFilename)",
             files: [
                 ModelFile(
-                    remoteURL: URL(string: "\(hf)/Serveurperso/Qwen3-TTS-GGUF/resolve/main/\(variant.talkerFilename)")!,
-                    destinationFilename: variant.talkerFilename),
+                    remoteURL: URL(string: "\(hf)/Serveurperso/Qwen3-TTS-GGUF/resolve/main/\(talkerFilename)")!,
+                    destinationFilename: talkerFilename),
                 ModelFile(
-                    remoteURL: URL(string: "\(hf)/Serveurperso/Qwen3-TTS-GGUF/resolve/main/\(variant.codecFilename)")!,
-                    destinationFilename: variant.codecFilename),
+                    remoteURL: URL(string: "\(hf)/Serveurperso/Qwen3-TTS-GGUF/resolve/main/\(codecFilename)")!,
+                    destinationFilename: codecFilename),
             ],
             destinationDirectory: qwenDirectory)
     }
 
-    static let ttsAssets: [ModelAsset] = [
-        ttsAsset(.base06bQ8),
-        ttsAsset(.base17bQ8),
-        ttsAsset(.customVoice06bQ8),
-        ttsAsset(.customVoice17bQ8),
-        ttsAsset(.voiceDesign17bQ8),
-    ]
+    static let ttsAssets: [ModelAsset] = QwenTtsVariant.allCases.flatMap { variant in
+        QwenTtsQuantization.allCases.map { ttsAsset(variant, quantization: $0) }
+    }
 
-    static func ttsAsset(for variant: QwenTtsVariant) -> ModelAsset? {
-        ttsAssets.first { $0.id == "tts.\(variant.rawValue)" }
+    static func ttsAsset(for variant: QwenTtsVariant,
+                         quantization: QwenTtsQuantization) -> ModelAsset? {
+        ttsAssets.first { $0.id == "tts.\(variant.rawValue).\(quantization.rawValue)" }
     }
 }

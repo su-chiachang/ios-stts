@@ -1,11 +1,20 @@
 #!/usr/bin/env bash
 # Download the default STT model and qwentts.cpp's compact Base 0.6B pair.
+# Usage: scripts/fetch-models.sh [f16|q8_0|q4_k_m]
 set -euo pipefail
 
 STTS_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 PARAKEET_MODELS="$STTS_DIR/models/parakeet"
 QWEN_MODELS="$STTS_DIR/models/qwentts"
 HF="https://huggingface.co"
+QUANTIZATION="${1:-q8_0}"
+
+case "$QUANTIZATION" in
+  f16) UPSTREAM_QUANTIZATION="BF16" ;; # qwentts.cpp publishes BF16, not F16
+  q8_0) UPSTREAM_QUANTIZATION="Q8_0" ;;
+  q4_k_m) UPSTREAM_QUANTIZATION="Q4_K_M" ;;
+  *) echo "usage: $0 [f16|q8_0|q4_k_m]"; exit 2 ;;
+esac
 
 fetch() {
   local url="$1" dest="$2"
@@ -25,10 +34,10 @@ fetch "$HF/mudler/parakeet-cpp-gguf/resolve/main/realtime_eou_120m-v1-q8_0.gguf"
 # CustomVoice, or VoiceDesign, add that talker pair to this directory and
 # select it in Settings.
 TTS_REPO="Serveurperso/Qwen3-TTS-GGUF"
-fetch "$HF/$TTS_REPO/resolve/main/qwen-talker-0.6b-base-Q8_0.gguf" \
-      "$QWEN_MODELS/qwen-talker-0.6b-base-Q8_0.gguf"
-fetch "$HF/$TTS_REPO/resolve/main/qwen-tokenizer-12hz-Q8_0.gguf" \
-      "$QWEN_MODELS/qwen-tokenizer-12hz-Q8_0.gguf"
+fetch "$HF/$TTS_REPO/resolve/main/qwen-talker-0.6b-base-$UPSTREAM_QUANTIZATION.gguf" \
+      "$QWEN_MODELS/qwen-talker-0.6b-base-$UPSTREAM_QUANTIZATION.gguf"
+fetch "$HF/$TTS_REPO/resolve/main/qwen-tokenizer-12hz-$UPSTREAM_QUANTIZATION.gguf" \
+      "$QWEN_MODELS/qwen-tokenizer-12hz-$UPSTREAM_QUANTIZATION.gguf"
 
 echo "== models =="
 ls -la "$PARAKEET_MODELS" "$QWEN_MODELS"
