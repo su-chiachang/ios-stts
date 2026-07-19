@@ -198,12 +198,21 @@ final class ConversationEngine {
                     try Task.checkCancellation()
                     samples.append(contentsOf: chunk)
                 }
-                let result = try await stt.transcribeFileWords(pcm: samples,
-                                                               lang: AppSettings.shared.sttLocale)
+                // Auto-detect language (nil) for file transcription rather than
+                // forcing the conversation tab's configured locale onto an
+                // arbitrary file: forcing e.g. "en" onto Chinese audio makes the
+                // model return zero clips (an empty transcript).
+                let result = try await stt.transcribeFileWords(pcm: samples, lang: nil)
                 guard isCurrentTurn(turnID) else { return }
                 timestampedWords = result.words
                 timestampFrameSec = result.frameSec
-                finishTurn(turnID, with: .idle)
+                if result.words.isEmpty {
+                    // Don't fail silently — the [stt] tab would just revert to its
+                    // empty prompt, looking like nothing happened.
+                    finishTurn(turnID, with: .error("No speech was recognized in this file."))
+                } else {
+                    finishTurn(turnID, with: .idle)
+                }
             } catch is CancellationError {
                 finishTurn(turnID, with: .idle)
             } catch {
