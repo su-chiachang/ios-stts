@@ -219,9 +219,9 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 25F8BD9F723968F53FF90016 /* Build configuration list for PBXNativeTarget "STTS" */;
 			buildPhases = (
-				71EB5C16D9852F20012EF07F /* Vendor libs present? */,
 				124919BFBBD117DCD264C9C2 /* Check parakeet */,
 				27212067B6DC9AFF87B8BC86 /* Check qwentts */,
+				71EB5C16D9852F20012EF07F /* Vendor libs present? */,
 				B027CFFE2DE6556D06FD7055 /* Sources */,
 				CBCD04A6CBF66FBE5A547FB0 /* Frameworks */,
 				D959C8AFE8266C00D90EA586 /* Embed qwentts dylibs */,
@@ -247,6 +247,8 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+				};
 			};
 			buildConfigurationList = E2775A8AF7F64741468001D5 /* Build configuration list for PBXProject "STTS" */;
 			developmentRegion = en;
@@ -287,7 +289,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "if [ ! -d \"$SRCROOT/third_party/parakeet.cpp\" ]; then\n  \"$SRCROOT/scripts/build-parakeet-macos.sh\"\nfi\n";
+			shellScript = "if [ ! -f \"$SRCROOT/vendor/parakeet/lib/libparakeet.a\" ]; then\n  \"$SRCROOT/scripts/build-parakeet-macos.sh\"\nfi\n";
 		};
 		27212067B6DC9AFF87B8BC86 /* Check qwentts */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -305,7 +307,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "if [ ! -d \"$SRCROOT/third_party/qwentts.cpp\" ]; then\n  \"$SRCROOT/scripts/build-qwentts-macos.sh\"\nfi\n";
+			shellScript = "if [ ! -f \"$SRCROOT/vendor/qwentts/lib/libqwen.dylib\" ]; then\n  \"$SRCROOT/scripts/build-qwentts-macos.sh\"\nfi\n";
 		};
 		71EB5C16D9852F20012EF07F /* Vendor libs present? */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -445,7 +447,9 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "STTS needs microphone access to listen to your voice.";
-				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/../Frameworks",
+				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 0.1.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
@@ -526,7 +530,9 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "STTS needs microphone access to listen to your voice.";
-				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/../Frameworks",
+				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 0.1.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;

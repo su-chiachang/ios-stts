@@ -3,8 +3,14 @@
 # artifacts into stts/vendor/parakeet/. The static archives are linked
 # directly into the app executable; ggml v0.13 stays private to it.
 set -euo pipefail
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 
 STTS_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+
+if [ ! -d "$STTS_DIR/third_party/parakeet.cpp" ]; then
+  git clone --recursive https://github.com/mudler/parakeet.cpp "$STTS_DIR/third_party/parakeet.cpp"
+fi
+
 PARAKEET_SRC="${PARAKEET_SRC:-$(cd "$STTS_DIR/third_party/parakeet.cpp" && pwd)}"
 BUILD_DIR="$STTS_DIR/build/parakeet"
 VENDOR="$STTS_DIR/vendor/parakeet"

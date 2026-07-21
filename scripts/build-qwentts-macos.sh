@@ -2,16 +2,18 @@
 # Build qwentts.cpp as a shared library with Metal, then collect its dylib
 # closure for embedding in the macOS app bundle.
 set -euo pipefail
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 
 STTS_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 QWEN_SRC="$STTS_DIR/third_party/qwentts.cpp"
 VENDOR="$STTS_DIR/vendor/qwentts"
 BUILD_DIR="$STTS_DIR/.build/qwentts"
 
-if [ ! -f "$QWEN_SRC/CMakeLists.txt" ]; then
-  echo "error: qwentts.cpp is unavailable at $QWEN_SRC; run git submodule update --init --recursive"
-  exit 1
+QWEN_SRC="$STTS_DIR/third_party/qwentts.cpp"
+if [ ! -d "$QWEN_SRC" ]; then
+  git clone --recursive https://github.com/ServeurpersoCom/qwentts.cpp "$QWEN_SRC"
 fi
+
 
 cmake -S "$QWEN_SRC" -B "$BUILD_DIR" \
   -DCMAKE_BUILD_TYPE=Release \

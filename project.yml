@@ -52,6 +52,16 @@ targets:
       - sdk: CoreML.framework
       - sdk: AVFoundation.framework
     preBuildScripts:
+      - name: "Check parakeet"
+        script: |
+          if [ ! -f "$SRCROOT/vendor/parakeet/lib/libparakeet.a" ]; then
+            "$SRCROOT/scripts/build-parakeet-macos.sh"
+          fi
+      - name: "Check qwentts"
+        script: |
+          if [ ! -f "$SRCROOT/vendor/qwentts/lib/libqwen.dylib" ]; then
+            "$SRCROOT/scripts/build-qwentts-macos.sh"
+          fi
       - name: "Vendor libs present?"
         script: |
           set -e
@@ -64,16 +74,6 @@ targets:
           if [ ! -f "$SRCROOT/vendor/qwentts/lib/libqwen.dylib" ]; then
             echo "error: missing $SRCROOT/vendor/qwentts/lib/libqwen.dylib — run scripts/build-qwentts-macos.sh"
             exit 1
-          fi
-      - name: "Check parakeet"
-        script: |
-          if [ ! -d "$SRCROOT/third_party/parakeet" ]; then
-            "$SRCROOT/scripts/build-parakeet-macos.sh"
-          fi
-      - name: "Check qwentts"
-        script: |
-          if [ ! -d "$SRCROOT/third_party/qwentts.cpp" ]; then
-            "$SRCROOT/scripts/build-qwentts-macos.sh"
           fi
     postBuildScripts:
       - name: "Embed qwentts dylibs"
