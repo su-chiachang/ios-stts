@@ -22,10 +22,10 @@ struct DownloadModelsView: View {
             Section("Text-to-speech") {
                 ForEach(ModelCatalog.ttsAssets) { asset in
                     ModelAssetRow(asset: asset, manager: manager,
-                                  isSelected: asset.id == "tts.\(settings.qwenModelVariant.rawValue)",
+                                  isSelected: asset.id == "tts.\(settings.qwenModelVariant.rawValue).\(settings.qwenModelQuantization.rawValue)",
                                   onFinished: notifyChanged)
                 }
-                Text("F16 and Q4 aren't available as a fast download — their prebuilt GGUFs use a tensor layout this app's loader can't read. Run scripts/fetch-models.sh --convert to produce them, then pick the file in Settings.")
+                Text("F16 downloads the upstream BF16 pair. Q4_K_M is the default compact option; Q8_0 uses more memory for higher precision.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

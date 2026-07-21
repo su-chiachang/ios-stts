@@ -1,15 +1,15 @@
 // M0 smoke test: both engines in one process.
 //
-// 1. Load qwen3tts, synthesize one zh and one en sentence → wav files.
+// 1. Load qwentts, synthesize one zh and one en sentence → wav files.
 // 2. Load parakeet, stream-transcribe the synthesized wavs back (self-loop),
 //    printing incremental text + EOU/EOB events.
 //
-// Usage: smoketest <parakeet.gguf> <qwen3tts-model-dir> <out-dir> [extra.wav ...]
+// Usage: smoketest <parakeet.gguf> <qwentts-model-dir> <out-dir> [extra.wav ...]
 
 import AVFoundation
 import Darwin
 import CParakeet
-import CQwen3TTS
+import CQwenTTS
 import Foundation
 
 func fail(_ msg: String) -> Never {
@@ -67,7 +67,7 @@ func readAs16kMono(_ url: URL) throws -> [Float] {
 
 let args = CommandLine.arguments
 guard args.count >= 4 else {
-    fail("usage: smoketest <parakeet.gguf> <qwen3tts-model-dir> <out-dir> [extra.wav ...]")
+    fail("usage: smoketest <parakeet.gguf> <qwentts-model-dir> <out-dir> [extra.wav ...]")
 }
 let parakeetModel = args[1], qwenDir = args[2]
 let outDir = URL(fileURLWithPath: args[3], isDirectory: true)
@@ -75,28 +75,46 @@ try? FileManager.default.createDirectory(at: outDir, withIntermediateDirectories
 
 // MARK: - 1. TTS
 
-print("== loading qwen3tts from \(qwenDir)")
+print("== loading qwentts from \(qwenDir)")
 var t0 = Date()
-guard let tts = qwen3_tts_create(qwenDir, 4) else { fail("qwen3_tts_create returned NULL") }
-print("   loaded in \(elapsed(t0)), sample_rate=\(qwen3_tts_sample_rate(tts))")
+let talkerPath = URL(fileURLWithPath: qwenDir).appendingPathComponent("qwen-talker-0.6b-base-Q8_0.gguf").path
+let codecPath = URL(fileURLWithPath: qwenDir).appendingPathComponent("qwen-tokenizer-12hz-Q8_0.gguf").path
+var initParams = qt_init_params()
+qt_init_default_params(&initParams)
+let tts = talkerPath.withCString { talker in
+    codecPath.withCString { codec in
+        initParams.talker_path = talker
+        initParams.codec_path = codec
+        return qt_init(&initParams)
+    }
+}
+guard let tts else { fail("qt_init failed: \(String(cString: qt_last_error()))") }
+print("   loaded in \(elapsed(t0)), sample_rate=24000")
 
 var synthesized: [(name: String, url: URL)] = []
-for (name, text, langID) in [
-    ("tts_zh", "你好，很高興認識你。今天天氣真不錯。", Int32(2055)),
-    ("tts_en", "Hello, nice to meet you. The weather is great today.", Int32(2050)),
+for (name, text, language) in [
+    ("tts_zh", "你好，很高興認識你。今天天氣真不錯。", "Chinese"),
+    ("tts_en", "Hello, nice to meet you. The weather is great today.", "English"),
 ] {
-    var params = Qwen3TtsParams()
-    qwen3_tts_default_params(&params)
-    params.language_id = langID
-    params.max_audio_tokens = 1200
+    var params = qt_tts_params()
+    qt_tts_default_params(&params)
+    params.max_new_tokens = 1200
+    var audio = qt_audio()
     t0 = Date()
-    guard let audio = qwen3_tts_synthesize(tts, text, &params) else {
-        fail("synthesize(\(name)) failed: \(String(cString: qwen3_tts_get_error(tts)))")
+    let status = text.withCString { textPointer in
+        language.withCString { languagePointer in
+            params.text = textPointer
+            params.lang = languagePointer
+            return qt_synthesize(tts, &params, &audio)
+        }
     }
-    let n = Int(audio.pointee.n_samples)
-    let sr = Int(audio.pointee.sample_rate)
-    let samples = Array(UnsafeBufferPointer(start: audio.pointee.samples, count: n))
-    qwen3_tts_free_audio(audio)
+    guard status == QT_STATUS_OK, let pcm = audio.samples else {
+        fail("synthesize(\(name)) failed: \(String(cString: qt_last_error()))")
+    }
+    defer { qt_audio_free(&audio) }
+    let n = Int(audio.n_samples)
+    let sr = Int(audio.sample_rate)
+    let samples = Array(UnsafeBufferPointer(start: pcm, count: n))
     let dur = Double(n) / Double(sr)
     let url = outDir.appendingPathComponent("\(name).wav")
     try writeWav16(samples: samples, sampleRate: sr, to: url)
@@ -154,9 +172,9 @@ for (name, url) in synthesized + extraWavs {
 }
 
 parakeet_capi_free(ctx)
-qwen3_tts_destroy(tts)
+qt_free(tts)
 print("== SMOKE TEST PASSED (both engines coexisted in one process)")
-// Two independently-linked ggml copies (parakeet static v0.13 + qwen3tts
+// Two independently-linked ggml copies (parakeet static v0.13 + qwentts
 // dylib v0.15) each register their own ggml-metal device wrapper around the
 // same physical GPU. Their process-exit static destructors race/double-free
 // Metal residency state (GGML_ASSERT "rsets->data count == 0" in

@@ -1,6 +1,6 @@
 [submodule "third_party/parakeet.cpp"]
 	path = third_party/parakeet.cpp
 	url = https://github.com/mudler/parakeet.cpp
-[submodule "third_party/qwen3-tts.cpp"]
-	path = third_party/qwen3-tts.cpp
-	url = https://github.com/predict-woo/qwen3-tts.cpp
+[submodule "third_party/qwentts.cpp"]
+	path = third_party/qwentts.cpp
+	url = https://github.com/ServeurpersoCom/qwentts.cpp

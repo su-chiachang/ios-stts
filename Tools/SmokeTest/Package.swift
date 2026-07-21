@@ -3,7 +3,7 @@ import PackageDescription
 import Foundation
 
 // M0 verification: links BOTH engines into one process — parakeet (static,
-// ggml v0.13 private to the executable) and qwen3tts (dylib with its own
+// ggml v0.13 private to the executable) and qwentts (dylib with its own
 // ggml v0.15 dylibs, resolved via rpath). Proves the two ggml copies coexist
 // under two-level namespace and both Metal backends initialize.
 let sttsRoot = URL(fileURLWithPath: #filePath)
@@ -23,16 +23,16 @@ let package = Package(
             name: "SmokeTest",
             dependencies: [
                 .product(name: "CParakeet", package: "NativeShims"),
-                .product(name: "CQwen3TTS", package: "NativeShims"),
+                .product(name: "CQwenTTS", package: "NativeShims"),
             ],
             linkerSettings: [
                 .unsafeFlags([
                     "-L\(sttsRoot)/vendor/parakeet/lib",
                     "-lparakeet", "-lggml", "-lggml-base", "-lggml-cpu",
                     "-lggml-metal", "-lggml-blas",
-                    "-L\(sttsRoot)/vendor/qwen3tts/lib",
-                    "-lqwen3tts",
-                    "-Xlinker", "-rpath", "-Xlinker", "\(sttsRoot)/vendor/qwen3tts/lib",
+                    "-L\(sttsRoot)/vendor/qwentts/lib",
+                    "-lqwen",
+                    "-Xlinker", "-rpath", "-Xlinker", "\(sttsRoot)/vendor/qwentts/lib",
                 ]),
                 .linkedLibrary("c++"),
                 .linkedFramework("Accelerate"),

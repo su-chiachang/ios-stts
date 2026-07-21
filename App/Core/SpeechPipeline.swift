@@ -9,12 +9,17 @@ actor SpeechPipeline {
     /// When set, sentences are synthesized in this reference voice (see
     /// `QwenTts.synthesize(referenceWavPath:)`); nil uses the default voice.
     private let referenceWavPath: String?
+    private let speaker: String?
+    private let instruction: String?
     private var tail: Task<Void, Error>?
 
-    init(tts: QwenTts, player: AudioPlayer, referenceWavPath: String? = nil) {
+    init(tts: QwenTts, player: AudioPlayer, referenceWavPath: String? = nil,
+         speaker: String? = nil, instruction: String? = nil) {
         self.tts = tts
         self.player = player
         self.referenceWavPath = referenceWavPath
+        self.speaker = speaker
+        self.instruction = instruction
     }
 
     func enqueue(_ sentence: String) {
@@ -24,7 +29,9 @@ actor SpeechPipeline {
             try Task.checkCancellation()
             let audio = try await tts.synthesize(sentence,
                                                  language: LanguageDetect.spokenLanguage(for: sentence),
-                                                 referenceWavPath: referenceWavPath)
+                                                 referenceWavPath: referenceWavPath,
+                                                 speaker: speaker,
+                                                 instruction: instruction)
             try Task.checkCancellation()
             try await player.enqueue(audio)
         }

@@ -21,7 +21,7 @@
 		4F4E357F8ABC3FD94063F888 /* Accelerate.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9283F0E6CE2A9A6E0303D629 /* Accelerate.framework */; };
 		547215BB690A45DBCF61F452 /* ConversationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA6B8448D19080817053D361 /* ConversationView.swift */; };
 		5A7A35D75C029B7E41458A97 /* TranscriptSegmenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36BE7153E424B9F40D52C5F2 /* TranscriptSegmenter.swift */; };
-		5E08411ED74B235D07644B00 /* CQwen3TTS in Frameworks */ = {isa = PBXBuildFile; productRef = 623177A3997A78512749D704 /* CQwen3TTS */; };
+		5E08411ED74B235D07644B00 /* CQwenTTS in Frameworks */ = {isa = PBXBuildFile; productRef = 0E87EBA5A6684AB37D10EBA7 /* CQwenTTS */; };
 		5FD48DEFBC0365E1F9AB139B /* AudioFileInput.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7399E6E4410594811B61FE24 /* AudioFileInput.swift */; };
 		62C4E856AF5A2E0A2CEFF84B /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A893796C0A5D3D725D60F065 /* Metal.framework */; };
 		6D670AA20C9CB39B57B630C9 /* ModelDownloadManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07E13B98BA499EACD667C0EE /* ModelDownloadManager.swift */; };
@@ -82,7 +82,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				1FE52BA02157AFDE4BBDA00E /* CParakeet in Frameworks */,
-				5E08411ED74B235D07644B00 /* CQwen3TTS in Frameworks */,
+				5E08411ED74B235D07644B00 /* CQwenTTS in Frameworks */,
 				4F4E357F8ABC3FD94063F888 /* Accelerate.framework in Frameworks */,
 				62C4E856AF5A2E0A2CEFF84B /* Metal.framework in Frameworks */,
 				72413F9CCE8B7535D7C15267 /* MetalKit.framework in Frameworks */,
@@ -219,12 +219,12 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 25F8BD9F723968F53FF90016 /* Build configuration list for PBXNativeTarget "STTS" */;
 			buildPhases = (
-				71EB5C16D9852F20012EF07F /* Vendor libs present? */,
 				124919BFBBD117DCD264C9C2 /* Check parakeet */,
-				81415DD0785C13BB4C0ACCA3 /* Check qwen3tts */,
+				27212067B6DC9AFF87B8BC86 /* Check qwentts */,
+				71EB5C16D9852F20012EF07F /* Vendor libs present? */,
 				B027CFFE2DE6556D06FD7055 /* Sources */,
 				CBCD04A6CBF66FBE5A547FB0 /* Frameworks */,
-				EE0E342A23D57C043BC448A6 /* Embed qwen3tts dylibs */,
+				D959C8AFE8266C00D90EA586 /* Embed qwentts dylibs */,
 			);
 			buildRules = (
 			);
@@ -233,7 +233,7 @@
 			name = STTS;
 			packageProductDependencies = (
 				F5CC40963F85E1E537062BE6 /* CParakeet */,
-				623177A3997A78512749D704 /* CQwen3TTS */,
+				0E87EBA5A6684AB37D10EBA7 /* CQwenTTS */,
 			);
 			productName = STTS;
 			productReference = E24F882EC35A5A2B5CB54E7D /* STTS.app */;
@@ -247,6 +247,8 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+				};
 			};
 			buildConfigurationList = E2775A8AF7F64741468001D5 /* Build configuration list for PBXProject "STTS" */;
 			developmentRegion = en;
@@ -287,7 +289,25 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "if [ ! -d \"$SRCROOT/vendor/parakeet\" ]; then\n  \"$SRCROOT/scripts/build-parakeet-macos.sh\"\nfi\n";
+			shellScript = "if [ ! -f \"$SRCROOT/vendor/parakeet/lib/libparakeet.a\" ]; then\n  \"$SRCROOT/scripts/build-parakeet-macos.sh\"\nfi\n";
+		};
+		27212067B6DC9AFF87B8BC86 /* Check qwentts */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Check qwentts";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "if [ ! -f \"$SRCROOT/vendor/qwentts/lib/libqwen.dylib\" ]; then\n  \"$SRCROOT/scripts/build-qwentts-macos.sh\"\nfi\n";
 		};
 		71EB5C16D9852F20012EF07F /* Vendor libs present? */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -305,9 +325,9 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\nfor f in libparakeet.a libggml.a; do\n  if [ ! -f \"$SRCROOT/vendor/parakeet/lib/$f\" ]; then\n    echo \"error: missing $SRCROOT/vendor/parakeet/lib/$f — run scripts/build-parakeet-macos.sh\"\n    exit 1\n  fi\ndone\nif [ ! -f \"$SRCROOT/vendor/qwen3tts/lib/libqwen3tts.dylib\" ]; then\n  echo \"error: missing $SRCROOT/vendor/qwen3tts/lib/libqwen3tts.dylib — run scripts/build-qwen3tts-macos.sh\"\n  exit 1\nfi\n";
+			shellScript = "set -e\nfor f in libparakeet.a libggml.a; do\n  if [ ! -f \"$SRCROOT/vendor/parakeet/lib/$f\" ]; then\n    echo \"error: missing $SRCROOT/vendor/parakeet/lib/$f — run scripts/build-parakeet-macos.sh\"\n    exit 1\n  fi\ndone\nif [ ! -f \"$SRCROOT/vendor/qwentts/lib/libqwen.dylib\" ]; then\n  echo \"error: missing $SRCROOT/vendor/qwentts/lib/libqwen.dylib — run scripts/build-qwentts-macos.sh\"\n  exit 1\nfi\n";
 		};
-		81415DD0785C13BB4C0ACCA3 /* Check qwen3tts */ = {
+		D959C8AFE8266C00D90EA586 /* Embed qwentts dylibs */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -316,32 +336,14 @@
 			);
 			inputPaths = (
 			);
-			name = "Check qwen3tts";
+			name = "Embed qwentts dylibs";
 			outputFileListPaths = (
 			);
 			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "if [ ! -d \"$SRCROOT/vendor/qwen3tts\" ]; then\n  \"$SRCROOT/scripts/build-qwen3tts-macos.sh\"\nfi\n";
-		};
-		EE0E342A23D57C043BC448A6 /* Embed qwen3tts dylibs */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = "Embed qwen3tts dylibs";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "set -e\ndest=\"$CODESIGNING_FOLDER_PATH/Contents/Frameworks\"\nmkdir -p \"$dest\"\nfor lib in \"$SRCROOT\"/vendor/qwen3tts/lib/*.dylib; do\n  cp -f \"$lib\" \"$dest/\"\n  codesign --force --sign \"$EXPANDED_CODE_SIGN_IDENTITY\" --timestamp=none \"$dest/$(basename \"$lib\")\" || true\ndone\n";
+			shellScript = "set -e\ndest=\"$CODESIGNING_FOLDER_PATH/Contents/Frameworks\"\nmkdir -p \"$dest\"\nfor lib in \"$SRCROOT\"/vendor/qwentts/lib/*.dylib; do\n  cp -f \"$lib\" \"$dest/\"\n  codesign --force --sign \"$EXPANDED_CODE_SIGN_IDENTITY\" --timestamp=none \"$dest/$(basename \"$lib\")\" || true\ndone\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -445,7 +447,9 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "STTS needs microphone access to listen to your voice.";
-				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/../Frameworks",
+				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 0.1.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
@@ -458,8 +462,8 @@
 					"-lggml-cpu",
 					"-lggml-metal",
 					"-lggml-blas",
-					"-L$(SRCROOT)/vendor/qwen3tts/lib",
-					"-lqwen3tts",
+					"-L$(SRCROOT)/vendor/qwentts/lib",
+					"-lqwen",
 					"-lc++",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -526,7 +530,9 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "STTS needs microphone access to listen to your voice.";
-				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/../Frameworks",
+				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 0.1.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
@@ -540,8 +546,8 @@
 					"-lggml-cpu",
 					"-lggml-metal",
 					"-lggml-blas",
-					"-L$(SRCROOT)/vendor/qwen3tts/lib",
-					"-lqwen3tts",
+					"-L$(SRCROOT)/vendor/qwentts/lib",
+					"-lqwen",
 					"-lc++",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -597,9 +603,9 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		623177A3997A78512749D704 /* CQwen3TTS */ = {
+		0E87EBA5A6684AB37D10EBA7 /* CQwenTTS */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = CQwen3TTS;
+			productName = CQwenTTS;
 		};
 		F5CC40963F85E1E537062BE6 /* CParakeet */ = {
 			isa = XCSwiftPackageProductDependency;

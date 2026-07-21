@@ -2,10 +2,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 /// The [tts] tab: type text, choose a voice, and hear it spoken. Voice modes are
-/// scoped to what the local qwen3-tts.cpp port supports — the model's default
-/// voice and zero-shot cloning (import or record a 3–5 s reference clip).
-/// Preset voices and text-prompt voice design aren't in the local model and are
-/// surfaced as a disabled "coming soon" note.
+/// adapts its controls to the qwentts.cpp checkpoint selected in Settings.
 struct TtsView: View {
     var engine: ConversationEngine
     var settings = AppSettings.shared
@@ -24,7 +21,7 @@ struct TtsView: View {
             VStack(alignment: .leading, spacing: 18) {
                 voiceSection
                 textSection
-                comingSoonSection
+                capabilitySection
                 if let message {
                     Text(message)
                         .font(.caption)
@@ -65,7 +62,7 @@ struct TtsView: View {
                         toggleRecording()
                     }
                 }
-                Text("Zero-shot cloning: a 3–5 s clip of your voice is enough; the words spoken in it don't matter.")
+                Text("Zero-shot cloning uses a 3–5 s clip. A matching transcript can also enable ICL through the native API.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -100,25 +97,22 @@ struct TtsView: View {
         }
     }
 
-    private var comingSoonSection: some View {
-        GroupBox("Coming soon") {
+    private var capabilitySection: some View {
+        GroupBox("Model capabilities") {
             VStack(alignment: .leading, spacing: 6) {
-                Label("Preset voices (Vivian, Uncle_Fu, Dylan…)", systemImage: "person.2")
-                Label("Voice design — describe a voice in words", systemImage: "wand.and.stars")
-                Text("Not available in the local model.")
+                Label("Base: default voice, x-vector cloning, and ICL cloning", systemImage: "person.wave.2")
+                Text("The built-in download choices use Base checkpoints. qwentts.cpp also supports CustomVoice and VoiceDesign through its native API.")
                     .font(.caption)
-                    .foregroundStyle(.tertiary)
             }
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .disabled(true)
     }
 
     private var canSpeak: Bool {
         engine.isReady && !engine.isProcessing
             && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && (voice == .standard || hasClonedVoice)
+            && (voice == .standard || (voice == .cloned && hasClonedVoice))
     }
 
     private func speak() {

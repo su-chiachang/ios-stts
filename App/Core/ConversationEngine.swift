@@ -66,7 +66,9 @@ final class ConversationEngine {
         }
         do {
             stt = try ParakeetStt(modelPath: parakeetURL.path)
-            tts = try QwenTts(modelDir: qwenDirURL.path, variant: AppSettings.shared.qwenModelVariant)
+            tts = try QwenTts(modelDir: qwenDirURL.path,
+                              variant: AppSettings.shared.qwenModelVariant,
+                              quantization: AppSettings.shared.qwenModelQuantization)
             state = .idle
         } catch {
             state = .error(error.localizedDescription)
@@ -329,7 +331,8 @@ final class ConversationEngine {
     /// bubble. `referenceWavPath == nil` uses the model's default voice; a path
     /// clones that reference voice.
     @discardableResult
-    func speak(_ text: String, referenceWavPath: String?) -> Bool {
+    func speak(_ text: String, referenceWavPath: String?, speaker: String? = nil,
+               instruction: String? = nil) -> Bool {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, isReady, !isProcessing else { return false }
 
@@ -340,7 +343,8 @@ final class ConversationEngine {
         state = .speaking
         turnTask = Task {
             do {
-                try await readAloud(text, turnID: turnID, referenceWavPath: referenceWavPath)
+                try await readAloud(text, turnID: turnID, referenceWavPath: referenceWavPath,
+                                    speaker: speaker, instruction: instruction)
             } catch is CancellationError {
                 finishTurn(turnID, with: .idle)
             } catch {
@@ -356,6 +360,11 @@ final class ConversationEngine {
     func warmCustomVoice() async throws {
         guard let tts, let path = AppSettings.shared.customVoiceReferenceURL()?.path else { return }
         try await tts.warmUpVoice(referenceWavPath: path)
+    }
+
+    func availablePresetSpeakers() async -> [String] {
+        guard let tts else { return [] }
+        return await tts.availableSpeakers()
     }
 
     func stop() {
@@ -423,7 +432,8 @@ final class ConversationEngine {
         finishTurn(turnID, with: .idle)
     }
 
-    private func readAloud(_ text: String, turnID: UUID, referenceWavPath: String?) async throws {
+    private func readAloud(_ text: String, turnID: UUID, referenceWavPath: String?,
+                           speaker: String? = nil, instruction: String? = nil) async throws {
         guard let tts else {
             throw QwenTtsError.synthesizeFailed("TTS model not loaded.")
         }
@@ -435,7 +445,8 @@ final class ConversationEngine {
             audioPlayer = newPlayer
             player = newPlayer
         }
-        let pipeline = SpeechPipeline(tts: tts, player: player, referenceWavPath: referenceWavPath)
+        let pipeline = SpeechPipeline(tts: tts, player: player, referenceWavPath: referenceWavPath,
+                                      speaker: speaker, instruction: instruction)
         speechPipeline = pipeline
         defer {
             if speechPipeline === pipeline { speechPipeline = nil }

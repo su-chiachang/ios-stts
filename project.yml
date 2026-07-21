@@ -25,8 +25,8 @@ settings:
       - "-lggml-cpu"
       - "-lggml-metal"
       - "-lggml-blas"
-      - "-L$(SRCROOT)/vendor/qwen3tts/lib"
-      - "-lqwen3tts"
+      - "-L$(SRCROOT)/vendor/qwentts/lib"
+      - "-lqwen"
       - "-lc++"
 
 packages:
@@ -45,13 +45,23 @@ targets:
       - package: NativeShims
         product: CParakeet
       - package: NativeShims
-        product: CQwen3TTS
+        product: CQwenTTS
       - sdk: Accelerate.framework
       - sdk: Metal.framework
       - sdk: MetalKit.framework
       - sdk: CoreML.framework
       - sdk: AVFoundation.framework
     preBuildScripts:
+      - name: "Check parakeet"
+        script: |
+          if [ ! -f "$SRCROOT/vendor/parakeet/lib/libparakeet.a" ]; then
+            "$SRCROOT/scripts/build-parakeet-macos.sh"
+          fi
+      - name: "Check qwentts"
+        script: |
+          if [ ! -f "$SRCROOT/vendor/qwentts/lib/libqwen.dylib" ]; then
+            "$SRCROOT/scripts/build-qwentts-macos.sh"
+          fi
       - name: "Vendor libs present?"
         script: |
           set -e
@@ -61,27 +71,17 @@ targets:
               exit 1
             fi
           done
-          if [ ! -f "$SRCROOT/vendor/qwen3tts/lib/libqwen3tts.dylib" ]; then
-            echo "error: missing $SRCROOT/vendor/qwen3tts/lib/libqwen3tts.dylib — run scripts/build-qwen3tts-macos.sh"
+          if [ ! -f "$SRCROOT/vendor/qwentts/lib/libqwen.dylib" ]; then
+            echo "error: missing $SRCROOT/vendor/qwentts/lib/libqwen.dylib — run scripts/build-qwentts-macos.sh"
             exit 1
           fi
-      - name: "Check parakeet"
-        script: |
-          if [ ! -d "$SRCROOT/third_party/parakeet" ]; then
-            "$SRCROOT/scripts/build-parakeet-macos.sh"
-          fi
-      - name: "Check qwen3tts"
-        script: |
-          if [ ! -d "$SRCROOT/third_party/qwen3tts" ]; then
-            "$SRCROOT/scripts/build-qwen3tts-macos.sh"
-          fi
     postBuildScripts:
-      - name: "Embed qwen3tts dylibs"
+      - name: "Embed qwentts dylibs"
         script: |
           set -e
           dest="$CODESIGNING_FOLDER_PATH/Contents/Frameworks"
           mkdir -p "$dest"
-          for lib in "$SRCROOT"/vendor/qwen3tts/lib/*.dylib; do
+          for lib in "$SRCROOT"/vendor/qwentts/lib/*.dylib; do
             cp -f "$lib" "$dest/"
             codesign --force --sign "$EXPANDED_CODE_SIGN_IDENTITY" --timestamp=none "$dest/$(basename "$lib")" || true
           done

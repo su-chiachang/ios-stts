@@ -17,7 +17,7 @@ is involved.
 
 ## How it works
 
-Voice cloning is fully supported down in `qwen3-tts.cpp`; this change only wires
+Voice cloning is fully supported by `qwentts.cpp`; this change wires
 the existing C API up to Swift and UI.
 
 - **Import** (`ReferenceAudioImporter`): any Core Audio-decodable file is
@@ -25,9 +25,9 @@ the existing C API up to Swift and UI.
   native `load_audio_file` accepts (it rejects compressed and float32 WAV). The
   WAV is written into the app container under a per-import unique name.
 - **Embedding cache** (`QwenTts`): on first use the reference WAV is run through
-  the speaker encoder once (`qwen3_tts_extract_embedding_file`, ~1024 floats) and
+  the speaker encoder and RVQ codec once (`qt_extract_voice_ref`) and
   the embedding is memoized. Per-sentence synthesis then uses
-  `qwen3_tts_synthesize_with_embedding`, skipping the encoder. Keyed by path, and
+  `qt_synthesize` with the cached latent, skipping repeated extraction. Keyed by path, and
   each import writes a new filename, so a replaced voice never hits a stale cache.
 - **Read-aloud path** (`ConversationEngine.speakText` → `SpeechPipeline` with a
   `referenceWavPath`): typed text is sentence-chunked and synthesized in the
