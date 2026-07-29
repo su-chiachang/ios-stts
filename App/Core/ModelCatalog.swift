@@ -19,6 +19,7 @@ struct ModelAsset: Identifiable, Hashable {
 /// checkpoint mode from talker metadata when advanced checkpoints are used.
 enum ModelCatalog {
     private static let hf = "https://huggingface.co"
+    static let sttModelName = "nemotron-3.5-asr-streaming-0.6b-q4_k.gguf"
 
     static var parakeetDirectory: URL {
         AppSettings.modelsRootDirectory.appendingPathComponent("parakeet", isDirectory: true)
@@ -32,18 +33,10 @@ enum ModelCatalog {
         ModelAsset(
             id: "stt.nemotron",
             title: "Nemotron (streaming ASR)",
-            subtitle: "nemotron-3.5-asr-streaming-0.6b-q8_0.gguf",
+            subtitle: sttModelName,
             files: [ModelFile(
-                remoteURL: URL(string: "\(hf)/mudler/parakeet-cpp-gguf/resolve/main/nemotron-3.5-asr-streaming-0.6b-q8_0.gguf")!,
-                destinationFilename: "nemotron-3.5-asr-streaming-0.6b-q8_0.gguf")],
-            destinationDirectory: parakeetDirectory),
-        ModelAsset(
-            id: "stt.realtime",
-            title: "Realtime EOU detector",
-            subtitle: "realtime_eou_120m-v1-q8_0.gguf",
-            files: [ModelFile(
-                remoteURL: URL(string: "\(hf)/mudler/parakeet-cpp-gguf/resolve/main/realtime_eou_120m-v1-q8_0.gguf")!,
-                destinationFilename: "realtime_eou_120m-v1-q8_0.gguf")],
+                remoteURL: URL(string: "\(hf)/mudler/parakeet-cpp-gguf/resolve/main/\(sttModelName)")!,
+                destinationFilename: sttModelName)],
             destinationDirectory: parakeetDirectory),
     ]
 

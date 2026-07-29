@@ -157,7 +157,7 @@ final class AppSettings {
     }
 
     private func downloadedParakeetModelURL() -> URL? {
-        let url = ModelCatalog.parakeetDirectory.appendingPathComponent("nemotron-3.5-asr-streaming-0.6b-q8_0.gguf")
+        let url = ModelCatalog.parakeetDirectory.appendingPathComponent(ModelCatalog.sttModelName)
         return (try? url.checkResourceIsReachable()) == true ? url : nil
     }
 
