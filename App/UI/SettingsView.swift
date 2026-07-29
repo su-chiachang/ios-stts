@@ -20,7 +20,7 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section("Models") {
-                LabeledContent("Parakeet GGUF") {
+                LabeledContent("STT") {
                     HStack {
                         Text(parakeetPath.isEmpty ? "Not set" : parakeetPath)
                             .lineLimit(1)
@@ -29,7 +29,7 @@ struct SettingsView: View {
                         Button("Choose…") { pickParakeetModel() }
                     }
                 }
-                LabeledContent("Qwen3-TTS model dir") {
+                LabeledContent("TTS dir") {
                     HStack {
                         Text(qwenDirPath.isEmpty ? "Not set" : qwenDirPath)
                             .lineLimit(1)
@@ -43,25 +43,8 @@ struct SettingsView: View {
                         #endif
                     }
                 }
-                Picker("Qwen3-TTS model size", selection: Binding(
-                    get: { settings.qwenModelVariant },
-                    set: { settings.qwenModelVariant = $0; reloadModels() }
-                )) {
-                    ForEach(QwenTtsVariant.allCases) { variant in
-                        Text(variant.displayName).tag(variant)
-                    }
-                }
-                Picker("Model quantization", selection: Binding(
-                    get: { settings.qwenModelQuantization },
-                    set: { settings.qwenModelQuantization = $0; reloadModels() }
-                )) {
-                    ForEach(QwenTtsQuantization.allCases) { quantization in
-                        Text(quantization.displayName).tag(quantization)
-                    }
-                }
                 HStack {
                     Button("Download Models…") { showDownloadModels = true }
-                    Button("Reload Models") { reloadModels() }
                 }
                 if let modelMessage {
                     Text(modelMessage)
@@ -73,11 +56,9 @@ struct SettingsView: View {
                 }
             }
 
-            Section("LLM (OpenAI-compatible)") {
+            Section("LLM") {
                 TextField("Base URL", text: Binding(get: { settings.llmBaseURL },
                                                      set: { settings.llmBaseURL = $0 }))
-                SecureField("API Key (optional)", text: Binding(get: { settings.llmAPIKey },
-                                                                 set: { settings.llmAPIKey = $0 }))
                 TextField("Model", text: Binding(get: { settings.llmModel },
                                                   set: { settings.llmModel = $0 }))
                 TextEditor(text: Binding(get: { settings.systemPrompt },
@@ -102,7 +83,7 @@ struct SettingsView: View {
                 }
             }
 
-            Section("Custom voice (read aloud)") {
+            Section("Custom voice") {
                 LabeledContent("Reference voice") {
                     HStack {
                         Text(settings.customVoiceName.isEmpty ? "Not set" : settings.customVoiceName)
@@ -137,6 +118,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
+        .font(.callout) // matches ConversationView's compact type scale
         #if os(macOS)
         .frame(width: 480, height: 520)
         #endif

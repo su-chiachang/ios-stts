@@ -13,13 +13,13 @@ struct DownloadModelsView: View {
 
     var body: some View {
         Form {
-            Section("Speech-to-text") {
+            Section("speech-to-text") {
                 ForEach(ModelCatalog.sttAssets) { asset in
                     ModelAssetRow(asset: asset, manager: manager, isSelected: true, onFinished: notifyChanged)
                 }
             }
 
-            Section("Text-to-speech") {
+            Section("text-to-speech") {
                 ForEach(ModelCatalog.ttsAssets) { asset in
                     ModelAssetRow(asset: asset, manager: manager,
                                   isSelected: asset.id == "tts.\(settings.qwenModelVariant.rawValue).\(settings.qwenModelQuantization.rawValue)",
