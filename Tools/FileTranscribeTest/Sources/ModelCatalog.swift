@@ -1,1 +1,0 @@
-../../../App/Core/ModelCatalog.swift

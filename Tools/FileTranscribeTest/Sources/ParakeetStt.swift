@@ -1,1 +1,0 @@
-../../../App/STT/ParakeetStt.swift

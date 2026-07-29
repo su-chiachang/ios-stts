@@ -10,3 +10,5 @@ xcuserdata/
 .vscode/
 STTS.xcodeproj/
 third_party/
+Packages/NativeShims/Sources/CParakeet/include/parakeet_capi.h
+Packages/NativeShims/Sources/CQwenTTS/include/qwen.h
