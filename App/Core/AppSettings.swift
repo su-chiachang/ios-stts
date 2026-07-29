@@ -76,7 +76,7 @@ final class AppSettings {
 
     private init() {
         let d = UserDefaults.standard
-        llmBaseURL = d.string(forKey: Keys.llmBaseURL) ?? "http://127.0.0.1:8080/v1"
+        llmBaseURL = d.string(forKey: Keys.llmBaseURL) ?? "http://127.0.0.1:1234/v1"
         llmAPIKey = d.string(forKey: Keys.llmAPIKey) ?? ""
         llmModel = d.string(forKey: Keys.llmModel) ?? "gemma"
         systemPrompt = d.string(forKey: Keys.systemPrompt) ?? Self.defaultSystemPrompt
