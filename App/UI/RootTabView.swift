@@ -13,8 +13,16 @@ struct RootTabView: View {
                 .tabItem { Label("stt", systemImage: "waveform") }
             TtsView(engine: engine)
                 .tabItem { Label("tts", systemImage: "speaker.wave.2") }
+            #if os(iOS)
+            // macOS reaches SettingsView through the app's Settings scene
+            // (Cmd-,); iOS has no such scene, so it needs its own tab.
+            SettingsView(engine: engine)
+                .tabItem { Label("settings", systemImage: "gearshape") }
+            #endif
         }
+        #if os(macOS)
         .frame(minWidth: 460, minHeight: 560)
+        #endif
     }
 }
 

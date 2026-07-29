@@ -3,6 +3,7 @@ options:
   bundleIdPrefix: com.jiajing
   deploymentTarget:
     macOS: "15.0"
+    iOS: "17.0"
 configs:
   Debug: debug
   Release: release
@@ -11,13 +12,17 @@ settings:
     SWIFT_VERSION: 5.0
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
-    CODE_SIGN_ENTITLEMENTS: App/Resources/STTS.entitlements
     INFOPLIST_KEY_NSMicrophoneUsageDescription: "STTS needs microphone access to listen to your voice."
     GENERATE_INFOPLIST_FILE: YES
-    ENABLE_HARDENED_RUNTIME: YES
-    LD_RUNPATH_SEARCH_PATHS:
+    DEVELOPMENT_TEAM: FPY8L862BK
+    CODE_SIGN_STYLE: Automatic
+    CODE_SIGN_IDENTITY: "Apple Development"
+    TARGETED_DEVICE_FAMILY: "1"
+    CODE_SIGN_ENTITLEMENTS[sdk=macosx*]: App/Resources/STTS.entitlements
+    ENABLE_HARDENED_RUNTIME[sdk=macosx*]: YES
+    LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]:
       - "@executable_path/../Frameworks"
-    OTHER_LDFLAGS:
+    OTHER_LDFLAGS[sdk=macosx*]:
       - "-L$(SRCROOT)/vendor/parakeet/lib"
       - "-lparakeet"
       - "-lggml"
@@ -28,6 +33,18 @@ settings:
       - "-L$(SRCROOT)/vendor/qwentts/lib"
       - "-lqwen"
       - "-lc++"
+    OTHER_LDFLAGS[sdk=iphoneos*]:
+      - "-L$(SRCROOT)/vendor/parakeet-ios/iphoneos-arm64/lib"
+      - "-lparakeet_ios"
+      - "-L$(SRCROOT)/vendor/qwentts-ios/iphoneos-arm64/lib"
+      - "-lqwen_ios"
+      - "-lc++"
+    OTHER_LDFLAGS[sdk=iphonesimulator*]:
+      - "-L$(SRCROOT)/vendor/parakeet-ios/iphonesimulator-arm64/lib"
+      - "-lparakeet_ios"
+      - "-L$(SRCROOT)/vendor/qwentts-ios/iphonesimulator-arm64/lib"
+      - "-lqwen_ios"
+      - "-lc++"
 
 packages:
   NativeShims:
@@ -36,7 +53,7 @@ packages:
 targets:
   STTS:
     type: application
-    platform: macOS
+    supportedDestinations: [macOS, iOS]
     sources:
       - path: App
         excludes:
@@ -49,39 +66,61 @@ targets:
       - sdk: Accelerate.framework
       - sdk: Metal.framework
       - sdk: MetalKit.framework
-      - sdk: CoreML.framework
       - sdk: AVFoundation.framework
+      - sdk: CoreML.framework
+        destinationFilters: [macOS]
     preBuildScripts:
-      - name: "Check parakeet"
+      - name: "Check native libs"
         script: |
-          if [ ! -f "$SRCROOT/vendor/parakeet/lib/libparakeet.a" ]; then
-            "$SRCROOT/scripts/build-parakeet-macos.sh"
-          fi
-      - name: "Check qwentts"
-        script: |
-          if [ ! -f "$SRCROOT/vendor/qwentts/lib/libqwen.dylib" ]; then
-            "$SRCROOT/scripts/build-qwentts-macos.sh"
+          set -e
+          if [ "$PLATFORM_NAME" = "macosx" ]; then
+            if [ ! -f "$SRCROOT/vendor/parakeet/lib/libparakeet.a" ]; then
+              "$SRCROOT/scripts/build-parakeet-macos.sh"
+            fi
+            if [ ! -f "$SRCROOT/vendor/qwentts/lib/libqwen.dylib" ]; then
+              "$SRCROOT/scripts/build-qwentts-macos.sh"
+            fi
+          else
+            if [ ! -f "$SRCROOT/vendor/parakeet-ios/$PLATFORM_NAME-arm64/lib/libparakeet_ios.a" ]; then
+              "$SRCROOT/scripts/build-parakeet-ios.sh" "$PLATFORM_NAME"
+            fi
+            if [ ! -f "$SRCROOT/vendor/qwentts-ios/$PLATFORM_NAME-arm64/lib/libqwen_ios.a" ]; then
+              "$SRCROOT/scripts/build-qwentts-ios.sh" "$PLATFORM_NAME"
+            fi
           fi
       - name: "Vendor libs present?"
         script: |
           set -e
-          for f in libparakeet.a libggml.a; do
-            if [ ! -f "$SRCROOT/vendor/parakeet/lib/$f" ]; then
-              echo "error: missing $SRCROOT/vendor/parakeet/lib/$f — run scripts/build-parakeet-macos.sh"
+          if [ "$PLATFORM_NAME" = "macosx" ]; then
+            for f in libparakeet.a libggml.a; do
+              if [ ! -f "$SRCROOT/vendor/parakeet/lib/$f" ]; then
+                echo "error: missing $SRCROOT/vendor/parakeet/lib/$f — run scripts/build-parakeet-macos.sh"
+                exit 1
+              fi
+            done
+            if [ ! -f "$SRCROOT/vendor/qwentts/lib/libqwen.dylib" ]; then
+              echo "error: missing $SRCROOT/vendor/qwentts/lib/libqwen.dylib — run scripts/build-qwentts-macos.sh"
               exit 1
             fi
-          done
-          if [ ! -f "$SRCROOT/vendor/qwentts/lib/libqwen.dylib" ]; then
-            echo "error: missing $SRCROOT/vendor/qwentts/lib/libqwen.dylib — run scripts/build-qwentts-macos.sh"
-            exit 1
+          else
+            if [ ! -f "$SRCROOT/vendor/parakeet-ios/$PLATFORM_NAME-arm64/lib/libparakeet_ios.a" ]; then
+              echo "error: missing $SRCROOT/vendor/parakeet-ios/$PLATFORM_NAME-arm64/lib/libparakeet_ios.a — run scripts/build-parakeet-ios.sh $PLATFORM_NAME"
+              exit 1
+            fi
+            if [ ! -f "$SRCROOT/vendor/qwentts-ios/$PLATFORM_NAME-arm64/lib/libqwen_ios.a" ]; then
+              echo "error: missing $SRCROOT/vendor/qwentts-ios/$PLATFORM_NAME-arm64/lib/libqwen_ios.a — run scripts/build-qwentts-ios.sh $PLATFORM_NAME"
+              exit 1
+            fi
           fi
     postBuildScripts:
       - name: "Embed qwentts dylibs"
         script: |
           set -e
-          dest="$CODESIGNING_FOLDER_PATH/Contents/Frameworks"
-          mkdir -p "$dest"
-          for lib in "$SRCROOT"/vendor/qwentts/lib/*.dylib; do
-            cp -f "$lib" "$dest/"
-            codesign --force --sign "$EXPANDED_CODE_SIGN_IDENTITY" --timestamp=none "$dest/$(basename "$lib")" || true
-          done
+          if [ "$PLATFORM_NAME" = "macosx" ]; then
+            dest="$CODESIGNING_FOLDER_PATH/Contents/Frameworks"
+            mkdir -p "$dest"
+            for lib in "$SRCROOT"/vendor/qwentts/lib/*.dylib; do
+              cp -f "$lib" "$dest/"
+              codesign --force --sign "$EXPANDED_CODE_SIGN_IDENTITY" --timestamp=none "$dest/$(basename "$lib")" || true
+            done
+          fi

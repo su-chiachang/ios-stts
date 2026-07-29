@@ -98,7 +98,9 @@ final class ConversationEngine {
         partialTranscript = ""
         state = .listening
 
+        let accessingScope = url.startAccessingSecurityScopedResource()
         turnTask = Task {
+            defer { if accessingScope { url.stopAccessingSecurityScopedResource() } }
             do {
                 try await stt.beginTurn(lang: AppSettings.shared.sttLocale)
                 let sourcePlayer = SourceMediaPlayer()
@@ -147,7 +149,9 @@ final class ConversationEngine {
         partialTranscript = ""
         state = .listening
 
+        let accessingScope = url.startAccessingSecurityScopedResource()
         turnTask = Task {
+            defer { if accessingScope { url.stopAccessingSecurityScopedResource() } }
             do {
                 try await stt.beginTurn(lang: AppSettings.shared.sttLocale)
                 let source = AudioFileInput(url: url)
@@ -193,7 +197,9 @@ final class ConversationEngine {
         timestampFrameSec = 0
         state = .listening
 
+        let accessingScope = url.startAccessingSecurityScopedResource()
         turnTask = Task {
+            defer { if accessingScope { url.stopAccessingSecurityScopedResource() } }
             do {
                 var samples: [Float] = []
                 for try await chunk in AudioFileInput(url: url).stream(realtime: false) {

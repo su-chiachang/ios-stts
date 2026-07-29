@@ -31,7 +31,9 @@ struct DownloadModelsView: View {
             }
         }
         .formStyle(.grouped)
+        #if os(macOS)
         .frame(width: 520, height: 420)
+        #endif
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Done") { dismiss() }

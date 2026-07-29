@@ -58,10 +58,10 @@ fetch() {
 }
 
 mkdir -p "$PARAKEET_MODELS" "$QWEN_MODELS"
-fetch "$HF/mudler/parakeet-cpp-gguf/resolve/main/nemotron-3.5-asr-streaming-0.6b-q8_0.gguf" \
-      "$PARAKEET_MODELS/nemotron-3.5-asr-streaming-0.6b-q8_0.gguf"
-fetch "$HF/mudler/parakeet-cpp-gguf/resolve/main/realtime_eou_120m-v1-q8_0.gguf" \
-      "$PARAKEET_MODELS/realtime_eou_120m-v1-q8_0.gguf"
+fetch "$HF/mudler/parakeet-cpp-gguf/resolve/main/nemotron-3.5-asr-streaming-0.6b-q4_k.gguf" \
+      "$PARAKEET_MODELS/nemotron-3.5-asr-streaming-0.6b-q4_k.gguf"
+#fetch "$HF/mudler/parakeet-cpp-gguf/resolve/main/realtime_eou_120m-v1-q4_k.gguf" \
+#      "$PARAKEET_MODELS/realtime_eou_120m-v1-q4_k.gguf"
 
 # qwentts.cpp reads the model type from the talker metadata. To use 1.7B,
 # CustomVoice, or VoiceDesign, add that talker pair to this directory and

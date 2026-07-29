@@ -1,8 +1,15 @@
+#if os(macOS)
 import AppKit
+#endif
 import Darwin
 import SwiftUI
 
+#if os(macOS)
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        true
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
         // parakeet and qwen3-tts each own a distinct ggml Metal runtime. Skip
         // their conflicting static destructors; macOS reclaims process-owned
@@ -11,13 +18,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         _exit(0)
     }
 }
+#endif
 
 @main
 struct STTSApp: App {
+    #if os(macOS)
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    #endif
     @State private var engine = ConversationEngine()
 
     var body: some Scene {
+        #if os(macOS)
         WindowGroup {
             RootTabView(engine: engine)
                 .task { await engine.loadModels() }
@@ -27,5 +38,11 @@ struct STTSApp: App {
         Settings {
             SettingsView(engine: engine)
         }
+        #else
+        WindowGroup {
+            RootTabView(engine: engine)
+                .task { await engine.loadModels() }
+        }
+        #endif
     }
 }

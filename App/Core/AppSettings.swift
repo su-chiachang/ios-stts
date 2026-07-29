@@ -178,8 +178,11 @@ final class AppSettings {
         // (NSCocoaErrorDomain 256) even when the user selected the URL with
         // NSOpenPanel. In that case, preserve the panel's implicit security
         // scope instead. It provides the same read access this app needs and
-        // avoids relying on ScopedBookmarkAgent's app-scope key.
+        // avoids relying on ScopedBookmarkAgent's app-scope key. iOS doesn't
+        // have app-scope bookmarks at all (.withSecurityScope is unavailable
+        // there) — .fileImporter's document-scope security already covers it.
         let data: Data
+        #if os(macOS)
         do {
             data = try url.bookmarkData(options: .withSecurityScope,
                                         includingResourceValuesForKeys: nil,
@@ -189,16 +192,26 @@ final class AppSettings {
                                         includingResourceValuesForKeys: nil,
                                         relativeTo: nil)
         }
+        #else
+        data = try url.bookmarkData(options: [],
+                                    includingResourceValuesForKeys: nil,
+                                    relativeTo: nil)
+        #endif
         UserDefaults.standard.set(data, forKey: key)
     }
 
     private func resolveBookmark(_ key: String) -> URL? {
         guard let data = UserDefaults.standard.data(forKey: key) else { return nil }
         var stale = false
+        #if os(macOS)
         let url = (try? URL(resolvingBookmarkData: data, options: .withSecurityScope,
                             relativeTo: nil, bookmarkDataIsStale: &stale))
             ?? (try? URL(resolvingBookmarkData: data, options: [],
                          relativeTo: nil, bookmarkDataIsStale: &stale))
+        #else
+        let url = try? URL(resolvingBookmarkData: data, options: [],
+                            relativeTo: nil, bookmarkDataIsStale: &stale)
+        #endif
         guard let url, url.startAccessingSecurityScopedResource() else { return nil }
         return url
     }

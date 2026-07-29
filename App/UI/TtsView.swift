@@ -11,6 +11,9 @@ struct TtsView: View {
     @State private var recorder = VoiceClipRecorder()
     @State private var message: String?
     @State private var isError = false
+    #if os(iOS)
+    @State private var showImportPicker = false
+    #endif
 
     enum VoiceChoice: Hashable { case standard, cloned }
 
@@ -31,10 +34,19 @@ struct TtsView: View {
             }
             .padding()
         }
+        #if os(macOS)
         .frame(minWidth: 420, minHeight: 500)
+        #endif
         .onChange(of: recorder.isRecording) { wasRecording, nowRecording in
             if wasRecording && !nowRecording { saveRecordedClip() }
         }
+        #if os(iOS)
+        .fileImporter(isPresented: $showImportPicker,
+                      allowedContentTypes: [.audio, .wav, .mp3, .mpeg4Audio]) { result in
+            guard case .success(let url) = result else { return }
+            importClip(from: url)
+        }
+        #endif
     }
 
     private var voiceSection: some View {
@@ -151,17 +163,33 @@ struct TtsView: View {
         }
     }
 
-    // NSOpenPanel to match SettingsView's voice import (and the rest of the app);
-    // .fileImporter doesn't reliably fire in this AppKit-hosted app.
+    // macOS uses NSOpenPanel to match SettingsView's voice import (and the
+    // rest of the app); .fileImporter doesn't reliably fire in this
+    // AppKit-hosted app. iOS has no AppKit host, so it presents
+    // .fileImporter instead (see the modifier on `body`).
     private func importClip() {
+        #if os(macOS)
         let panel = NSOpenPanel()
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         panel.allowedContentTypes = [.audio, .wav, .mp3, .mpeg4Audio]
         guard panel.runModal() == .OK, let url = panel.url else { return }
+        importClip(from: url)
+        #else
+        showImportPicker = true
+        #endif
+    }
+
+    private func importClip(from url: URL) {
         message = "Importing voice…"
         isError = false
+        #if os(iOS)
+        let accessingScope = url.startAccessingSecurityScopedResource()
+        #endif
         Task { @MainActor in
+            #if os(iOS)
+            defer { if accessingScope { url.stopAccessingSecurityScopedResource() } }
+            #endif
             do {
                 try settings.importCustomVoice(from: url, displayName: url.lastPathComponent)
                 try await engine.warmCustomVoice()

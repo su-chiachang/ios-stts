@@ -77,6 +77,15 @@ final class AudioInputManager: @unchecked Sendable {
     }
 
     private func startEngine() throws {
+        #if os(iOS)
+        // macOS has no session concept; iOS won't report a usable input
+        // format (sampleRate/channelCount read as 0, below) until a
+        // .playAndRecord session is active.
+        let session = AVAudioSession.sharedInstance()
+        try session.setCategory(.playAndRecord, options: [.defaultToSpeaker, .allowBluetooth])
+        try session.setActive(true)
+        #endif
+
         let input = engine.inputNode
         let inputFormat = input.outputFormat(forBus: 0)
         guard inputFormat.sampleRate > 0, inputFormat.channelCount > 0 else {

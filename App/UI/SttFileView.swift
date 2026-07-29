@@ -7,6 +7,9 @@ import UniformTypeIdentifiers
 struct SttFileView: View {
     var engine: ConversationEngine
     @State private var granularity: Granularity = .sentence
+    #if os(iOS)
+    @State private var showFilePicker = false
+    #endif
 
     enum Granularity: String, CaseIterable, Identifiable {
         case sentence = "Sentence"
@@ -24,7 +27,15 @@ struct SttFileView: View {
             Divider()
             content
         }
+        #if os(macOS)
         .frame(minWidth: 420, minHeight: 500)
+        #endif
+        #if os(iOS)
+        .fileImporter(isPresented: $showFilePicker,
+                      allowedContentTypes: [.audio, .movie, .mpeg4Movie, .wav, .mp3]) { result in
+            if case .success(let url) = result { engine.transcribeFileTimestamped(url) }
+        }
+        #endif
     }
 
     private var header: some View {
@@ -110,12 +121,15 @@ struct SttFileView: View {
             .padding()
     }
 
-    // Uses NSOpenPanel (not SwiftUI's .fileImporter) to match the rest of this
-    // AppKit-hosted app: its panel-selected URLs are authorized for the process
-    // by the sandbox's user-selected read-only entitlement, so the engine can
-    // read them directly — no security-scoped copy needed. This is the same
-    // pattern ConversationView's Transcribe/Dictate buttons use.
+    // macOS uses NSOpenPanel (not SwiftUI's .fileImporter) to match the rest
+    // of this AppKit-hosted app: its panel-selected URLs are authorized for
+    // the process by the sandbox's user-selected read-only entitlement, so
+    // the engine can read them directly — no security-scoped copy needed.
+    // This is the same pattern ConversationView's Transcribe/Dictate buttons
+    // use. iOS has no AppKit host, so it presents .fileImporter instead;
+    // ConversationEngine brackets the resulting security-scoped URL itself.
     private func pickFile() {
+        #if os(macOS)
         let panel = NSOpenPanel()
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
@@ -123,6 +137,9 @@ struct SttFileView: View {
         if panel.runModal() == .OK, let url = panel.url {
             engine.transcribeFileTimestamped(url)
         }
+        #else
+        showFilePicker = true
+        #endif
     }
 
     /// mm:ss for sentence bounds.

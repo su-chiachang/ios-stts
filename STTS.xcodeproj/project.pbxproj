@@ -37,7 +37,7 @@
 		EA70D656620C8BB22A3BC1AF /* EndpointDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE0B25B4B24E56038095D13D /* EndpointDetector.swift */; };
 		EB4B10340C9DF6072D8906E7 /* ConversationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4D2071A40A847AAC1412D33 /* ConversationEngine.swift */; };
 		F0723CF7C0D8E7D044BE3BE0 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFD52BD5D2BD91B97886D2FF /* AppSettings.swift */; };
-		F767CB8A8A03472B1A9F1052 /* CoreML.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7A73D66467B6DD9599F2411B /* CoreML.framework */; };
+		F767CB8A8A03472B1A9F1052 /* CoreML.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7A73D66467B6DD9599F2411B /* CoreML.framework */; platformFilters = (macos, ); };
 		F772E74BC3A8AB9B28C577E5 /* TtsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED75ECEDF32D44313C7A2EA5 /* TtsView.swift */; };
 /* End PBXBuildFile section */
 
@@ -67,7 +67,7 @@
 		CFD52BD5D2BD91B97886D2FF /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		D30A4BAC2E50F07D1620698A /* RootTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootTabView.swift; sourceTree = "<group>"; };
 		DC640AB2F54F38B0DDCEE60D /* ParakeetStt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParakeetStt.swift; sourceTree = "<group>"; };
-		E24F882EC35A5A2B5CB54E7D /* STTS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = STTS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E24F882EC35A5A2B5CB54E7D /* STTS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = STTS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		ED552EF21385746C2D1045A1 /* DownloadModelsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadModelsView.swift; sourceTree = "<group>"; };
 		ED75ECEDF32D44313C7A2EA5 /* TtsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TtsView.swift; sourceTree = "<group>"; };
 		EE0B25B4B24E56038095D13D /* EndpointDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EndpointDetector.swift; sourceTree = "<group>"; };
@@ -86,8 +86,8 @@
 				4F4E357F8ABC3FD94063F888 /* Accelerate.framework in Frameworks */,
 				62C4E856AF5A2E0A2CEFF84B /* Metal.framework in Frameworks */,
 				72413F9CCE8B7535D7C15267 /* MetalKit.framework in Frameworks */,
-				F767CB8A8A03472B1A9F1052 /* CoreML.framework in Frameworks */,
 				C228FE56D4D5D15B537C7A09 /* AVFoundation.framework in Frameworks */,
+				F767CB8A8A03472B1A9F1052 /* CoreML.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -219,8 +219,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 25F8BD9F723968F53FF90016 /* Build configuration list for PBXNativeTarget "STTS" */;
 			buildPhases = (
-				124919BFBBD117DCD264C9C2 /* Check parakeet */,
-				27212067B6DC9AFF87B8BC86 /* Check qwentts */,
+				8EF66A3BFA86C8215CDCDA10 /* Check native libs */,
 				71EB5C16D9852F20012EF07F /* Vendor libs present? */,
 				B027CFFE2DE6556D06FD7055 /* Sources */,
 				CBCD04A6CBF66FBE5A547FB0 /* Frameworks */,
@@ -248,6 +247,10 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					E1C867299251B55FDF15AA1C = {
+						DevelopmentTeam = FPY8L862BK;
+						ProvisioningStyle = Automatic;
+					};
 				};
 			};
 			buildConfigurationList = E2775A8AF7F64741468001D5 /* Build configuration list for PBXProject "STTS" */;
@@ -273,42 +276,6 @@
 /* End PBXProject section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		124919BFBBD117DCD264C9C2 /* Check parakeet */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = "Check parakeet";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "if [ ! -f \"$SRCROOT/vendor/parakeet/lib/libparakeet.a\" ]; then\n  \"$SRCROOT/scripts/build-parakeet-macos.sh\"\nfi\n";
-		};
-		27212067B6DC9AFF87B8BC86 /* Check qwentts */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = "Check qwentts";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "if [ ! -f \"$SRCROOT/vendor/qwentts/lib/libqwen.dylib\" ]; then\n  \"$SRCROOT/scripts/build-qwentts-macos.sh\"\nfi\n";
-		};
 		71EB5C16D9852F20012EF07F /* Vendor libs present? */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -325,7 +292,25 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\nfor f in libparakeet.a libggml.a; do\n  if [ ! -f \"$SRCROOT/vendor/parakeet/lib/$f\" ]; then\n    echo \"error: missing $SRCROOT/vendor/parakeet/lib/$f — run scripts/build-parakeet-macos.sh\"\n    exit 1\n  fi\ndone\nif [ ! -f \"$SRCROOT/vendor/qwentts/lib/libqwen.dylib\" ]; then\n  echo \"error: missing $SRCROOT/vendor/qwentts/lib/libqwen.dylib — run scripts/build-qwentts-macos.sh\"\n  exit 1\nfi\n";
+			shellScript = "set -e\nif [ \"$PLATFORM_NAME\" = \"macosx\" ]; then\n  for f in libparakeet.a libggml.a; do\n    if [ ! -f \"$SRCROOT/vendor/parakeet/lib/$f\" ]; then\n      echo \"error: missing $SRCROOT/vendor/parakeet/lib/$f — run scripts/build-parakeet-macos.sh\"\n      exit 1\n    fi\n  done\n  if [ ! -f \"$SRCROOT/vendor/qwentts/lib/libqwen.dylib\" ]; then\n    echo \"error: missing $SRCROOT/vendor/qwentts/lib/libqwen.dylib — run scripts/build-qwentts-macos.sh\"\n    exit 1\n  fi\nelse\n  if [ ! -f \"$SRCROOT/vendor/parakeet-ios/$PLATFORM_NAME-arm64/lib/libparakeet_ios.a\" ]; then\n    echo \"error: missing $SRCROOT/vendor/parakeet-ios/$PLATFORM_NAME-arm64/lib/libparakeet_ios.a — run scripts/build-parakeet-ios.sh $PLATFORM_NAME\"\n    exit 1\n  fi\n  if [ ! -f \"$SRCROOT/vendor/qwentts-ios/$PLATFORM_NAME-arm64/lib/libqwen_ios.a\" ]; then\n    echo \"error: missing $SRCROOT/vendor/qwentts-ios/$PLATFORM_NAME-arm64/lib/libqwen_ios.a — run scripts/build-qwentts-ios.sh $PLATFORM_NAME\"\n    exit 1\n  fi\nfi\n";
+		};
+		8EF66A3BFA86C8215CDCDA10 /* Check native libs */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Check native libs";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\nif [ \"$PLATFORM_NAME\" = \"macosx\" ]; then\n  if [ ! -f \"$SRCROOT/vendor/parakeet/lib/libparakeet.a\" ]; then\n    \"$SRCROOT/scripts/build-parakeet-macos.sh\"\n  fi\n  if [ ! -f \"$SRCROOT/vendor/qwentts/lib/libqwen.dylib\" ]; then\n    \"$SRCROOT/scripts/build-qwentts-macos.sh\"\n  fi\nelse\n  if [ ! -f \"$SRCROOT/vendor/parakeet-ios/$PLATFORM_NAME-arm64/lib/libparakeet_ios.a\" ]; then\n    \"$SRCROOT/scripts/build-parakeet-ios.sh\" \"$PLATFORM_NAME\"\n  fi\n  if [ ! -f \"$SRCROOT/vendor/qwentts-ios/$PLATFORM_NAME-arm64/lib/libqwen_ios.a\" ]; then\n    \"$SRCROOT/scripts/build-qwentts-ios.sh\" \"$PLATFORM_NAME\"\n  fi\nfi\n";
 		};
 		D959C8AFE8266C00D90EA586 /* Embed qwentts dylibs */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -343,7 +328,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\ndest=\"$CODESIGNING_FOLDER_PATH/Contents/Frameworks\"\nmkdir -p \"$dest\"\nfor lib in \"$SRCROOT\"/vendor/qwentts/lib/*.dylib; do\n  cp -f \"$lib\" \"$dest/\"\n  codesign --force --sign \"$EXPANDED_CODE_SIGN_IDENTITY\" --timestamp=none \"$dest/$(basename \"$lib\")\" || true\ndone\n";
+			shellScript = "set -e\nif [ \"$PLATFORM_NAME\" = \"macosx\" ]; then\n  dest=\"$CODESIGNING_FOLDER_PATH/Contents/Frameworks\"\n  mkdir -p \"$dest\"\n  for lib in \"$SRCROOT\"/vendor/qwentts/lib/*.dylib; do\n    cp -f \"$lib\" \"$dest/\"\n    codesign --force --sign \"$EXPANDED_CODE_SIGN_IDENTITY\" --timestamp=none \"$dest/$(basename \"$lib\")\" || true\n  done\nfi\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -387,13 +372,18 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				COMBINE_HIDPI_IMAGES = YES;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
-					"@executable_path/../Frameworks",
+					"@executable_path/Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.jiajing.STTS;
-				SDKROOT = macosx;
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
@@ -430,11 +420,14 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				CODE_SIGN_ENTITLEMENTS = App/Resources/STTS.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = App/Resources/STTS.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				ENABLE_HARDENED_RUNTIME = YES;
+				DEVELOPMENT_TEAM = FPY8L862BK;
+				"ENABLE_HARDENED_RUNTIME[sdk=macosx*]" = YES;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -447,14 +440,29 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "STTS needs microphone access to listen to your voice.";
-				LD_RUNPATH_SEARCH_PATHS = (
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = (
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 0.1.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
-				OTHER_LDFLAGS = (
+				"OTHER_LDFLAGS[sdk=iphoneos*]" = (
+					"-L$(SRCROOT)/vendor/parakeet-ios/iphoneos-arm64/lib",
+					"-lparakeet_ios",
+					"-L$(SRCROOT)/vendor/qwentts-ios/iphoneos-arm64/lib",
+					"-lqwen_ios",
+					"-lc++",
+				);
+				"OTHER_LDFLAGS[sdk=iphonesimulator*]" = (
+					"-L$(SRCROOT)/vendor/parakeet-ios/iphonesimulator-arm64/lib",
+					"-lparakeet_ios",
+					"-L$(SRCROOT)/vendor/qwentts-ios/iphonesimulator-arm64/lib",
+					"-lqwen_ios",
+					"-lc++",
+				);
+				"OTHER_LDFLAGS[sdk=macosx*]" = (
 					"-L$(SRCROOT)/vendor/parakeet/lib",
 					"-lparakeet",
 					"-lggml",
@@ -467,10 +475,11 @@
 					"-lc++",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = macosx;
+				SDKROOT = auto;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};
@@ -507,11 +516,14 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				CODE_SIGN_ENTITLEMENTS = App/Resources/STTS.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = App/Resources/STTS.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				ENABLE_HARDENED_RUNTIME = YES;
+				DEVELOPMENT_TEAM = FPY8L862BK;
+				"ENABLE_HARDENED_RUNTIME[sdk=macosx*]" = YES;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -530,7 +542,8 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "STTS needs microphone access to listen to your voice.";
-				LD_RUNPATH_SEARCH_PATHS = (
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = (
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
@@ -538,7 +551,21 @@
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				OTHER_LDFLAGS = (
+				"OTHER_LDFLAGS[sdk=iphoneos*]" = (
+					"-L$(SRCROOT)/vendor/parakeet-ios/iphoneos-arm64/lib",
+					"-lparakeet_ios",
+					"-L$(SRCROOT)/vendor/qwentts-ios/iphoneos-arm64/lib",
+					"-lqwen_ios",
+					"-lc++",
+				);
+				"OTHER_LDFLAGS[sdk=iphonesimulator*]" = (
+					"-L$(SRCROOT)/vendor/parakeet-ios/iphonesimulator-arm64/lib",
+					"-lparakeet_ios",
+					"-L$(SRCROOT)/vendor/qwentts-ios/iphonesimulator-arm64/lib",
+					"-lqwen_ios",
+					"-lc++",
+				);
+				"OTHER_LDFLAGS[sdk=macosx*]" = (
 					"-L$(SRCROOT)/vendor/parakeet/lib",
 					"-lparakeet",
 					"-lggml",
@@ -551,10 +578,11 @@
 					"-lc++",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = macosx;
+				SDKROOT = auto;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -562,13 +590,18 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				COMBINE_HIDPI_IMAGES = YES;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
-					"@executable_path/../Frameworks",
+					"@executable_path/Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.jiajing.STTS;
-				SDKROOT = macosx;
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};

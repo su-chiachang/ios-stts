@@ -12,6 +12,10 @@ struct SettingsView: View {
     @State private var showDownloadModels = false
     @State private var voiceMessage: String?
     @State private var voiceMessageIsError = false
+    #if os(iOS)
+    @State private var showParakeetPicker = false
+    @State private var showVoicePicker = false
+    #endif
 
     var body: some View {
         Form {
@@ -31,7 +35,12 @@ struct SettingsView: View {
                             .lineLimit(1)
                             .truncationMode(.middle)
                             .foregroundStyle(qwenDirPath.isEmpty ? .secondary : .primary)
+                        #if os(macOS)
+                        // iOS has no meaningful arbitrary-folder picker for an
+                        // external model directory; Download Models below is
+                        // the only iOS path to a Qwen model.
                         Button("Choose…") { pickQwenModelDir() }
+                        #endif
                     }
                 }
                 Picker("Qwen3-TTS model size", selection: Binding(
@@ -128,7 +137,9 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
+        #if os(macOS)
         .frame(width: 480, height: 520)
+        #endif
         .onAppear {
             parakeetPath = AppSettings.shared.parakeetModelURL()?.path ?? ""
             qwenDirPath = AppSettings.shared.qwenModelDirURL()?.path ?? ""
@@ -140,9 +151,30 @@ struct SettingsView: View {
                 reloadModels()
             })
         }
+        #if os(iOS)
+        .fileImporter(isPresented: $showParakeetPicker,
+                      allowedContentTypes: [UTType(filenameExtension: "gguf") ?? .data]) { result in
+            guard case .success(let url) = result else { return }
+            let accessingScope = url.startAccessingSecurityScopedResource()
+            defer { if accessingScope { url.stopAccessingSecurityScopedResource() } }
+            do {
+                try AppSettings.shared.setParakeetModel(url)
+                parakeetPath = url.path
+                reloadModels()
+            } catch {
+                showModelError(bookmarkErrorMessage("STT model", error: error))
+            }
+        }
+        .fileImporter(isPresented: $showVoicePicker,
+                      allowedContentTypes: [.audio, .wav, .mp3, .mpeg4Audio]) { result in
+            guard case .success(let url) = result else { return }
+            importCustomVoice(from: url)
+        }
+        #endif
     }
 
     private func pickParakeetModel() {
+        #if os(macOS)
         let panel = NSOpenPanel()
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
@@ -156,8 +188,12 @@ struct SettingsView: View {
                 showModelError(bookmarkErrorMessage("STT model", error: error))
             }
         }
+        #else
+        showParakeetPicker = true
+        #endif
     }
 
+    #if os(macOS)
     private func pickQwenModelDir() {
         let panel = NSOpenPanel()
         panel.canChooseFiles = false
@@ -172,16 +208,31 @@ struct SettingsView: View {
             }
         }
     }
+    #endif
 
     private func importCustomVoice() {
+        #if os(macOS)
         let panel = NSOpenPanel()
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         panel.allowedContentTypes = [.audio, .wav, .mp3, .mpeg4Audio]
         guard panel.runModal() == .OK, let url = panel.url else { return }
+        importCustomVoice(from: url)
+        #else
+        showVoicePicker = true
+        #endif
+    }
+
+    private func importCustomVoice(from url: URL) {
         voiceMessage = "Importing voice…"
         voiceMessageIsError = false
+        #if os(iOS)
+        let accessingScope = url.startAccessingSecurityScopedResource()
+        #endif
         Task { @MainActor in
+            #if os(iOS)
+            defer { if accessingScope { url.stopAccessingSecurityScopedResource() } }
+            #endif
             do {
                 try AppSettings.shared.importCustomVoice(from: url, displayName: url.lastPathComponent)
                 try await engine.warmCustomVoice()
