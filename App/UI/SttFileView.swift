@@ -40,9 +40,6 @@ struct SttFileView: View {
 
     private var header: some View {
         HStack {
-            Text("Speech → Text")
-                .font(.headline)
-            Spacer()
             Picker("", selection: $granularity) {
                 ForEach(Granularity.allCases) { Text($0.rawValue).tag($0) }
             }
@@ -50,7 +47,7 @@ struct SttFileView: View {
             .frame(width: 180)
             .disabled(engine.timestampedWords.isEmpty)
 
-            Button("Transcribe File…") { pickFile() }
+            Button("File…") { pickFile() }
                 .disabled(!engine.isReady || engine.isProcessing)
         }
         .padding()
