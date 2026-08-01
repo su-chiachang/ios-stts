@@ -33,6 +33,7 @@ for src in "$BUILD_DIR"/libqwen*.dylib "$BUILD_DIR"/libggml*.dylib; do
   cp -f "$src" "$VENDOR/lib/$(strip_version "$(basename "$src")")"
 done
 cp -f "$QWEN_SRC/src/qwen.h" "$VENDOR/include/"
+mkdir -p "$STTS_DIR/Packages/NativeShims/Sources/CQwenTTS/include"
 cp -f "$QWEN_SRC/src/qwen.h" "$STTS_DIR/Packages/NativeShims/Sources/CQwenTTS/include/qwen.h"
 
 for lib in "$VENDOR/lib"/*.dylib; do

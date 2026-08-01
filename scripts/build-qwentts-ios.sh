@@ -24,7 +24,8 @@ VENDOR="$STTS_DIR/vendor/qwentts-ios"
 mkdir -p "$VENDOR/include"
 cp -f "$QWEN_SRC/src/qwen.h" "$VENDOR/include/"
 SHIM="$STTS_DIR/Packages/NativeShims/Sources/CQwenTTS/include"
-if [ -d "$SHIM" ]; then cp -f "$VENDOR/include/qwen.h" "$SHIM/"; fi
+mkdir -p "$SHIM"
+cp -f "$VENDOR/include/qwen.h" "$SHIM/"
 
 for PLATFORM in $PLATFORMS; do
   ARCH=arm64
