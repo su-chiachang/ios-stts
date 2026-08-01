@@ -23,7 +23,8 @@ VENDOR="$STTS_DIR/vendor/parakeet-ios"
 mkdir -p "$VENDOR/include"
 cp -f "$PARAKEET_SRC/include/parakeet_capi.h" "$VENDOR/include/"
 SHIM="$STTS_DIR/Packages/NativeShims/Sources/CParakeet/include"
-if [ -d "$SHIM" ]; then cp -f "$VENDOR/include/parakeet_capi.h" "$SHIM/"; fi
+mkdir -p "$SHIM"
+cp -f "$VENDOR/include/parakeet_capi.h" "$SHIM/"
 
 for PLATFORM in $PLATFORMS; do
   ARCH=arm64

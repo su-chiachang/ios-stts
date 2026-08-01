@@ -33,7 +33,8 @@ find "$BUILD_DIR" -name 'lib*.a' -exec cp -f {} "$VENDOR/lib/" \;
 cp -f "$PARAKEET_SRC/include/parakeet_capi.h" "$VENDOR/include/"
 
 SHIM="$STTS_DIR/Packages/NativeShims/Sources/CParakeet/include"
-if [ -d "$SHIM" ]; then cp -f "$VENDOR/include/parakeet_capi.h" "$SHIM/"; fi
+mkdir -p "$SHIM"
+cp -f "$VENDOR/include/parakeet_capi.h" "$SHIM/"
 
 echo "== parakeet vendor artifacts =="
 ls -la "$VENDOR/lib"
