@@ -33,6 +33,7 @@
 		C8218D6588CF04C5F24C58C4 /* ReferenceAudioImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3269A59068E75771E6844A78 /* ReferenceAudioImporter.swift */; };
 		D13979DF0482ACBD48735F7C /* ModelCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0262B8F74259172FCD62E601 /* ModelCatalog.swift */; };
 		D514FB74D049863FA2A16CBE /* RootTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D30A4BAC2E50F07D1620698A /* RootTabView.swift */; };
+		DDCCA5244460485A45F70D27 /* CAudio8 in Frameworks */ = {isa = PBXBuildFile; productRef = B0BDA9F60F6760BFE7060CE0 /* CAudio8 */; };
 		DFCB74B76DEDB0A6B1AACB0E /* SourceMediaPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AA57699541365E25920DDA8 /* SourceMediaPlayer.swift */; };
 		EA70D656620C8BB22A3BC1AF /* EndpointDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE0B25B4B24E56038095D13D /* EndpointDetector.swift */; };
 		EB4B10340C9DF6072D8906E7 /* ConversationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4D2071A40A847AAC1412D33 /* ConversationEngine.swift */; };
@@ -83,6 +84,7 @@
 			files = (
 				1FE52BA02157AFDE4BBDA00E /* CParakeet in Frameworks */,
 				5E08411ED74B235D07644B00 /* CQwenTTS in Frameworks */,
+				DDCCA5244460485A45F70D27 /* CAudio8 in Frameworks */,
 				4F4E357F8ABC3FD94063F888 /* Accelerate.framework in Frameworks */,
 				62C4E856AF5A2E0A2CEFF84B /* Metal.framework in Frameworks */,
 				72413F9CCE8B7535D7C15267 /* MetalKit.framework in Frameworks */,
@@ -233,6 +235,7 @@
 			packageProductDependencies = (
 				F5CC40963F85E1E537062BE6 /* CParakeet */,
 				0E87EBA5A6684AB37D10EBA7 /* CQwenTTS */,
+				B0BDA9F60F6760BFE7060CE0 /* CAudio8 */,
 			);
 			productName = STTS;
 			productReference = E24F882EC35A5A2B5CB54E7D /* STTS.app */;
@@ -292,7 +295,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\nif [ \"$PLATFORM_NAME\" = \"macosx\" ]; then\n  for f in libparakeet.a libggml.a; do\n    if [ ! -f \"$SRCROOT/vendor/parakeet/lib/$f\" ]; then\n      echo \"error: missing $SRCROOT/vendor/parakeet/lib/$f — run scripts/build-parakeet-macos.sh\"\n      exit 1\n    fi\n  done\n  if [ ! -f \"$SRCROOT/vendor/qwentts/lib/libqwen.dylib\" ]; then\n    echo \"error: missing $SRCROOT/vendor/qwentts/lib/libqwen.dylib — run scripts/build-qwentts-macos.sh\"\n    exit 1\n  fi\nelse\n  if [ ! -f \"$SRCROOT/vendor/parakeet-ios/$PLATFORM_NAME-arm64/lib/libparakeet_ios.a\" ]; then\n    echo \"error: missing $SRCROOT/vendor/parakeet-ios/$PLATFORM_NAME-arm64/lib/libparakeet_ios.a — run scripts/build-parakeet-ios.sh $PLATFORM_NAME\"\n    exit 1\n  fi\n  if [ ! -f \"$SRCROOT/vendor/qwentts-ios/$PLATFORM_NAME-arm64/lib/libqwen_ios.a\" ]; then\n    echo \"error: missing $SRCROOT/vendor/qwentts-ios/$PLATFORM_NAME-arm64/lib/libqwen_ios.a — run scripts/build-qwentts-ios.sh $PLATFORM_NAME\"\n    exit 1\n  fi\nfi\n";
+			shellScript = "set -e\nif [ \"$PLATFORM_NAME\" = \"macosx\" ]; then\n  for f in libparakeet.a libggml.a; do\n    if [ ! -f \"$SRCROOT/vendor/parakeet/lib/$f\" ]; then\n      echo \"error: missing $SRCROOT/vendor/parakeet/lib/$f — run scripts/build-parakeet-macos.sh\"\n      exit 1\n    fi\n  done\n  if [ ! -f \"$SRCROOT/vendor/qwentts/lib/libqwen.dylib\" ]; then\n    echo \"error: missing $SRCROOT/vendor/qwentts/lib/libqwen.dylib — run scripts/build-qwentts-macos.sh\"\n    exit 1\n  fi\n  if [ ! -f \"$SRCROOT/vendor/audio8/lib/libaudio8.a\" ]; then\n    echo \"error: missing $SRCROOT/vendor/audio8/lib/libaudio8.a — run scripts/build-audio8-macos.sh\"\n    exit 1\n  fi\nelse\n  if [ ! -f \"$SRCROOT/vendor/parakeet-ios/$PLATFORM_NAME-arm64/lib/libparakeet_ios.a\" ]; then\n    echo \"error: missing $SRCROOT/vendor/parakeet-ios/$PLATFORM_NAME-arm64/lib/libparakeet_ios.a — run scripts/build-parakeet-ios.sh $PLATFORM_NAME\"\n    exit 1\n  fi\n  if [ ! -f \"$SRCROOT/vendor/qwentts-ios/$PLATFORM_NAME-arm64/lib/libqwen_ios.a\" ]; then\n    echo \"error: missing $SRCROOT/vendor/qwentts-ios/$PLATFORM_NAME-arm64/lib/libqwen_ios.a — run scripts/build-qwentts-ios.sh $PLATFORM_NAME\"\n    exit 1\n  fi\n  if [ ! -f \"$SRCROOT/vendor/audio8-ios/$PLATFORM_NAME-arm64/lib/libaudio8_ios.a\" ]; then\n    echo \"error: missing $SRCROOT/vendor/audio8-ios/$PLATFORM_NAME-arm64/lib/libaudio8_ios.a — run scripts/build-audio8-ios.sh $PLATFORM_NAME\"\n    exit 1\n  fi\nfi\n";
 		};
 		8EF66A3BFA86C8215CDCDA10 /* Check native libs */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -310,7 +313,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\nif [ \"$PLATFORM_NAME\" = \"macosx\" ]; then\n  if [ ! -f \"$SRCROOT/vendor/parakeet/lib/libparakeet.a\" ]; then\n    \"$SRCROOT/scripts/build-parakeet-macos.sh\"\n  fi\n  if [ ! -f \"$SRCROOT/vendor/qwentts/lib/libqwen.dylib\" ]; then\n    \"$SRCROOT/scripts/build-qwentts-macos.sh\"\n  fi\nelse\n  if [ ! -f \"$SRCROOT/vendor/parakeet-ios/$PLATFORM_NAME-arm64/lib/libparakeet_ios.a\" ]; then\n    \"$SRCROOT/scripts/build-parakeet-ios.sh\" \"$PLATFORM_NAME\"\n  fi\n  if [ ! -f \"$SRCROOT/vendor/qwentts-ios/$PLATFORM_NAME-arm64/lib/libqwen_ios.a\" ]; then\n    \"$SRCROOT/scripts/build-qwentts-ios.sh\" \"$PLATFORM_NAME\"\n  fi\nfi\n";
+			shellScript = "set -e\nif [ \"$PLATFORM_NAME\" = \"macosx\" ]; then\n  if [ ! -f \"$SRCROOT/vendor/parakeet/lib/libparakeet.a\" ]; then\n    \"$SRCROOT/scripts/build-parakeet-macos.sh\"\n  fi\n  if [ ! -f \"$SRCROOT/vendor/qwentts/lib/libqwen.dylib\" ]; then\n    \"$SRCROOT/scripts/build-qwentts-macos.sh\"\n  fi\n  if [ ! -f \"$SRCROOT/vendor/audio8/lib/libaudio8.a\" ]; then\n    \"$SRCROOT/scripts/build-audio8-macos.sh\"\n  fi\nelse\n  if [ ! -f \"$SRCROOT/vendor/parakeet-ios/$PLATFORM_NAME-arm64/lib/libparakeet_ios.a\" ]; then\n    \"$SRCROOT/scripts/build-parakeet-ios.sh\" \"$PLATFORM_NAME\"\n  fi\n  if [ ! -f \"$SRCROOT/vendor/qwentts-ios/$PLATFORM_NAME-arm64/lib/libqwen_ios.a\" ]; then\n    \"$SRCROOT/scripts/build-qwentts-ios.sh\" \"$PLATFORM_NAME\"\n  fi\n  if [ ! -f \"$SRCROOT/vendor/audio8-ios/$PLATFORM_NAME-arm64/lib/libaudio8_ios.a\" ]; then\n    \"$SRCROOT/scripts/build-audio8-ios.sh\" \"$PLATFORM_NAME\"\n  fi\nfi\n";
 		};
 		D959C8AFE8266C00D90EA586 /* Embed qwentts dylibs */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -453,6 +456,8 @@
 					"-lparakeet_ios",
 					"-L$(SRCROOT)/vendor/qwentts-ios/iphoneos-arm64/lib",
 					"-lqwen_ios",
+					"-L$(SRCROOT)/vendor/audio8-ios/iphoneos-arm64/lib",
+					"-laudio8_ios",
 					"-lc++",
 				);
 				"OTHER_LDFLAGS[sdk=iphonesimulator*]" = (
@@ -460,6 +465,8 @@
 					"-lparakeet_ios",
 					"-L$(SRCROOT)/vendor/qwentts-ios/iphonesimulator-arm64/lib",
 					"-lqwen_ios",
+					"-L$(SRCROOT)/vendor/audio8-ios/iphonesimulator-arm64/lib",
+					"-laudio8_ios",
 					"-lc++",
 				);
 				"OTHER_LDFLAGS[sdk=macosx*]" = (
@@ -472,6 +479,8 @@
 					"-lggml-blas",
 					"-L$(SRCROOT)/vendor/qwentts/lib",
 					"-lqwen",
+					"-L$(SRCROOT)/vendor/audio8/lib",
+					"-laudio8",
 					"-lc++",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -556,6 +565,8 @@
 					"-lparakeet_ios",
 					"-L$(SRCROOT)/vendor/qwentts-ios/iphoneos-arm64/lib",
 					"-lqwen_ios",
+					"-L$(SRCROOT)/vendor/audio8-ios/iphoneos-arm64/lib",
+					"-laudio8_ios",
 					"-lc++",
 				);
 				"OTHER_LDFLAGS[sdk=iphonesimulator*]" = (
@@ -563,6 +574,8 @@
 					"-lparakeet_ios",
 					"-L$(SRCROOT)/vendor/qwentts-ios/iphonesimulator-arm64/lib",
 					"-lqwen_ios",
+					"-L$(SRCROOT)/vendor/audio8-ios/iphonesimulator-arm64/lib",
+					"-laudio8_ios",
 					"-lc++",
 				);
 				"OTHER_LDFLAGS[sdk=macosx*]" = (
@@ -575,6 +588,8 @@
 					"-lggml-blas",
 					"-L$(SRCROOT)/vendor/qwentts/lib",
 					"-lqwen",
+					"-L$(SRCROOT)/vendor/audio8/lib",
+					"-laudio8",
 					"-lc++",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -639,6 +654,10 @@
 		0E87EBA5A6684AB37D10EBA7 /* CQwenTTS */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = CQwenTTS;
+		};
+		B0BDA9F60F6760BFE7060CE0 /* CAudio8 */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = CAudio8;
 		};
 		F5CC40963F85E1E537062BE6 /* CParakeet */ = {
 			isa = XCSwiftPackageProductDependency;

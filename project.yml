@@ -32,18 +32,24 @@ settings:
       - "-lggml-blas"
       - "-L$(SRCROOT)/vendor/qwentts/lib"
       - "-lqwen"
+      - "-L$(SRCROOT)/vendor/audio8/lib"
+      - "-laudio8"
       - "-lc++"
     OTHER_LDFLAGS[sdk=iphoneos*]:
       - "-L$(SRCROOT)/vendor/parakeet-ios/iphoneos-arm64/lib"
       - "-lparakeet_ios"
       - "-L$(SRCROOT)/vendor/qwentts-ios/iphoneos-arm64/lib"
       - "-lqwen_ios"
+      - "-L$(SRCROOT)/vendor/audio8-ios/iphoneos-arm64/lib"
+      - "-laudio8_ios"
       - "-lc++"
     OTHER_LDFLAGS[sdk=iphonesimulator*]:
       - "-L$(SRCROOT)/vendor/parakeet-ios/iphonesimulator-arm64/lib"
       - "-lparakeet_ios"
       - "-L$(SRCROOT)/vendor/qwentts-ios/iphonesimulator-arm64/lib"
       - "-lqwen_ios"
+      - "-L$(SRCROOT)/vendor/audio8-ios/iphonesimulator-arm64/lib"
+      - "-laudio8_ios"
       - "-lc++"
 
 packages:
@@ -63,6 +69,8 @@ targets:
         product: CParakeet
       - package: NativeShims
         product: CQwenTTS
+      - package: NativeShims
+        product: CAudio8
       - sdk: Accelerate.framework
       - sdk: Metal.framework
       - sdk: MetalKit.framework
@@ -80,12 +88,18 @@ targets:
             if [ ! -f "$SRCROOT/vendor/qwentts/lib/libqwen.dylib" ]; then
               "$SRCROOT/scripts/build-qwentts-macos.sh"
             fi
+            if [ ! -f "$SRCROOT/vendor/audio8/lib/libaudio8.a" ]; then
+              "$SRCROOT/scripts/build-audio8-macos.sh"
+            fi
           else
             if [ ! -f "$SRCROOT/vendor/parakeet-ios/$PLATFORM_NAME-arm64/lib/libparakeet_ios.a" ]; then
               "$SRCROOT/scripts/build-parakeet-ios.sh" "$PLATFORM_NAME"
             fi
             if [ ! -f "$SRCROOT/vendor/qwentts-ios/$PLATFORM_NAME-arm64/lib/libqwen_ios.a" ]; then
               "$SRCROOT/scripts/build-qwentts-ios.sh" "$PLATFORM_NAME"
+            fi
+            if [ ! -f "$SRCROOT/vendor/audio8-ios/$PLATFORM_NAME-arm64/lib/libaudio8_ios.a" ]; then
+              "$SRCROOT/scripts/build-audio8-ios.sh" "$PLATFORM_NAME"
             fi
           fi
       - name: "Vendor libs present?"
@@ -102,6 +116,10 @@ targets:
               echo "error: missing $SRCROOT/vendor/qwentts/lib/libqwen.dylib — run scripts/build-qwentts-macos.sh"
               exit 1
             fi
+            if [ ! -f "$SRCROOT/vendor/audio8/lib/libaudio8.a" ]; then
+              echo "error: missing $SRCROOT/vendor/audio8/lib/libaudio8.a — run scripts/build-audio8-macos.sh"
+              exit 1
+            fi
           else
             if [ ! -f "$SRCROOT/vendor/parakeet-ios/$PLATFORM_NAME-arm64/lib/libparakeet_ios.a" ]; then
               echo "error: missing $SRCROOT/vendor/parakeet-ios/$PLATFORM_NAME-arm64/lib/libparakeet_ios.a — run scripts/build-parakeet-ios.sh $PLATFORM_NAME"
@@ -109,6 +127,10 @@ targets:
             fi
             if [ ! -f "$SRCROOT/vendor/qwentts-ios/$PLATFORM_NAME-arm64/lib/libqwen_ios.a" ]; then
               echo "error: missing $SRCROOT/vendor/qwentts-ios/$PLATFORM_NAME-arm64/lib/libqwen_ios.a — run scripts/build-qwentts-ios.sh $PLATFORM_NAME"
+              exit 1
+            fi
+            if [ ! -f "$SRCROOT/vendor/audio8-ios/$PLATFORM_NAME-arm64/lib/libaudio8_ios.a" ]; then
+              echo "error: missing $SRCROOT/vendor/audio8-ios/$PLATFORM_NAME-arm64/lib/libaudio8_ios.a — run scripts/build-audio8-ios.sh $PLATFORM_NAME"
               exit 1
             fi
           fi
