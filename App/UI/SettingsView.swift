@@ -22,6 +22,16 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section("Models") {
+                Picker("STT backend", selection: Binding(get: { settings.sttBackend },
+                                                          set: {
+                                                              settings.sttBackend = $0
+                                                              reloadModels()
+                                                          })) {
+                    ForEach(SttBackend.allCases) { backend in
+                        Text(backend.displayName).tag(backend)
+                    }
+                }
+
                 Picker("TTS backend", selection: Binding(get: { settings.ttsBackend },
                                                           set: {
                                                               settings.ttsBackend = $0
@@ -32,14 +42,21 @@ struct SettingsView: View {
                     }
                 }
 
-                LabeledContent("STT") {
-                    HStack {
-                        Text(parakeetPath.isEmpty ? "Not set" : parakeetPath)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                            .foregroundStyle(parakeetPath.isEmpty ? .secondary : .primary)
-                        Button("Choose…") { pickParakeetModel() }
+                if settings.sttBackend == .parakeet {
+                    LabeledContent("Parakeet STT") {
+                        HStack {
+                            Text(parakeetPath.isEmpty ? "Not set" : parakeetPath)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                                .foregroundStyle(parakeetPath.isEmpty ? .secondary : .primary)
+                            Button("Choose…") { pickParakeetModel() }
+                        }
                     }
+                } else {
+                    Text("Audio8 ARK-ASR uses an ark-asr-*.gguf file in the Audio8 model directory.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 if settings.ttsBackend == .qwen {
                     LabeledContent("Qwen TTS dir") {
@@ -53,7 +70,7 @@ struct SettingsView: View {
                             #endif
                         }
                     }
-                } else {
+                } else if settings.ttsBackend == .audio8 {
                     LabeledContent("Audio8 model dir") {
                         HStack {
                             Text(audio8DirPath.isEmpty ? "Not set" : audio8DirPath)
@@ -64,6 +81,23 @@ struct SettingsView: View {
                         }
                     }
                     Text(settings.audio8ModelReadinessMessage())
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if settings.sttBackend == .audio8 {
+                    if settings.ttsBackend == .qwen {
+                        LabeledContent("Audio8 model dir") {
+                            HStack {
+                                Text(audio8DirPath.isEmpty ? "Not set" : audio8DirPath)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                                    .foregroundStyle(audio8DirPath.isEmpty ? .secondary : .primary)
+                                Button("Choose…") { pickAudio8ModelDir() }
+                            }
+                        }
+                    }
+                    Text(settings.audio8SttModelReadinessMessage())
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -97,6 +131,12 @@ struct SettingsView: View {
                     Text("Auto").tag("auto")
                     Text("Chinese").tag("zh-CN")
                     Text("English").tag("en")
+                }
+                if settings.sttBackend == .audio8 {
+                    Text("Audio8 ARK-ASR does not expose a locale parameter; this setting applies to Parakeet only.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 Slider(value: Binding(get: { settings.silenceHangMs },
                                        set: { settings.silenceHangMs = $0 }), in: 300...2000, step: 50) {

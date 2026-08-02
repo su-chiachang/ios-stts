@@ -14,6 +14,6 @@ let package = Package(
     targets: [
         .target(name: "CParakeet"),
         .target(name: "CQwenTTS"),
-        .target(name: "CAudio8"),
+        .target(name: "CAudio8", publicHeadersPath: "include"),
     ]
 )

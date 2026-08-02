@@ -6,7 +6,7 @@ struct ModelFile: Hashable {
 }
 
 /// STT assets contain one file. Qwen assets are an inseparable talker/codec
-/// pair; Audio8 assets are an inseparable generator/codec/tokenizer group.
+/// pair; Audio8 TTS assets are an inseparable generator/codec/tokenizer group.
 struct ModelAsset: Identifiable, Hashable {
     let id: String
     let title: String
@@ -51,8 +51,10 @@ enum ModelCatalog {
     static let audio8GeneratorFilename = "audio8-generator-F32.gguf"
     static let audio8CodecFilename = "audio8-codec-F32.gguf"
     static let audio8TokenizerFilename = "tokenizer.json"
+    static let audio8SttModelFilename = "ark-asr-0.6b-f16.gguf"
     private static let audio8GeneratorPrefix = "audio8-generator"
     private static let audio8CodecPrefix = "audio8-codec"
+    private static let audio8SttModelPrefix = "ark-asr-"
 
     static let sttAssets: [ModelAsset] = [
         ModelAsset(
@@ -63,6 +65,19 @@ enum ModelCatalog {
                 remoteURL: URL(string: "\(hf)/mudler/parakeet-cpp-gguf/resolve/main/\(sttModelName)")!,
                 destinationFilename: sttModelName)],
             destinationDirectory: parakeetDirectory),
+    ]
+
+    /// Audio8's ARK-ASR checkpoint is converted from the official
+    /// Audio8/ARK-ASR release with audio8.cpp's exporter. The project does
+    /// not assume a hosted conversion URL; users can place the GGUF in the
+    /// selected Audio8 directory.
+    static let audio8SttAssets: [ModelAsset] = [
+        ModelAsset(
+            id: "stt.audio8.ark-asr",
+            title: "Audio8 ARK-ASR (0.6B)",
+            subtitle: "ark-asr-0.6b-f16.gguf",
+            files: [ModelFile(remoteURL: nil, destinationFilename: audio8SttModelFilename)],
+            destinationDirectory: audio8Directory),
     ]
 
     private static func ttsAsset(_ variant: QwenTtsVariant,
@@ -135,6 +150,20 @@ enum ModelCatalog {
         }
         if missing.isEmpty { return "Audio8 model resources are ready." }
         return "Audio8 model resources are incomplete; missing: \(missing.joined(separator: ", "))."
+    }
+
+    static func audio8SttModelURL(in directory: URL) -> URL? {
+        let candidates = audio8ResourceCandidates(in: directory,
+                                                   exactName: audio8SttModelFilename,
+                                                   prefix: audio8SttModelPrefix)
+        return candidates.first
+    }
+
+    static func audio8SttReadinessMessage(in directory: URL) -> String {
+        if audio8SttModelURL(in: directory) != nil {
+            return "Audio8 ARK-ASR model is ready."
+        }
+        return "Audio8 ARK-ASR model is missing; add ark-asr-*.gguf to the Audio8 model directory."
     }
 
     private static func audio8ResourceCandidates(in directory: URL,

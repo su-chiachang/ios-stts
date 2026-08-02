@@ -19,6 +19,18 @@ struct DownloadModelsView: View {
                 }
             }
 
+            Section("Audio8 speech-to-text") {
+                ForEach(ModelCatalog.audio8SttAssets) { asset in
+                    ModelAssetRow(asset: asset, manager: manager,
+                                  isSelected: settings.sttBackend == .audio8,
+                                  onFinished: notifyChanged)
+                }
+                Text("Audio8 ARK-ASR requires a converted ark-asr-*.gguf checkpoint from audio8.cpp. Its download URL is not configured in this app.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
             Section("Qwen text-to-speech") {
                 ForEach(ModelCatalog.ttsAssets) { asset in
                     ModelAssetRow(asset: asset, manager: manager,

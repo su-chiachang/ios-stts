@@ -81,6 +81,18 @@ targets:
       - name: "Check native libs"
         script: |
           set -e
+          audio8_archive_ready() {
+            archive="$1"
+            [ -f "$archive" ] || return 1
+            symbols="$(nm -gU "$archive" 2>/dev/null || true)"
+            for symbol in _audio8_runtime_create _audio8_runtime_destroy _audio8_runtime_synthesize _audio8_audio_buffer_free _audio8_error_free _audio8_ark_asr_create _audio8_ark_asr_destroy _audio8_ark_asr_free_string _audio8_ark_asr_transcribe_pcm; do
+              case "$symbols" in
+                *"$symbol"*) ;;
+                *) return 1 ;;
+              esac
+            done
+            return 0
+          }
           if [ "$PLATFORM_NAME" = "macosx" ]; then
             if [ ! -f "$SRCROOT/vendor/parakeet/lib/libparakeet.a" ]; then
               "$SRCROOT/scripts/build-parakeet-macos.sh"
@@ -88,7 +100,7 @@ targets:
             if [ ! -f "$SRCROOT/vendor/qwentts/lib/libqwen.dylib" ]; then
               "$SRCROOT/scripts/build-qwentts-macos.sh"
             fi
-            if [ ! -f "$SRCROOT/vendor/audio8/lib/libaudio8.a" ]; then
+            if ! audio8_archive_ready "$SRCROOT/vendor/audio8/lib/libaudio8.a"; then
               "$SRCROOT/scripts/build-audio8-macos.sh"
             fi
           else
@@ -98,13 +110,25 @@ targets:
             if [ ! -f "$SRCROOT/vendor/qwentts-ios/$PLATFORM_NAME-arm64/lib/libqwen_ios.a" ]; then
               "$SRCROOT/scripts/build-qwentts-ios.sh" "$PLATFORM_NAME"
             fi
-            if [ ! -f "$SRCROOT/vendor/audio8-ios/$PLATFORM_NAME-arm64/lib/libaudio8_ios.a" ]; then
+            if ! audio8_archive_ready "$SRCROOT/vendor/audio8-ios/$PLATFORM_NAME-arm64/lib/libaudio8_ios.a"; then
               "$SRCROOT/scripts/build-audio8-ios.sh" "$PLATFORM_NAME"
             fi
           fi
       - name: "Vendor libs present?"
         script: |
           set -e
+          audio8_archive_ready() {
+            archive="$1"
+            [ -f "$archive" ] || return 1
+            symbols="$(nm -gU "$archive" 2>/dev/null || true)"
+            for symbol in _audio8_runtime_create _audio8_runtime_destroy _audio8_runtime_synthesize _audio8_audio_buffer_free _audio8_error_free _audio8_ark_asr_create _audio8_ark_asr_destroy _audio8_ark_asr_free_string _audio8_ark_asr_transcribe_pcm; do
+              case "$symbols" in
+                *"$symbol"*) ;;
+                *) return 1 ;;
+              esac
+            done
+            return 0
+          }
           if [ "$PLATFORM_NAME" = "macosx" ]; then
             for f in libparakeet.a libggml.a; do
               if [ ! -f "$SRCROOT/vendor/parakeet/lib/$f" ]; then
@@ -116,8 +140,8 @@ targets:
               echo "error: missing $SRCROOT/vendor/qwentts/lib/libqwen.dylib — run scripts/build-qwentts-macos.sh"
               exit 1
             fi
-            if [ ! -f "$SRCROOT/vendor/audio8/lib/libaudio8.a" ]; then
-              echo "error: missing $SRCROOT/vendor/audio8/lib/libaudio8.a — run scripts/build-audio8-macos.sh"
+            if ! audio8_archive_ready "$SRCROOT/vendor/audio8/lib/libaudio8.a"; then
+              echo "error: missing or outdated $SRCROOT/vendor/audio8/lib/libaudio8.a — run scripts/build-audio8-macos.sh"
               exit 1
             fi
           else
@@ -129,8 +153,8 @@ targets:
               echo "error: missing $SRCROOT/vendor/qwentts-ios/$PLATFORM_NAME-arm64/lib/libqwen_ios.a — run scripts/build-qwentts-ios.sh $PLATFORM_NAME"
               exit 1
             fi
-            if [ ! -f "$SRCROOT/vendor/audio8-ios/$PLATFORM_NAME-arm64/lib/libaudio8_ios.a" ]; then
-              echo "error: missing $SRCROOT/vendor/audio8-ios/$PLATFORM_NAME-arm64/lib/libaudio8_ios.a — run scripts/build-audio8-ios.sh $PLATFORM_NAME"
+            if ! audio8_archive_ready "$SRCROOT/vendor/audio8-ios/$PLATFORM_NAME-arm64/lib/libaudio8_ios.a"; then
+              echo "error: missing or outdated $SRCROOT/vendor/audio8-ios/$PLATFORM_NAME-arm64/lib/libaudio8_ios.a — run scripts/build-audio8-ios.sh $PLATFORM_NAME"
               exit 1
             fi
           fi

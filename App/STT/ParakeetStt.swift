@@ -18,15 +18,11 @@ enum ParakeetError: Error, LocalizedError {
 /// Wraps the parakeet C streaming API. An `actor` because the underlying
 /// context is not safe to call from more than one thread at a time (mirrors
 /// whisper.swiftui's `actor WhisperContext` pattern).
-actor ParakeetStt {
-    struct FeedResult {
-        let newText: String
-        let eou: Bool
-        let eob: Bool
-    }
-
+actor ParakeetStt: SttEngine {
     private var ctx: OpaquePointer?
     private var stream: OpaquePointer?
+
+    var canEndTurnWithoutTranscript: Bool { false }
 
     init(modelPath: String) throws {
         guard let ctx = parakeet_capi_load(modelPath) else {
@@ -67,7 +63,7 @@ actor ParakeetStt {
 
     /// Feed one chunk of 16 kHz mono Float32 PCM. Returns any newly finalized
     /// text plus EOU/EOB event flags for this chunk.
-    func feed(_ pcm: [Float]) throws -> FeedResult {
+    func feed(_ pcm: [Float]) throws -> SttFeedResult {
         guard let stream else { throw ParakeetError.callFailed("no active stream (call beginTurn first)") }
         var eou: Int32 = 0
         let cstr: UnsafeMutablePointer<CChar>? = pcm.withUnsafeBufferPointer { buf in
@@ -76,17 +72,9 @@ actor ParakeetStt {
         guard let cstr else { throw ParakeetError.callFailed(lastError()) }
         defer { parakeet_capi_free_string(cstr) }
         let text = Self.strippingLanguageTag(String(cString: cstr))
-        return FeedResult(newText: text,
-                           eou: eou & Int32(PARAKEET_EVENT_EOU) != 0,
-                           eob: eou & Int32(PARAKEET_EVENT_EOB) != 0)
-    }
-
-    /// Result of a whole-file timestamped transcription: recognized words with
-    /// per-word timing plus the encoder frame stride (seconds) used to scale
-    /// sentence-gap thresholds during segmentation.
-    struct TimestampedResult {
-        let words: [TranscriptWord]
-        let frameSec: Double
+        return SttFeedResult(newText: text,
+                             eou: eou & Int32(PARAKEET_EVENT_EOU) != 0,
+                             eob: eou & Int32(PARAKEET_EVENT_EOB) != 0)
     }
 
     /// Transcribes a whole clip (16 kHz mono Float32 PCM) in one shot, returning
@@ -95,12 +83,12 @@ actor ParakeetStt {
     /// works) rather than the streaming path used for interactive turns.
     /// `lang` is a locale key ("en", "zh-CN", "auto", …) or nil for the model
     /// default.
-    func transcribeFileWords(pcm: [Float], lang: String?) throws -> TimestampedResult {
+    func transcribeFileWords(pcm: [Float], lang: String?) throws -> SttTimestampedResult {
         guard let ctx else { throw ParakeetError.callFailed("context not loaded") }
-        guard !pcm.isEmpty else { return TimestampedResult(words: [], frameSec: 0) }
+        guard !pcm.isEmpty else { return SttTimestampedResult(words: [], frameSec: 0) }
 
         func run(_ langPtr: UnsafePointer<CChar>?) -> UnsafeMutablePointer<CChar>? {
-            var counts: [Int32] = [Int32(pcm.count)]
+            let counts: [Int32] = [Int32(pcm.count)]
             return pcm.withUnsafeBufferPointer { pbuf in
                 counts.withUnsafeBufferPointer { cbuf in
                     parakeet_capi_transcribe_pcm_batch_json_lang(
@@ -119,12 +107,12 @@ actor ParakeetStt {
         defer { parakeet_capi_free_string(cstr) }
 
         let clips = try JSONDecoder().decode([JSONClip].self, from: Data(String(cString: cstr).utf8))
-        guard let clip = clips.first else { return TimestampedResult(words: [], frameSec: 0) }
+        guard let clip = clips.first else { return SttTimestampedResult(words: [], frameSec: 0) }
         let words = clip.words.map {
             TranscriptWord(text: Self.strippingLanguageTag($0.w),
                            start: $0.start, end: $0.end, confidence: $0.conf)
         }
-        return TimestampedResult(words: words, frameSec: clip.frame_sec)
+        return SttTimestampedResult(words: words, frameSec: clip.frame_sec)
     }
 
     private struct JSONClip: Decodable {

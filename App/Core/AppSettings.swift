@@ -22,6 +22,9 @@ final class AppSettings {
     var sttLocale: String {
         didSet { UserDefaults.standard.set(sttLocale, forKey: Keys.sttLocale) }
     }
+    var sttBackend: SttBackend {
+        didSet { UserDefaults.standard.set(sttBackend.rawValue, forKey: Keys.sttBackend) }
+    }
     var silenceHangMs: Double {
         didSet { UserDefaults.standard.set(silenceHangMs, forKey: Keys.silenceHangMs) }
     }
@@ -67,6 +70,7 @@ final class AppSettings {
         static let llmModel = "llmModel"
         static let systemPrompt = "systemPrompt"
         static let sttLocale = "sttLocale"
+        static let sttBackend = "sttBackend"
         static let silenceHangMs = "silenceHangMs"
         static let rmsThreshold = "rmsThreshold"
         static let ttsBackend = "ttsBackend"
@@ -94,6 +98,7 @@ final class AppSettings {
         llmModel = d.string(forKey: Keys.llmModel) ?? "gemma"
         systemPrompt = d.string(forKey: Keys.systemPrompt) ?? Self.defaultSystemPrompt
         sttLocale = d.string(forKey: Keys.sttLocale) ?? "auto"
+        sttBackend = d.string(forKey: Keys.sttBackend).flatMap(SttBackend.init(rawValue:)) ?? .parakeet
         silenceHangMs = d.object(forKey: Keys.silenceHangMs) as? Double ?? 800
         rmsThreshold = d.object(forKey: Keys.rmsThreshold) as? Double ?? 0.015
         ttsBackend = d.string(forKey: Keys.ttsBackend).flatMap(TtsBackend.init(rawValue:)) ?? .qwen
@@ -182,6 +187,10 @@ final class AppSettings {
         ModelCatalog.audio8Resources(in: audio8ModelDirURL())
     }
 
+    func audio8SttModelURL() -> URL? {
+        ModelCatalog.audio8SttModelURL(in: audio8ModelDirURL())
+    }
+
     func audio8ModelReadinessMessage() -> String {
         let directory = audio8ModelDirURL()
         if ModelCatalog.audio8Resources(in: directory) != nil {
@@ -190,6 +199,12 @@ final class AppSettings {
         let readiness = ModelCatalog.audio8ReadinessMessage(in: directory)
         guard !ModelCatalog.audio8Assets[0].isDownloadConfigured else { return readiness }
         return readiness + " In-app Audio8 download URLs are not configured; choose a directory containing the three resources."
+    }
+
+    func audio8SttModelReadinessMessage() -> String {
+        let readiness = ModelCatalog.audio8SttReadinessMessage(in: audio8ModelDirURL())
+        guard !ModelCatalog.audio8SttAssets[0].isDownloadConfigured else { return readiness }
+        return readiness + " In-app Audio8 ARK-ASR download URL is not configured; add a converted GGUF to that directory."
     }
 
     private func downloadedParakeetModelURL() -> URL? {

@@ -40,7 +40,7 @@ final class ConversationEngine {
     /// used by `TranscriptSegmenter` to scale sentence-gap thresholds.
     private(set) var timestampFrameSec: Double = 0
 
-    private var stt: ParakeetStt?
+    private var stt: (any SttEngine)?
     private var tts: (any TtsEngine)?
     private var turnTask: Task<Void, Never>?
     private var audioPlayer: AudioPlayer?
@@ -58,12 +58,21 @@ final class ConversationEngine {
         stt = nil
         tts = nil
         let settings = AppSettings.shared
-        guard let parakeetURL = AppSettings.shared.parakeetModelURL() else {
-            state = .error("No STT model selected. Pick a parakeet .gguf file in Settings.")
-            return
-        }
         do {
-            stt = try ParakeetStt(modelPath: parakeetURL.path)
+            switch settings.sttBackend {
+            case .parakeet:
+                guard let parakeetURL = settings.parakeetModelURL() else {
+                    state = .error("Parakeet STT is not ready. Pick a parakeet .gguf file in Settings or download a Parakeet asset.")
+                    return
+                }
+                stt = try ParakeetStt(modelPath: parakeetURL.path)
+            case .audio8:
+                guard let audio8URL = settings.audio8SttModelURL() else {
+                    state = .error(settings.audio8SttModelReadinessMessage())
+                    return
+                }
+                stt = try Audio8Stt(modelURL: audio8URL)
+            }
             switch settings.ttsBackend {
             case .qwen:
                 guard let qwenDirURL = settings.qwenModelDirURL() else {
@@ -119,6 +128,7 @@ final class ConversationEngine {
                 try Task.checkCancellation()
                 guard isCurrentTurn(turnID) else { throw CancellationError() }
                 try await stt.beginTurn(lang: AppSettings.shared.sttLocale)
+                let canEndTurnWithoutTranscript = await stt.canEndTurnWithoutTranscript
                 let sourcePlayer = SourceMediaPlayer()
                 sourceMediaPlayer = sourcePlayer
                 sourcePlayer.play(url)
@@ -133,7 +143,8 @@ final class ConversationEngine {
                         partialTranscript += result.newText
                     }
                     if endpoint.process(chunk, modelEOU: result.eou,
-                                        hasTranscript: !partialTranscript.isEmpty) {
+                                        hasTranscript: !partialTranscript.isEmpty
+                                            || canEndTurnWithoutTranscript) {
                         break
                     }
                 }
@@ -275,6 +286,7 @@ final class ConversationEngine {
             guard let stt, isCurrentTurn(turnID) else { return }
             do {
                 try await stt.beginTurn(lang: AppSettings.shared.sttLocale)
+                let canEndTurnWithoutTranscript = await stt.canEndTurnWithoutTranscript
                 let input = AudioInputManager()
                 audioInput = input
                 let stream = try input.stream()
@@ -289,7 +301,8 @@ final class ConversationEngine {
                         partialTranscript += result.newText
                     }
                     if endpoint.process(chunk.samples, modelEOU: result.eou,
-                                        hasTranscript: !partialTranscript.isEmpty) {
+                                        hasTranscript: !partialTranscript.isEmpty
+                                            || canEndTurnWithoutTranscript) {
                         input.stop()
                         break
                     }
@@ -514,7 +527,7 @@ final class ConversationEngine {
         activeTurnID == turnID
     }
 
-    private func finalizeSttTurn(_ stt: ParakeetStt, turnID: UUID) async throws {
+    private func finalizeSttTurn(_ stt: any SttEngine, turnID: UUID) async throws {
         let tail = try await stt.endTurn()
         guard isCurrentTurn(turnID) else { return }
         let finalText = (partialTranscript + tail)
