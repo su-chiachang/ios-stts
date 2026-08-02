@@ -15,7 +15,9 @@ struct DownloadModelsView: View {
         Form {
             Section("speech-to-text") {
                 ForEach(ModelCatalog.sttAssets) { asset in
-                    ModelAssetRow(asset: asset, manager: manager, isSelected: true, onFinished: notifyChanged)
+                    ModelAssetRow(asset: asset, manager: manager,
+                                  isSelected: settings.sttBackend == .parakeet,
+                                  onFinished: notifyChanged)
                 }
             }
 
