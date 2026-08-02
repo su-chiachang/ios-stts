@@ -11,9 +11,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        // parakeet and qwen3-tts each own a distinct ggml Metal runtime. Skip
-        // their conflicting static destructors; macOS reclaims process-owned
-        // GPU resources after _exit just as it does after normal termination.
+        // parakeet, qwen3-tts, and Audio8 each own distinct ggml Metal
+        // runtimes. Skip their conflicting static destructors; macOS reclaims
+        // process-owned GPU resources after _exit just as it does after normal
+        // termination.
         fflush(nil)
         _exit(0)
     }

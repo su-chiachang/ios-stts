@@ -41,7 +41,7 @@ final class ConversationEngine {
     private(set) var timestampFrameSec: Double = 0
 
     private var stt: ParakeetStt?
-    private var tts: QwenTts?
+    private var tts: (any TtsEngine)?
     private var turnTask: Task<Void, Never>?
     private var audioPlayer: AudioPlayer?
     private var speechPipeline: SpeechPipeline?
@@ -49,26 +49,39 @@ final class ConversationEngine {
     private var activeInput: TurnInput?
     private var audioInput: AudioInputManager?
     private var sourceMediaPlayer: SourceMediaPlayer?
+    private var pendingCancellation: Task<Void, Never>?
     private(set) var inputRMS: Float = 0
 
     func loadModels() async {
-        cancelCurrentTurn()
+        await cancelCurrentTurnAndWait()
         state = .loadingModels
         stt = nil
         tts = nil
+        let settings = AppSettings.shared
         guard let parakeetURL = AppSettings.shared.parakeetModelURL() else {
             state = .error("No STT model selected. Pick a parakeet .gguf file in Settings.")
             return
         }
-        guard let qwenDirURL = AppSettings.shared.qwenModelDirURL() else {
-            state = .error("No TTS model directory selected. Pick the qwen3-tts model folder in Settings.")
-            return
-        }
         do {
             stt = try ParakeetStt(modelPath: parakeetURL.path)
-            tts = try QwenTts(modelDir: qwenDirURL.path,
-                              variant: AppSettings.shared.qwenModelVariant,
-                              quantization: AppSettings.shared.qwenModelQuantization)
+            switch settings.ttsBackend {
+            case .qwen:
+                guard let qwenDirURL = settings.qwenModelDirURL() else {
+                    state = .error("Qwen TTS is not ready. Pick the qwen3-tts model folder in Settings or download a Qwen asset.")
+                    return
+                }
+                tts = try QwenTts(modelDir: qwenDirURL.path,
+                                  variant: settings.qwenModelVariant,
+                                  quantization: settings.qwenModelQuantization)
+            case .audio8:
+                guard let resources = settings.audio8ModelResources() else {
+                    state = .error(settings.audio8ModelReadinessMessage())
+                    return
+                }
+                tts = try Audio8Tts(generatorURL: resources.generatorURL,
+                                    codecURL: resources.codecURL,
+                                    tokenizerURL: resources.tokenizerURL)
+            }
             state = .idle
         } catch {
             state = .error(error.localizedDescription)
@@ -102,6 +115,9 @@ final class ConversationEngine {
         turnTask = Task {
             defer { if accessingScope { url.stopAccessingSecurityScopedResource() } }
             do {
+                await waitForPendingCancellation()
+                try Task.checkCancellation()
+                guard isCurrentTurn(turnID) else { throw CancellationError() }
                 try await stt.beginTurn(lang: AppSettings.shared.sttLocale)
                 let sourcePlayer = SourceMediaPlayer()
                 sourceMediaPlayer = sourcePlayer
@@ -153,6 +169,9 @@ final class ConversationEngine {
         turnTask = Task {
             defer { if accessingScope { url.stopAccessingSecurityScopedResource() } }
             do {
+                await waitForPendingCancellation()
+                try Task.checkCancellation()
+                guard isCurrentTurn(turnID) else { throw CancellationError() }
                 try await stt.beginTurn(lang: AppSettings.shared.sttLocale)
                 let source = AudioFileInput(url: url)
                 for try await chunk in source.stream() {
@@ -201,6 +220,9 @@ final class ConversationEngine {
         turnTask = Task {
             defer { if accessingScope { url.stopAccessingSecurityScopedResource() } }
             do {
+                await waitForPendingCancellation()
+                try Task.checkCancellation()
+                guard isCurrentTurn(turnID) else { throw CancellationError() }
                 var samples: [Float] = []
                 for try await chunk in AudioFileInput(url: url).stream(realtime: false) {
                     try Task.checkCancellation()
@@ -244,6 +266,8 @@ final class ConversationEngine {
         state = .listening
 
         turnTask = Task {
+            await waitForPendingCancellation()
+            guard isCurrentTurn(turnID) else { return }
             guard await AudioInputManager.requestPermission() else {
                 finishTurn(turnID, with: .error("Microphone permission is required. Enable it in System Settings, then try again."))
                 return
@@ -296,6 +320,9 @@ final class ConversationEngine {
         state = .thinking
         turnTask = Task {
             do {
+                await waitForPendingCancellation()
+                try Task.checkCancellation()
+                guard isCurrentTurn(turnID) else { throw CancellationError() }
                 try await requestAssistantReply(turnID: turnID)
             } catch is CancellationError {
                 finishTurn(turnID, with: .idle)
@@ -320,10 +347,17 @@ final class ConversationEngine {
         activeInput = .text
         bubbles.append(ChatBubble(role: .user, text: text))
         state = .speaking
+        let settings = AppSettings.shared
         turnTask = Task {
             do {
+                await waitForPendingCancellation()
+                try Task.checkCancellation()
+                guard isCurrentTurn(turnID) else { throw CancellationError() }
                 try await readAloud(text, turnID: turnID,
-                                    referenceWavPath: AppSettings.shared.customVoiceReferenceURL()?.path)
+                                    referenceWavPath: settings.customVoiceReferenceURL()?.path,
+                                    referenceTranscript: settings.ttsBackend == .audio8
+                                        ? settings.audio8ReferenceTranscript
+                                        : nil)
             } catch is CancellationError {
                 finishTurn(turnID, with: .idle)
             } catch {
@@ -337,8 +371,8 @@ final class ConversationEngine {
     /// bubble. `referenceWavPath == nil` uses the model's default voice; a path
     /// clones that reference voice.
     @discardableResult
-    func speak(_ text: String, referenceWavPath: String?, speaker: String? = nil,
-               instruction: String? = nil) -> Bool {
+    func speak(_ text: String, referenceWavPath: String?, referenceTranscript: String? = nil,
+               speaker: String? = nil, instruction: String? = nil) -> Bool {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, isReady, !isProcessing else { return false }
 
@@ -349,7 +383,11 @@ final class ConversationEngine {
         state = .speaking
         turnTask = Task {
             do {
+                await waitForPendingCancellation()
+                try Task.checkCancellation()
+                guard isCurrentTurn(turnID) else { throw CancellationError() }
                 try await readAloud(text, turnID: turnID, referenceWavPath: referenceWavPath,
+                                    referenceTranscript: referenceTranscript,
                                     speaker: speaker, instruction: instruction)
             } catch is CancellationError {
                 finishTurn(turnID, with: .idle)
@@ -387,7 +425,7 @@ final class ConversationEngine {
 
     private func requestAssistantReply(turnID: UUID) async throws {
         guard let tts else {
-            throw QwenTtsError.synthesizeFailed("TTS model not loaded.")
+            throw TtsEngineError.notLoaded
         }
         let settings = AppSettings.shared
         let client = try OpenAIChatClient(baseURL: settings.llmBaseURL,
@@ -439,9 +477,10 @@ final class ConversationEngine {
     }
 
     private func readAloud(_ text: String, turnID: UUID, referenceWavPath: String?,
+                           referenceTranscript: String? = nil,
                            speaker: String? = nil, instruction: String? = nil) async throws {
         guard let tts else {
-            throw QwenTtsError.synthesizeFailed("TTS model not loaded.")
+            throw TtsEngineError.notLoaded
         }
         let player: AudioPlayer
         if let audioPlayer {
@@ -452,6 +491,7 @@ final class ConversationEngine {
             player = newPlayer
         }
         let pipeline = SpeechPipeline(tts: tts, player: player, referenceWavPath: referenceWavPath,
+                                      referenceTranscript: referenceTranscript,
                                       speaker: speaker, instruction: instruction)
         speechPipeline = pipeline
         defer {
@@ -517,11 +557,47 @@ final class ConversationEngine {
         inputRMS = 0
         let pipeline = speechPipeline
         speechPipeline = nil
-        if let pipeline {
-            Task { await pipeline.cancel() }
-        } else if let audioPlayer {
-            audioPlayer.stopAndFlush()
+        audioPlayer?.stopAndFlush()
+        let predecessor = pendingCancellation
+        pendingCancellation = Task { @MainActor in
+            _ = await predecessor?.result
+            if let pipeline { await pipeline.cancel() }
         }
+    }
+
+    /// Cancellation is normally fire-and-forget so UI actions remain
+    /// synchronous. Model reload is different: the old pipeline and native
+    /// runtime must be quiescent before the selected backend is replaced.
+    private func cancelCurrentTurnAndWait() async {
+        let task = turnTask
+        task?.cancel()
+        turnTask = nil
+        activeTurnID = nil
+        activeInput = nil
+        audioInput?.stop()
+        audioInput = nil
+        sourceMediaPlayer?.stop()
+        sourceMediaPlayer = nil
+        inputRMS = 0
+
+        let pipeline = speechPipeline
+        speechPipeline = nil
+        let predecessor = pendingCancellation
+        pendingCancellation = nil
+        _ = await predecessor?.result
+        if let pipeline {
+            await pipeline.cancel()
+        } else {
+            audioPlayer?.stopAndFlush()
+        }
+        _ = await task?.result
+    }
+
+    /// A synchronous UI action can request cancellation while the actor-based
+    /// pipeline is still unwinding. New work waits for that cancellation task
+    /// so its final flush cannot clear the next utterance's audio.
+    private func waitForPendingCancellation() async {
+        _ = await pendingCancellation?.result
     }
 }
 

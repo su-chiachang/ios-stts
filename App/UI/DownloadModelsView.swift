@@ -2,8 +2,8 @@ import SwiftUI
 
 /// Lets the user fetch the STT and TTS models straight into the app's
 /// sandbox container, in lieu of running scripts/fetch-models.sh by hand.
-/// Each row is one downloadable asset (an STT file, or a talker+tokenizer
-/// TTS variant pair) with its own progress bar and Download/Cancel action.
+/// Each row is one downloadable asset (an STT file, a Qwen talker/codec pair,
+/// or the atomic Audio8 generator/codec/tokenizer group).
 struct DownloadModelsView: View {
     var settings = AppSettings.shared
     var manager = ModelDownloadManager.shared
@@ -19,15 +19,28 @@ struct DownloadModelsView: View {
                 }
             }
 
-            Section("text-to-speech") {
+            Section("Qwen text-to-speech") {
                 ForEach(ModelCatalog.ttsAssets) { asset in
                     ModelAssetRow(asset: asset, manager: manager,
-                                  isSelected: asset.id == "tts.\(settings.qwenModelVariant.rawValue).\(settings.qwenModelQuantization.rawValue)",
+                                  isSelected: settings.ttsBackend == .qwen
+                                      && asset.id == "tts.\(settings.qwenModelVariant.rawValue).\(settings.qwenModelQuantization.rawValue)",
                                   onFinished: notifyChanged)
                 }
                 Text("F16 downloads the upstream BF16 pair. Q4_K_M is the default compact option; Q8_0 uses more memory for higher precision.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+            }
+
+            Section("Audio8 text-to-speech") {
+                ForEach(ModelCatalog.audio8Assets) { asset in
+                    ModelAssetRow(asset: asset, manager: manager,
+                                  isSelected: settings.ttsBackend == .audio8,
+                                  onFinished: notifyChanged)
+                }
+                Text("Audio8 requires one generator GGUF, one codec GGUF, and tokenizer.json. Its download URLs are not configured until a versioned model release is selected.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .formStyle(.grouped)
@@ -82,13 +95,27 @@ private struct ModelAssetRow: View {
 
     @ViewBuilder
     private func actionButton(for state: ModelDownloadState) -> some View {
-        switch state {
-        case .notStarted, .failed, .cancelled:
-            Button("Download") { manager.start(asset) }
-        case .downloading:
-            Button("Cancel") { manager.cancel(asset) }
-        case .completed:
-            Button("Re-download") { manager.start(asset) }
+        if let configurationError = asset.configurationError {
+            if state == .completed {
+                Button("Installed") {}.disabled(true)
+                Text("Local files are ready; " + configurationError)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            } else {
+                Button("Unavailable") {}.disabled(true)
+                Text(configurationError)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        } else {
+            switch state {
+            case .notStarted, .failed, .cancelled:
+                Button("Download") { manager.start(asset) }
+            case .downloading:
+                Button("Cancel") { manager.cancel(asset) }
+            case .completed:
+                Button("Re-download") { manager.start(asset) }
+            }
         }
     }
 

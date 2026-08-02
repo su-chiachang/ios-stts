@@ -7,6 +7,7 @@ struct SettingsView: View {
 
     @State private var parakeetPath: String = ""
     @State private var qwenDirPath: String = ""
+    @State private var audio8DirPath: String = ""
     @State private var modelMessage: String?
     @State private var modelMessageIsError = false
     @State private var showDownloadModels = false
@@ -14,12 +15,23 @@ struct SettingsView: View {
     @State private var voiceMessageIsError = false
     #if os(iOS)
     @State private var showParakeetPicker = false
+    @State private var showAudio8ModelPicker = false
     @State private var showVoicePicker = false
     #endif
 
     var body: some View {
         Form {
             Section("Models") {
+                Picker("TTS backend", selection: Binding(get: { settings.ttsBackend },
+                                                          set: {
+                                                              settings.ttsBackend = $0
+                                                              reloadModels()
+                                                          })) {
+                    ForEach(TtsBackend.allCases) { backend in
+                        Text(backend.displayName).tag(backend)
+                    }
+                }
+
                 LabeledContent("STT") {
                     HStack {
                         Text(parakeetPath.isEmpty ? "Not set" : parakeetPath)
@@ -29,19 +41,32 @@ struct SettingsView: View {
                         Button("Choose…") { pickParakeetModel() }
                     }
                 }
-                LabeledContent("TTS dir") {
-                    HStack {
-                        Text(qwenDirPath.isEmpty ? "Not set" : qwenDirPath)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                            .foregroundStyle(qwenDirPath.isEmpty ? .secondary : .primary)
-                        #if os(macOS)
-                        // iOS has no meaningful arbitrary-folder picker for an
-                        // external model directory; Download Models below is
-                        // the only iOS path to a Qwen model.
-                        Button("Choose…") { pickQwenModelDir() }
-                        #endif
+                if settings.ttsBackend == .qwen {
+                    LabeledContent("Qwen TTS dir") {
+                        HStack {
+                            Text(qwenDirPath.isEmpty ? "Not set" : qwenDirPath)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                                .foregroundStyle(qwenDirPath.isEmpty ? .secondary : .primary)
+                            #if os(macOS)
+                            Button("Choose…") { pickQwenModelDir() }
+                            #endif
+                        }
                     }
+                } else {
+                    LabeledContent("Audio8 model dir") {
+                        HStack {
+                            Text(audio8DirPath.isEmpty ? "Not set" : audio8DirPath)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                                .foregroundStyle(audio8DirPath.isEmpty ? .secondary : .primary)
+                            Button("Choose…") { pickAudio8ModelDir() }
+                        }
+                    }
+                    Text(settings.audio8ModelReadinessMessage())
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 HStack {
                     Button("Download Models…") { showDownloadModels = true }
@@ -102,7 +127,9 @@ struct SettingsView: View {
                 Toggle("Read typed text aloud in this voice", isOn: Binding(
                     get: { settings.readAloudMode },
                     set: { settings.readAloudMode = $0 }))
-                Text("When on, Send (or Return) speaks your exact text in the imported voice instead of asking the assistant. A 5–15 s clip works best; the words spoken in it don't matter.")
+                Text(settings.ttsBackend == .audio8
+                     ? "When on, Send (or Return) speaks your exact text with Audio8 reference conditioning. A 5–15 s clip works best; enter its transcript in the TTS tab."
+                     : "When on, Send (or Return) speaks your exact text in the imported voice instead of asking the assistant. A 5–15 s clip works best; the words spoken in it don't matter.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -125,11 +152,13 @@ struct SettingsView: View {
         .onAppear {
             parakeetPath = AppSettings.shared.parakeetModelURL()?.path ?? ""
             qwenDirPath = AppSettings.shared.qwenModelDirURL()?.path ?? ""
+            audio8DirPath = AppSettings.shared.audio8ModelDirURL().path
         }
         .sheet(isPresented: $showDownloadModels) {
             DownloadModelsView(onModelsChanged: {
                 parakeetPath = AppSettings.shared.parakeetModelURL()?.path ?? ""
                 qwenDirPath = AppSettings.shared.qwenModelDirURL()?.path ?? ""
+                audio8DirPath = AppSettings.shared.audio8ModelDirURL().path
                 reloadModels()
             })
         }
@@ -151,6 +180,19 @@ struct SettingsView: View {
                       allowedContentTypes: [.audio, .wav, .mp3, .mpeg4Audio]) { result in
             guard case .success(let url) = result else { return }
             importCustomVoice(from: url)
+        }
+        .fileImporter(isPresented: $showAudio8ModelPicker,
+                      allowedContentTypes: [.folder]) { result in
+            guard case .success(let url) = result else { return }
+            let accessingScope = url.startAccessingSecurityScopedResource()
+            defer { if accessingScope { url.stopAccessingSecurityScopedResource() } }
+            do {
+                try AppSettings.shared.setAudio8ModelDir(url)
+                audio8DirPath = url.path
+                reloadModels()
+            } catch {
+                showModelError(bookmarkErrorMessage("Audio8 model directory", error: error))
+            }
         }
         #endif
     }
@@ -190,7 +232,27 @@ struct SettingsView: View {
             }
         }
     }
+
     #endif
+
+    private func pickAudio8ModelDir() {
+        #if os(macOS)
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        if panel.runModal() == .OK, let url = panel.url {
+            do {
+                try AppSettings.shared.setAudio8ModelDir(url)
+                audio8DirPath = url.path
+                reloadModels()
+            } catch {
+                showModelError(bookmarkErrorMessage("Audio8 model directory", error: error))
+            }
+        }
+        #else
+        showAudio8ModelPicker = true
+        #endif
+    }
 
     private func importCustomVoice() {
         #if os(macOS)

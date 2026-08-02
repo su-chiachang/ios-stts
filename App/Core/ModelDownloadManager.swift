@@ -75,6 +75,10 @@ final class ModelDownloadManager: NSObject {
 
     func start(_ asset: ModelAsset) {
         guard jobs[asset.id] == nil else { return }
+        guard asset.isDownloadConfigured else {
+            states[asset.id] = .failed(asset.configurationError ?? "Model download is not configured.")
+            return
+        }
         try? FileManager.default.createDirectory(at: asset.destinationDirectory, withIntermediateDirectories: true)
         jobs[asset.id] = Job(asset: asset,
                               writtenByFile: Array(repeating: 0, count: asset.files.count),
@@ -98,6 +102,10 @@ final class ModelDownloadManager: NSObject {
             return
         }
         let file = job.asset.files[job.fileIndex]
+        guard let remoteURL = file.remoteURL else {
+            fail(assetID: job.asset.id, error: ModelDownloadError.unconfigured(job.asset.title))
+            return
+        }
         let dest = job.asset.destinationDirectory.appendingPathComponent(file.destinationFilename)
         // Same skip-if-exists behavior as fetch-models.sh's fetch().
         if (try? dest.checkResourceIsReachable()) == true {
@@ -106,7 +114,7 @@ final class ModelDownloadManager: NSObject {
             launchCurrentFile(assetID: assetID)
             return
         }
-        let task = session.downloadTask(with: file.remoteURL)
+        let task = session.downloadTask(with: remoteURL)
         job.task = task
         jobs[assetID] = job
         registry.register(taskID: task.taskIdentifier, assetID: assetID, destination: dest)
@@ -140,6 +148,16 @@ final class ModelDownloadManager: NSObject {
             states[assetID] = .cancelled
         } else {
             states[assetID] = .failed(error.localizedDescription)
+        }
+    }
+}
+
+private enum ModelDownloadError: LocalizedError {
+    case unconfigured(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .unconfigured(let title): "Download URL is not configured for \(title)."
         }
     }
 }

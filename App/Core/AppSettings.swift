@@ -28,11 +28,17 @@ final class AppSettings {
     var rmsThreshold: Double {
         didSet { UserDefaults.standard.set(rmsThreshold, forKey: Keys.rmsThreshold) }
     }
+    var ttsBackend: TtsBackend {
+        didSet { UserDefaults.standard.set(ttsBackend.rawValue, forKey: Keys.ttsBackend) }
+    }
     var qwenModelVariant: QwenTtsVariant {
         didSet { UserDefaults.standard.set(qwenModelVariant.rawValue, forKey: Keys.qwenModelVariant) }
     }
     var qwenModelQuantization: QwenTtsQuantization {
         didSet { UserDefaults.standard.set(qwenModelQuantization.rawValue, forKey: Keys.qwenModelQuantization) }
+    }
+    var audio8ReferenceTranscript: String {
+        didSet { UserDefaults.standard.set(audio8ReferenceTranscript, forKey: Keys.audio8ReferenceTranscript) }
     }
 
     /// When on, typed text is read aloud verbatim in the custom voice instead
@@ -50,6 +56,10 @@ final class AppSettings {
     private(set) var customVoiceFilename: String {
         didSet { UserDefaults.standard.set(customVoiceFilename, forKey: Keys.customVoiceFilename) }
     }
+    /// Keep one security-scoped access per persisted bookmark. Re-resolving a
+    /// bookmark on every SwiftUI refresh without balancing the access count
+    /// eventually makes the selected directory inaccessible.
+    private var scopedBookmarkURLs: [String: URL] = [:]
 
     private enum Keys {
         static let llmBaseURL = "llmBaseURL"
@@ -59,10 +69,13 @@ final class AppSettings {
         static let sttLocale = "sttLocale"
         static let silenceHangMs = "silenceHangMs"
         static let rmsThreshold = "rmsThreshold"
+        static let ttsBackend = "ttsBackend"
         static let parakeetBookmark = "parakeetModelBookmark"
         static let qwenBookmark = "qwenModelDirBookmark"
+        static let audio8Bookmark = "audio8ModelDirBookmark"
         static let qwenModelVariant = "qwenModelVariant"
         static let qwenModelQuantization = "qwenModelQuantization"
+        static let audio8ReferenceTranscript = "audio8ReferenceTranscript"
         static let readAloudMode = "readAloudMode"
         static let customVoiceName = "customVoiceName"
         static let customVoiceFilename = "customVoiceFilename"
@@ -83,8 +96,10 @@ final class AppSettings {
         sttLocale = d.string(forKey: Keys.sttLocale) ?? "auto"
         silenceHangMs = d.object(forKey: Keys.silenceHangMs) as? Double ?? 800
         rmsThreshold = d.object(forKey: Keys.rmsThreshold) as? Double ?? 0.015
+        ttsBackend = d.string(forKey: Keys.ttsBackend).flatMap(TtsBackend.init(rawValue:)) ?? .qwen
         qwenModelVariant = d.string(forKey: Keys.qwenModelVariant).flatMap(QwenTtsVariant.init(rawValue:)) ?? .base06b
         qwenModelQuantization = d.string(forKey: Keys.qwenModelQuantization).flatMap(QwenTtsQuantization.init(rawValue:)) ?? .q4_k_m
+        audio8ReferenceTranscript = d.string(forKey: Keys.audio8ReferenceTranscript) ?? ""
         readAloudMode = d.bool(forKey: Keys.readAloudMode)
         customVoiceName = d.string(forKey: Keys.customVoiceName) ?? ""
         customVoiceFilename = d.string(forKey: Keys.customVoiceFilename) ?? ""
@@ -99,8 +114,8 @@ final class AppSettings {
     // owns that directory). A bookmark, if set, wins.
 
     /// Root directory downloaded models live under, mirroring the
-    /// models/parakeet and models/qwentts layout scripts/fetch-models.sh
-    /// uses in a dev checkout. See ModelCatalog.
+    /// models/parakeet, models/qwentts, and models/audio8 layout used by the
+    /// in-app catalog. See ModelCatalog.
     static var modelsRootDirectory: URL {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return base.appendingPathComponent("STTS/models", isDirectory: true)
@@ -156,6 +171,27 @@ final class AppSettings {
         resolveBookmark(Keys.qwenBookmark) ?? downloadedQwenModelDirURL()
     }
 
+    /// Returns the selected Audio8 directory even when its atomic resource
+    /// group is incomplete, so Settings can show the actionable missing-file
+    /// state instead of silently hiding the user's selection.
+    func audio8ModelDirURL() -> URL {
+        resolveBookmark(Keys.audio8Bookmark) ?? ModelCatalog.audio8Directory
+    }
+
+    func audio8ModelResources() -> Audio8ModelResources? {
+        ModelCatalog.audio8Resources(in: audio8ModelDirURL())
+    }
+
+    func audio8ModelReadinessMessage() -> String {
+        let directory = audio8ModelDirURL()
+        if ModelCatalog.audio8Resources(in: directory) != nil {
+            return "Audio8 model resources are ready."
+        }
+        let readiness = ModelCatalog.audio8ReadinessMessage(in: directory)
+        guard !ModelCatalog.audio8Assets[0].isDownloadConfigured else { return readiness }
+        return readiness + " In-app Audio8 download URLs are not configured; choose a directory containing the three resources."
+    }
+
     private func downloadedParakeetModelURL() -> URL? {
         let url = ModelCatalog.parakeetDirectory.appendingPathComponent(ModelCatalog.sttModelName)
         return (try? url.checkResourceIsReachable()) == true ? url : nil
@@ -172,6 +208,7 @@ final class AppSettings {
 
     func setParakeetModel(_ url: URL) throws { try storeBookmark(url, key: Keys.parakeetBookmark) }
     func setQwenModelDir(_ url: URL) throws { try storeBookmark(url, key: Keys.qwenBookmark) }
+    func setAudio8ModelDir(_ url: URL) throws { try storeBookmark(url, key: Keys.audio8Bookmark) }
 
     private func storeBookmark(_ url: URL, key: String) throws {
         // macOS can intermittently fail to retrieve the app-scope key here
@@ -197,10 +234,14 @@ final class AppSettings {
                                     includingResourceValuesForKeys: nil,
                                     relativeTo: nil)
         #endif
+        if let previous = scopedBookmarkURLs.removeValue(forKey: key) {
+            previous.stopAccessingSecurityScopedResource()
+        }
         UserDefaults.standard.set(data, forKey: key)
     }
 
     private func resolveBookmark(_ key: String) -> URL? {
+        if let cached = scopedBookmarkURLs[key] { return cached }
         guard let data = UserDefaults.standard.data(forKey: key) else { return nil }
         var stale = false
         #if os(macOS)
@@ -213,6 +254,13 @@ final class AppSettings {
                             relativeTo: nil, bookmarkDataIsStale: &stale)
         #endif
         guard let url, url.startAccessingSecurityScopedResource() else { return nil }
+        scopedBookmarkURLs[key] = url
         return url
+    }
+
+    deinit {
+        for url in scopedBookmarkURLs.values {
+            url.stopAccessingSecurityScopedResource()
+        }
     }
 }

@@ -1,11 +1,10 @@
 import AVFoundation
 import Foundation
 
-/// Converts an arbitrary user-picked audio file into the exact WAV format the
-/// qwen3-tts speaker encoder accepts: 24 kHz, mono, 16-bit PCM. The native
-/// loader (qwen3_tts.cpp `load_audio_file`) only decodes integer PCM WAV
-/// (16- or 32-bit) — it rejects compressed files and float32 WAV — so we can't
-/// hand it the picked file directly.
+/// Converts an arbitrary user-picked audio file into a mono, 16-bit PCM WAV.
+/// The stored sample rate is preserved: QwenTts resamples its copy to 24 kHz
+/// before extracting a voice reference, while Audio8 forwards the source rate
+/// to its native codec for the required 44.1 kHz conditioning conversion.
 enum ReferenceAudioImporter {
     enum ImportError: LocalizedError {
         case unreadableSource
@@ -15,19 +14,15 @@ enum ReferenceAudioImporter {
         var errorDescription: String? {
             switch self {
             case .unreadableSource: "Could not read the selected audio file."
-            case .conversionFailed: "Could not convert the audio to 24 kHz mono."
+            case .conversionFailed: "Could not convert the audio to mono PCM."
             case .empty: "The selected audio file contains no audio."
             }
         }
     }
 
-    /// The rate the speaker encoder expects. The native loader resamples too,
-    /// but converting here keeps the on-disk reference in a single known shape.
-    private static let sampleRate = 24_000.0
-
-    /// Reads `source` (any Core Audio-decodable file), downmixes/resamples to
-    /// 24 kHz mono, and writes a 16-bit PCM WAV at `destination`, replacing any
-    /// existing file there.
+    /// Reads `source` (any Core Audio-decodable file), downmixes it to mono at
+    /// the source sample rate, and writes a 16-bit PCM WAV at `destination`,
+    /// replacing any existing file there.
     static func writeReferenceWav(from source: URL, to destination: URL) throws {
         let accessed = source.startAccessingSecurityScopedResource()
         defer { if accessed { source.stopAccessingSecurityScopedResource() } }
@@ -43,18 +38,18 @@ enum ReferenceAudioImporter {
         }
         try input.read(into: inputBuffer)
 
-        guard let targetFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32,
-                                               sampleRate: sampleRate,
+        guard inputFormat.sampleRate > 0,
+              let targetFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32,
+                                               sampleRate: inputFormat.sampleRate,
                                                channels: 1,
                                                interleaved: false),
               let converter = AVAudioConverter(from: inputFormat, to: targetFormat) else {
             throw ImportError.conversionFailed
         }
 
-        // Size the output for the whole clip (sample-rate ratio + slack) so a
-        // single convert() call drains all input before it reports noDataNow.
-        let ratio = sampleRate / inputFormat.sampleRate
-        let capacity = AVAudioFrameCount(Double(frameCount) * ratio) + 4_096
+        // Size the output for the whole clip plus slack so one convert() call
+        // drains all input before it reports noDataNow.
+        let capacity = frameCount + 4_096
         guard let outputBuffer = AVAudioPCMBuffer(pcmFormat: targetFormat, frameCapacity: capacity) else {
             throw ImportError.conversionFailed
         }
@@ -76,7 +71,7 @@ enum ReferenceAudioImporter {
 
         let settings: [String: Any] = [
             AVFormatIDKey: kAudioFormatLinearPCM,
-            AVSampleRateKey: sampleRate,
+            AVSampleRateKey: inputFormat.sampleRate,
             AVNumberOfChannelsKey: 1,
             AVLinearPCMBitDepthKey: 16,
             AVLinearPCMIsFloatKey: false,

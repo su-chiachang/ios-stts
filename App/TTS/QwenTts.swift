@@ -16,7 +16,7 @@ enum QwenTtsError: Error, LocalizedError {
     }
 }
 
-enum SpokenLanguage: String {
+enum SpokenLanguage: String, Sendable {
     case en = "English"
     case zh = "Chinese"
     case ja = "Japanese"
@@ -74,11 +74,8 @@ enum QwenTtsQuantization: String, CaseIterable, Identifiable {
 
 /// qwentts.cpp owns the native context; this actor serializes access because
 /// the model contexts are not documented as safe for concurrent synthesis.
-actor QwenTts {
-    struct Chunk {
-        let samples: [Float]
-        let sampleRate: Double
-    }
+actor QwenTts: TtsEngine {
+    typealias Chunk = TtsAudioChunk
 
     private struct CachedVoiceReference {
         let path: String

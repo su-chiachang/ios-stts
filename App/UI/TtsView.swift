@@ -74,7 +74,18 @@ struct TtsView: View {
                         toggleRecording()
                     }
                 }
-                Text("Zero-shot cloning uses a 3–5 s clip. A matching transcript can also enable ICL through the native API.")
+                if settings.ttsBackend == .audio8 && voice == .cloned {
+                    TextField("Reference transcript", text: Binding(
+                        get: { settings.audio8ReferenceTranscript },
+                        set: { settings.audio8ReferenceTranscript = $0 }))
+                    Text("Audio8 requires the words spoken in the reference clip so it can condition the voice.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Text(settings.ttsBackend == .audio8
+                     ? "Audio8 uses the reference clip and its transcript for reference conditioning."
+                     : "Zero-shot cloning uses a 3–5 s clip. A matching transcript can also enable ICL through the native API.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -112,9 +123,15 @@ struct TtsView: View {
     private var capabilitySection: some View {
         GroupBox("Model capabilities") {
             VStack(alignment: .leading, spacing: 6) {
-                Label("Base: default voice, x-vector cloning, and ICL cloning", systemImage: "person.wave.2")
-                Text("The built-in download choices use Base checkpoints. qwentts.cpp also supports CustomVoice and VoiceDesign through its native API.")
-                    .font(.caption)
+                if settings.ttsBackend == .audio8 {
+                    Label("Audio8: default voice and reference conditioning", systemImage: "waveform.and.person.filled")
+                    Text("Audio8 uses the generator, codec, and tokenizer resources selected in Settings. Qwen speaker and instruction controls do not apply.")
+                        .font(.caption)
+                } else {
+                    Label("Base: default voice, x-vector cloning, and ICL cloning", systemImage: "person.wave.2")
+                    Text("The built-in download choices use Base checkpoints. qwentts.cpp also supports CustomVoice and VoiceDesign through its native API.")
+                        .font(.caption)
+                }
             }
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -124,13 +141,18 @@ struct TtsView: View {
     private var canSpeak: Bool {
         engine.isReady && !engine.isProcessing
             && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && (voice == .standard || (voice == .cloned && hasClonedVoice))
+            && (voice == .standard
+                || (voice == .cloned
+                    && hasClonedVoice
+                    && (settings.ttsBackend == .qwen
+                        || !settings.audio8ReferenceTranscript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)))
     }
 
     private func speak() {
         message = nil
         let reference = voice == .cloned ? settings.customVoiceReferenceURL()?.path : nil
-        engine.speak(text, referenceWavPath: reference)
+        let transcript = settings.ttsBackend == .audio8 ? settings.audio8ReferenceTranscript : nil
+        engine.speak(text, referenceWavPath: reference, referenceTranscript: transcript)
     }
 
     private func toggleRecording() {
