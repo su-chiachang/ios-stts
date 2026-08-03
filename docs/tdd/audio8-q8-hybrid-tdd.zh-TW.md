@@ -1,6 +1,7 @@
 # Audio8 Q8_0 Hybrid TDD
 
-Status: slices 1–3 green at contract boundaries; runtime quality gate pending a real checkpoint
+Status: slices 1–5 green on the pinned checkpoint; release-quality corpus and
+Metal-device gates remain pending
 
 本文件是 Audio8 TTS 量化實作的 red → green 記錄。測試只觀察已同意的邊界：native Generator 的 GGUF model contract、離線 quantized artifact contract，以及 App 可載入的完整 TTS model bundle。
 
@@ -27,21 +28,57 @@ Status: slices 1–3 green at contract boundaries; runtime quality gate pending 
 - Red: `ModelBundle` package initially lacked verifier symbols, so size/hash/activation tests failed to compile.
 - Green: bundle verifier now checks file existence, regular-file type, size, SHA-256, explicit version, and staged activation marker; the download manager verifies before activation and `loadModels()` re-verifies the active App-managed bundle before selecting the chosen F32/Q8_0 resource set. The native C ABI also checks the selected export dtype against GGUF metadata, covering user-provided version-suffixed filenames.
 
-### Slice 4 — Runtime regression
+### Slice 4 — Real checkpoint load and dtype selection
 
-- Red: F32 reference、Q8_0 Generator + F32 Codec 通過 fixed corpus 的 load/audio contract。
-- Green: CPU/Metal runtime smoke、peak memory 與 Metal p95 RTF gate 產生可重現報告。
+- Red: the earlier selector harness could only compile against the additive C
+  ABI; no real F32/Q8_0 checkpoint pair existed, so model-backed acceptance and
+  mismatch rejection were unproven.
+- Green: the pinned Audio8 checkpoint was exported to F32 Generator, Q8_0
+  hybrid Generator, F32 Codec, and tokenizer artifacts. Both native Generator
+  models load and run; the C ABI accepts F32→F32 and Q8_0→Q8_0, while rejecting
+  F32→Q8_0 before inference.
+
+### Slice 5 — F32/Q8_0 quantization parity
+
+- Red: `audio8-quant-parity-smoke` was first added as a deliberate seam stub
+  calling the not-yet-existing `QuantizationParityContract`; the native build
+  failed with the missing contract symbol.
+- Green: the comparator now checks metadata, slow logits/hidden states, fast
+  logits across nine codebook stages, one-token semantic/acoustic output, and
+  optional Codec waveform drift. The real checkpoint passed the fixed-prompt
+  smoke with one acoustic-code mismatch and waveform RMSE `0.0458928`.
 
 ## Evidence
 
 - `audio8-quant-policy-smoke`: native policy boundary, CPU and Metal green.
 - `tests/test_audio8_export.py`: 14 tests green (one optional numeric test skipped).
 - `Packages/ModelBundle`: 5 XCTest cases green, including versioned activation-marker ordering and post-activation tamper rejection.
-- CPU CTest: 5/5 green; Metal CTest: 6/6 green; macOS vendor ctest: 6/6
-  green; App macOS, iOS device, and iOS Simulator arm64 builds green.
+- Real-checkpoint CPU CTest: 14/14 green, including Generator/Codec/pipeline
+  parity, runtime smoke, quantization parity, and model-backed C ABI dtype
+  selector/mismatch cases.
+- Real-checkpoint Metal CTest: 15 passed and 1 skipped; the skip is the
+  device-dependent `audio8_metal_parity` test because this host has no Metal
+  command queue. `audio8_metal_smoke` and all CPU-fallback tests passed.
+- macOS vendor ctest: 6/6 green; App macOS, iOS device, and iOS Simulator
+  arm64 builds green.
 - App rejects Audio8 loading below the accepted 8 GiB physical-memory floor with an explicit error; it does not auto-switch variants.
-- `audio8_runtime_create_for_export_dtype()` is wired through the C consumer target and App wrapper; versioned Q8_0 user filenames are discoverable, and real F32/Q8_0 mismatch behavior remains a model-backed gate because no real checkpoint is present locally.
+- `audio8_runtime_create_for_export_dtype()` is wired through the C consumer
+  target and App wrapper; versioned Q8_0 user filenames are discoverable, and
+  real F32/Q8_0 mismatch behavior is now model-backed.
+- Local artifact evidence: F32 Generator 2,404,653,632 bytes; Q8_0 Generator
+  1,178,352,288 bytes; F32 Codec 1,349,626,432 bytes. Runtime-smoke maximum
+  RSS was ~3.72 GiB for F32 and ~2.55 GiB for Q8_0.
 
 ## Remaining red / release gate
 
-No real Audio8 checkpoint or published, versioned release manifest is present in the current environment. Therefore the following remain intentionally unclaimed: end-to-end `GeneratorModel` validation of a converted Q8_0 GGUF, F32-vs-Q8_0 golden audio parity, peak memory, and Metal p95 RTF. The App keeps Audio8 download URLs and SHA-256 values unset rather than inventing release assets; a user-provided local model directory can still be selected and loaded through the existing `loadModels()` path.
+The generated GGUF artifacts are local only; no trusted public GGUF host or
+release manifest is available, so the App keeps download URLs and SHA-256
+values unset rather than inventing release assets. A user-provided local model
+directory can still be selected and loaded through `loadModels()`.
+
+The fixed-prompt parity smoke is only a finite/shape/semantic sanity check;
+drift values and code mismatches are diagnostics, not calibrated release
+thresholds. Longer-corpus audio quality, sustained peak memory, and Metal p95
+RTF on a real Apple GPU remain release gates. BF16 source input and Q4_K_M
+remain outside the native Audio8 deployment contract; the accepted deployment
+pair is F32 reference or Q8_0-hybrid Generator plus F32 Codec.

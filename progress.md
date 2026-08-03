@@ -1,6 +1,6 @@
 # Progress
 
-Last updated: 2026-08-03
+Last updated: 2026-08-04
 
 ## Completed
 
@@ -46,24 +46,45 @@ Last updated: 2026-08-03
 
 ## Verification
 
-- Native CPU CTest: 5/5 passed.
-- Native Metal CTest: 6/6 passed, including `audio8_metal_smoke`.
-- Native C ABI policy-selector smoke compiles through the C consumer target;
-  model-backed selector verification remains pending a real checkpoint.
-- Audio8 Python tests: 32 passed, 2 optional tests skipped.
-- ModelBundle XCTest: 5/5 passed.
-- macOS vendor ctest: 6/6 passed; device and simulator archives export the new
-  selector symbol.
-- STTS macOS arm64, generic iOS arm64, and generic iOS Simulator arm64 Xcode
-  builds: passed without code-signing.
-- Final rerun after the selector-harness and Q8 discovery fixes: CPU CTest
-  5/5, Metal CTest 6/6, Python 32 passed/2 skipped, and all three App
-  destinations remained green.
-- Real-checkpoint export/quantization rerun is now in progress from the pinned
-  source snapshot; generated artifact checksums and model-backed CTest results
-  will be recorded after completion.
+- Real source conversion completed from the pinned checkpoint. Generated local
+  artifacts are:
+  - F32 Generator: 2,404,653,632 bytes,
+    SHA-256 `d435f97a3f755a2b494ecefffda50631173db8275b5723f647d750c049039909`.
+  - Q8_0-hybrid Generator: 1,178,352,288 bytes,
+    SHA-256 `96fe2ed44114ecb6d8c8a0439a28052f0ec4895c06858dc0bb6b5dd1ca878512`.
+  - F32 Codec: 1,349,626,432 bytes,
+    SHA-256 `8bc2374d16a66d0b8cde4c8c0085173faeb3f9bca05347b93a601fb4998393d2`.
+  - Source tokenizer: 12,217,872 bytes,
+    SHA-256 `f24e08099d45a8adf3f52f5f0b03276e433bb9d689bb15fcbcc48ce58744588b`.
+- Native real-checkpoint CPU CTest: 14/14 passed, including F32/Q8_0 model
+  inspection, Generator/Codec/pipeline parity, runtime smoke, quantization
+  parity, and matching/mismatched C ABI dtype-selector cases.
+- Native real-checkpoint Metal CTest: 15 passed and 1 skipped. The only skip is
+  `audio8_metal_parity`, return code 77, because this host has no Metal device or
+  command queue; the CPU fallback and `audio8_metal_smoke` passed.
+- Quantization parity sanity smoke passed with
+  `slow_logits_max_abs=0.152815`, `slow_hidden_rmse=0.032499`,
+  `fast_logits_max_abs=0.619019`, one acoustic-code mismatch, and
+  `waveform_rmse=0.0458928`; drift and code mismatch remain diagnostic until
+  the fixed corpus calibrates release thresholds.
+- Real model-backed C ABI selector checks passed for F32→F32 and Q8_0→Q8_0;
+  F32→Q8_0 was rejected with the expected incompatible-dtype error.
+- Peak resident memory from the runtime smoke was 3,992,305,664 bytes
+  (~3.72 GiB) for F32 and 2,737,537,024 bytes (~2.55 GiB) for Q8_0. The App's
+  accepted 8 GiB physical-memory gate remains conservative pending longer
+  corpus measurements.
+- Audio8 Python tests remain 32 passed, 2 optional tests skipped;
+  ModelBundle XCTest remains 5/5; macOS vendor ctest remains 6/6; STTS macOS,
+  generic iOS device, and generic iOS Simulator arm64 builds remain green.
 
 ## Remaining release gates
 
-- No real Audio8 checkpoint or published versioned release manifest is available in the current environment, so the App intentionally leaves Audio8 download URLs, byte sizes, and SHA-256 values unset. It will not claim a download is ready until those values are supplied.
-- End-to-end Q8_0 GGUF load, F32-vs-Q8_0 golden audio parity, peak memory, and Metal p95 RTF still require the real checkpoint and release artifacts. F32 remains the default; Q8_0 is selectable but not silently substituted.
+- The generated GGUF artifacts are currently local only. No trusted public
+  GGUF host/release manifest or upload credential is available, so the App
+  intentionally leaves Audio8 download URLs, byte sizes, and SHA-256 values
+  unset. The official source checkpoint is not itself a GGUF runtime bundle.
+- The new Q8_0 parity gate is a fixed one-prompt quality smoke, not yet the
+  full golden corpus. Longer-corpus audio quality, sustained peak memory, and
+  Metal p95 RTF on a real Apple GPU are still required before publishing.
+- F32 remains the reference/default; Q8_0 hybrid is loadable and selectable;
+  BF16 and Q4_K_M are not claimed as native Audio8 deployment artifacts.
