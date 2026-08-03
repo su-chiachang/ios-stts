@@ -89,7 +89,7 @@ targets:
             archive="$1"
             [ -f "$archive" ] || return 1
             symbols="$(nm -gU "$archive" 2>/dev/null || true)"
-            for symbol in _audio8_runtime_create _audio8_runtime_destroy _audio8_runtime_synthesize _audio8_audio_buffer_free _audio8_error_free _audio8_ark_asr_create _audio8_ark_asr_destroy _audio8_ark_asr_free_string _audio8_ark_asr_transcribe_pcm; do
+            for symbol in _audio8_runtime_create _audio8_runtime_create_for_export_dtype _audio8_runtime_destroy _audio8_runtime_synthesize _audio8_audio_buffer_free _audio8_error_free _audio8_ark_asr_create _audio8_ark_asr_destroy _audio8_ark_asr_free_string _audio8_ark_asr_transcribe_pcm; do
               case "$symbols" in
                 *"$symbol"*) ;;
                 *) return 1 ;;
@@ -125,7 +125,7 @@ targets:
             archive="$1"
             [ -f "$archive" ] || return 1
             symbols="$(nm -gU "$archive" 2>/dev/null || true)"
-            for symbol in _audio8_runtime_create _audio8_runtime_destroy _audio8_runtime_synthesize _audio8_audio_buffer_free _audio8_error_free _audio8_ark_asr_create _audio8_ark_asr_destroy _audio8_ark_asr_free_string _audio8_ark_asr_transcribe_pcm; do
+            for symbol in _audio8_runtime_create _audio8_runtime_create_for_export_dtype _audio8_runtime_destroy _audio8_runtime_synthesize _audio8_audio_buffer_free _audio8_error_free _audio8_ark_asr_create _audio8_ark_asr_destroy _audio8_ark_asr_free_string _audio8_ark_asr_transcribe_pcm; do
               case "$symbols" in
                 *"$symbol"*) ;;
                 *) return 1 ;;

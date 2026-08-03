@@ -62,6 +62,7 @@ TEST_TARGETS=(
   audio8-ark-asr
   audio8-c-consumer-smoke
   audio8-ggml-smoke
+  audio8-quant-policy-smoke
   audio8-prompt-smoke
   audio8-metal-smoke
 )

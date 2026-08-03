@@ -27,7 +27,10 @@ enum Audio8TtsError: Error, LocalizedError {
 actor Audio8Tts: TtsEngine {
     private var runtime: OpaquePointer?
 
-    init(generatorURL: URL, codecURL: URL, tokenizerURL: URL) throws {
+    init(generatorURL: URL,
+         codecURL: URL,
+         tokenizerURL: URL,
+         expectedExportDtype: String) throws {
         let paths = [generatorURL, codecURL, tokenizerURL]
         let fileManager = FileManager.default
         for url in paths where !fileManager.fileExists(atPath: url.path) {
@@ -35,10 +38,13 @@ actor Audio8Tts: TtsEngine {
         }
 
         var nativeError = audio8_error()
-        let loaded = generatorURL.path.withCString { generator in
-            codecURL.path.withCString { codec in
-                tokenizerURL.path.withCString { tokenizer in
-                    audio8_runtime_create(generator, codec, tokenizer, &nativeError)
+        let loaded = expectedExportDtype.withCString { expected in
+            generatorURL.path.withCString { generator in
+                codecURL.path.withCString { codec in
+                    tokenizerURL.path.withCString { tokenizer in
+                        audio8_runtime_create_for_export_dtype(
+                            generator, codec, tokenizer, expected, &nativeError)
+                    }
                 }
             }
         }

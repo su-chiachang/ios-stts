@@ -84,6 +84,13 @@ enum Audio8TtsVariant: String, CaseIterable, Hashable, Sendable {
         case .q8_0Hybrid: "Q8_0 hybrid"
         }
     }
+
+    var exportDtype: String {
+        switch self {
+        case .f32Reference: "F32"
+        case .q8_0Hybrid: "Q8_0"
+        }
+    }
 }
 
 /// The app exposes Base 0.6B and 1.7B talkers; qwentts.cpp discovers the
@@ -112,6 +119,8 @@ enum ModelCatalog {
     static let audio8SttModelFilename = "ark-asr-0.6b-f16.gguf"
     private static let audio8GeneratorPrefix = "audio8-generator"
     private static let audio8CodecPrefix = "audio8-codec"
+    private static let audio8Q8GeneratorPrefix = "audio8-generator-Q8_0-hybrid"
+    private static let audio8Q8CodecPrefix = "audio8-codec-F32-Q8_0-hybrid"
     private static let audio8SttModelPrefix = "ark-asr-"
 
     static let sttAssets: [ModelAsset] = [
@@ -212,12 +221,13 @@ enum ModelCatalog {
             return Audio8ModelResources(generatorURL: urls[0], codecURL: urls[1], tokenizerURL: urls[2])
         }
 
-        // Preserve the user-provided F32 workflow: hand-built/reference
-        // exports may carry a version suffix, while downloaded release
-        // bundles use the exact catalog filenames above. Q8_0 is exact-only
-        // so a F32 pair can never be mistaken for the selected hybrid.
-        guard variant == .f32Reference,
-              let (generator, codec) = audio8ResourcePair(in: directory) else { return nil }
+        // Preserve the user-provided workflow: hand-built/reference exports
+        // may carry a version suffix, while downloaded release bundles use
+        // the exact catalog filenames above. The native loader still checks
+        // GGUF metadata against the selected export dtype before loadModels()
+        // accepts a discovered pair.
+        guard let (generator, codec) = audio8ResourcePair(in: directory,
+                                                          variant: variant) else { return nil }
         let tokenizer = directory.appendingPathComponent(audio8TokenizerFilename)
         guard FileManager.default.fileExists(atPath: tokenizer.path) else { return nil }
         return Audio8ModelResources(generatorURL: generator,
@@ -273,13 +283,24 @@ enum ModelCatalog {
             .sorted { $0.lastPathComponent < $1.lastPathComponent }
     }
 
-    private static func audio8ResourcePair(in directory: URL) -> (URL, URL)? {
+    private static func audio8ResourcePair(in directory: URL,
+                                           variant: Audio8TtsVariant) -> (URL, URL)? {
+        let generatorPrefix = variant == .q8_0Hybrid
+            ? audio8Q8GeneratorPrefix
+            : audio8GeneratorPrefix
+        let codecPrefix = variant == .q8_0Hybrid
+            ? audio8Q8CodecPrefix
+            : audio8CodecPrefix
         let generators = audio8ResourceCandidates(in: directory,
-                                                   exactName: audio8GeneratorFilename,
-                                                   prefix: audio8GeneratorPrefix)
+                                                   exactName: variant == .q8_0Hybrid
+                                                       ? audio8Q8GeneratorFilename
+                                                       : audio8GeneratorFilename,
+                                                   prefix: generatorPrefix)
         let codecs = audio8ResourceCandidates(in: directory,
-                                               exactName: audio8CodecFilename,
-                                               prefix: audio8CodecPrefix)
+                                               exactName: variant == .q8_0Hybrid
+                                                   ? audio8Q8CodecFilename
+                                                   : audio8CodecFilename,
+                                               prefix: codecPrefix)
         for generator in generators {
             let suffix = String(generator.deletingPathExtension().lastPathComponent.dropFirst(audio8GeneratorPrefix.count))
             if let codec = codecs.first(where: {

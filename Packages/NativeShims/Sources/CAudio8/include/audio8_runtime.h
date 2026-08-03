@@ -62,6 +62,17 @@ audio8_runtime * audio8_runtime_create(const char * generator_gguf,
                                         const char * tokenizer_json,
                                         audio8_error * error);
 
+// Create a runtime only when the Generator GGUF declares the requested
+// export dtype (for example, "F32" or "Q8_0"). This keeps a caller's
+// selected model variant authoritative even when user-provided filenames are
+// versioned or otherwise ambiguous. Pass NULL to preserve create() behavior.
+audio8_runtime * audio8_runtime_create_for_export_dtype(
+    const char * generator_gguf,
+    const char * codec_gguf,
+    const char * tokenizer_json,
+    const char * expected_export_dtype,
+    audio8_error * error);
+
 void audio8_runtime_destroy(audio8_runtime * runtime);
 
 // A runtime owns mutable execution state and telemetry. Serialize synthesis

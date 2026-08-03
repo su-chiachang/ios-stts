@@ -25,7 +25,7 @@ Status: slices 1–3 green at contract boundaries; runtime quality gate pending 
 ### Slice 3 — Downloaded TTS bundle
 
 - Red: `ModelBundle` package initially lacked verifier symbols, so size/hash/activation tests failed to compile.
-- Green: bundle verifier now checks file existence, regular-file type, size, SHA-256, explicit version, and staged activation marker; the download manager verifies before activation and `loadModels()` re-verifies the active App-managed bundle before selecting the chosen F32/Q8_0 resource set.
+- Green: bundle verifier now checks file existence, regular-file type, size, SHA-256, explicit version, and staged activation marker; the download manager verifies before activation and `loadModels()` re-verifies the active App-managed bundle before selecting the chosen F32/Q8_0 resource set. The native C ABI also checks the selected export dtype against GGUF metadata, covering user-provided version-suffixed filenames.
 
 ### Slice 4 — Runtime regression
 
@@ -37,8 +37,10 @@ Status: slices 1–3 green at contract boundaries; runtime quality gate pending 
 - `audio8-quant-policy-smoke`: native policy boundary, CPU and Metal green.
 - `tests/test_audio8_export.py`: 14 tests green (one optional numeric test skipped).
 - `Packages/ModelBundle`: 5 XCTest cases green, including versioned activation-marker ordering and post-activation tamper rejection.
-- CPU CTest: 5/5 green; Metal CTest: 6/6 green; App macOS arm64 build green.
+- CPU CTest: 5/5 green; Metal CTest: 6/6 green; macOS vendor ctest: 6/6
+  green; App macOS, iOS device, and iOS Simulator arm64 builds green.
 - App rejects Audio8 loading below the accepted 8 GiB physical-memory floor with an explicit error; it does not auto-switch variants.
+- `audio8_runtime_create_for_export_dtype()` is wired through the C consumer target and App wrapper; versioned Q8_0 user filenames are discoverable, and real F32/Q8_0 mismatch behavior remains a model-backed gate because no real checkpoint is present locally.
 
 ## Remaining red / release gate
 

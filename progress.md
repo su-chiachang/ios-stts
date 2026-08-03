@@ -11,7 +11,8 @@ Last updated: 2026-08-03
 
 ## Accepted quantization direction
 
-- Keep the public C ABI and Swift loading interface unchanged.
+- Keep the existing public C ABI and Swift loading interface compatible; add an
+  optional expected-export-dtype gate for variant-aware App loading.
 - First milestone: Q8_0 Generator with F32 Codec.
 - Quantize Generator attention/FFN matrices (`wqkv`, `wo`, `w1`, `w2`, `w3`); keep embeddings, codebooks, norms, biases, and `fast_output` at F32.
 - Produce quantized artifacts offline from the F32 reference.
@@ -27,15 +28,32 @@ Last updated: 2026-08-03
 - Added the offline `audio8-quantize <f32.gguf> <q8.gguf>` tool. It validates the F32 reference first, streams the GGUF, and never runs on-device.
 - Added the App `ModelBundle` package with streaming SHA-256/size/version verification, staging, completion-marker activation, and re-verification of the active App-managed bundle before `loadModels()`. `ModelDownloadManager` verifies before activation and resumes only files that already pass their own integrity check; `ConversationEngine.loadModels()` loads the selected F32 reference or Q8_0 hybrid resource names.
 - Added the accepted 8 GiB physical-memory compatibility gate for Audio8 TTS; low-memory devices report an explicit incompatibility instead of silently switching variants.
+- Added `audio8_runtime_create_for_export_dtype()` and passed the selected
+  F32/Q8_0 export dtype from `loadModels()` so user-provided, version-suffixed
+  filenames cannot override the selected variant; native GGUF metadata is the
+  authority.
+- Extended user-provided Q8_0 discovery to the versioned
+  `audio8-generator-Q8_0-hybrid*` / `audio8-codec-F32-Q8_0-hybrid*` pair while
+  retaining native metadata enforcement.
+- Fixed the macOS Audio8 vendor script to build its registered
+  `audio8-quant-policy-smoke` target before running ctest.
 - Added `docs/tdd/audio8-q8-hybrid-tdd.zh-TW.md` with red → green seams and current evidence.
 
 ## Verification
 
 - Native CPU CTest: 5/5 passed.
 - Native Metal CTest: 6/6 passed, including `audio8_metal_smoke`.
+- Native C ABI policy-selector smoke compiles through the C consumer target;
+  model-backed selector verification remains pending a real checkpoint.
 - Audio8 Python tests: 32 passed, 2 optional tests skipped.
 - ModelBundle XCTest: 5/5 passed.
-- STTS macOS arm64 and generic iOS arm64 Xcode builds: passed without code-signing.
+- macOS vendor ctest: 6/6 passed; device and simulator archives export the new
+  selector symbol.
+- STTS macOS arm64, generic iOS arm64, and generic iOS Simulator arm64 Xcode
+  builds: passed without code-signing.
+- Final rerun after the selector-harness and Q8 discovery fixes: CPU CTest
+  5/5, Metal CTest 6/6, Python 32 passed/2 skipped, and all three App
+  destinations remained green.
 
 ## Remaining release gates
 

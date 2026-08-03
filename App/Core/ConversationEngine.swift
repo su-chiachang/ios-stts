@@ -93,7 +93,8 @@ final class ConversationEngine {
                 }
                 tts = try Audio8Tts(generatorURL: resources.generatorURL,
                                     codecURL: resources.codecURL,
-                                    tokenizerURL: resources.tokenizerURL)
+                                    tokenizerURL: resources.tokenizerURL,
+                                    expectedExportDtype: settings.audio8TtsVariant.exportDtype)
             }
             state = .idle
         } catch {
