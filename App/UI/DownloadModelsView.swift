@@ -48,7 +48,8 @@ struct DownloadModelsView: View {
             Section("Audio8 text-to-speech") {
                 ForEach(ModelCatalog.audio8Assets) { asset in
                     ModelAssetRow(asset: asset, manager: manager,
-                                  isSelected: settings.ttsBackend == .audio8,
+                                  isSelected: settings.ttsBackend == .audio8
+                                      && asset.id == "tts.audio8.\(settings.audio8TtsVariant.rawValue)",
                                   onFinished: notifyChanged)
                 }
                 Text("Audio8 requires one generator GGUF, one codec GGUF, and tokenizer.json. Its download URLs are not configured until a versioned model release is selected.")
@@ -127,6 +128,8 @@ private struct ModelAssetRow: View {
                 Button("Download") { manager.start(asset) }
             case .downloading:
                 Button("Cancel") { manager.cancel(asset) }
+            case .verifying:
+                Button("Verifying") {}.disabled(true)
             case .completed:
                 Button("Re-download") { manager.start(asset) }
             }
@@ -149,6 +152,10 @@ private struct ModelAssetRow: View {
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
+        case .verifying:
+            Label("Verifying bundle…", systemImage: "checkmark.shield")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         case .completed:
             Label("Downloaded", systemImage: "checkmark.circle.fill")
                 .font(.caption)

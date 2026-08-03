@@ -55,6 +55,8 @@ settings:
 packages:
   NativeShims:
     path: Packages/NativeShims
+  ModelBundle:
+    path: Packages/ModelBundle
 
 targets:
   STTS:
@@ -71,6 +73,8 @@ targets:
         product: CQwenTTS
       - package: NativeShims
         product: CAudio8
+      - package: ModelBundle
+        product: ModelBundle
       - sdk: Accelerate.framework
       - sdk: Metal.framework
       - sdk: MetalKit.framework

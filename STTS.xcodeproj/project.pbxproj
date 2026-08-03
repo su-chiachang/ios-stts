@@ -24,6 +24,7 @@
 		5A7A35D75C029B7E41458A97 /* TranscriptSegmenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36BE7153E424B9F40D52C5F2 /* TranscriptSegmenter.swift */; };
 		5E08411ED74B235D07644B00 /* CQwenTTS in Frameworks */ = {isa = PBXBuildFile; productRef = 0E87EBA5A6684AB37D10EBA7 /* CQwenTTS */; };
 		5FD48DEFBC0365E1F9AB139B /* AudioFileInput.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7399E6E4410594811B61FE24 /* AudioFileInput.swift */; };
+		628CCBFF5A670CD19667B2A6 /* ModelBundle in Frameworks */ = {isa = PBXBuildFile; productRef = E3C7CAA06981B501C19B439D /* ModelBundle */; };
 		62C4E856AF5A2E0A2CEFF84B /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A893796C0A5D3D725D60F065 /* Metal.framework */; };
 		6D670AA20C9CB39B57B630C9 /* ModelDownloadManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07E13B98BA499EACD667C0EE /* ModelDownloadManager.swift */; };
 		72413F9CCE8B7535D7C15267 /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FC91B63BC6B01D4524AC3630 /* MetalKit.framework */; };
@@ -68,6 +69,7 @@
 		9283F0E6CE2A9A6E0303D629 /* Accelerate.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Accelerate.framework; path = System/Library/Frameworks/Accelerate.framework; sourceTree = SDKROOT; };
 		A42B0D01C33A472025C17A0F /* STTSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = STTSApp.swift; sourceTree = "<group>"; };
 		A893796C0A5D3D725D60F065 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
+		AA0F353EE07A8A59C212494F /* ModelBundle */ = {isa = PBXFileReference; lastKnownFileType = folder; name = ModelBundle; path = Packages/ModelBundle; sourceTree = SOURCE_ROOT; };
 		AA6B8448D19080817053D361 /* ConversationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationView.swift; sourceTree = "<group>"; };
 		AE2D2D7657A98CD8BE6EF9BC /* OpenAIChatClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAIChatClient.swift; sourceTree = "<group>"; };
 		B84C057F42527C6C039326B5 /* QwenTts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QwenTts.swift; sourceTree = "<group>"; };
@@ -93,6 +95,7 @@
 				1FE52BA02157AFDE4BBDA00E /* CParakeet in Frameworks */,
 				5E08411ED74B235D07644B00 /* CQwenTTS in Frameworks */,
 				DDCCA5244460485A45F70D27 /* CAudio8 in Frameworks */,
+				628CCBFF5A670CD19667B2A6 /* ModelBundle in Frameworks */,
 				4F4E357F8ABC3FD94063F888 /* Accelerate.framework in Frameworks */,
 				62C4E856AF5A2E0A2CEFF84B /* Metal.framework in Frameworks */,
 				72413F9CCE8B7535D7C15267 /* MetalKit.framework in Frameworks */,
@@ -169,6 +172,7 @@
 		50045EF8D9B264AD8A73B677 /* Packages */ = {
 			isa = PBXGroup;
 			children = (
+				AA0F353EE07A8A59C212494F /* ModelBundle */,
 				74134B85542325CA6ABDDB04 /* NativeShims */,
 			);
 			path = Packages;
@@ -248,6 +252,7 @@
 				F5CC40963F85E1E537062BE6 /* CParakeet */,
 				0E87EBA5A6684AB37D10EBA7 /* CQwenTTS */,
 				B0BDA9F60F6760BFE7060CE0 /* CAudio8 */,
+				E3C7CAA06981B501C19B439D /* ModelBundle */,
 			);
 			productName = STTS;
 			productReference = E24F882EC35A5A2B5CB54E7D /* STTS.app */;
@@ -278,6 +283,7 @@
 			mainGroup = 53ED8F4A24E000F254A5F906;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				4D7D9467CE842A7F0B48C5E2 /* XCLocalSwiftPackageReference "Packages/ModelBundle" */,
 				5EBDE9DA8D0ED57C01854D26 /* XCLocalSwiftPackageReference "Packages/NativeShims" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -660,6 +666,10 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
+		4D7D9467CE842A7F0B48C5E2 /* XCLocalSwiftPackageReference "Packages/ModelBundle" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/ModelBundle;
+		};
 		5EBDE9DA8D0ED57C01854D26 /* XCLocalSwiftPackageReference "Packages/NativeShims" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Packages/NativeShims;
@@ -674,6 +684,10 @@
 		B0BDA9F60F6760BFE7060CE0 /* CAudio8 */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = CAudio8;
+		};
+		E3C7CAA06981B501C19B439D /* ModelBundle */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ModelBundle;
 		};
 		F5CC40963F85E1E537062BE6 /* CParakeet */ = {
 			isa = XCSwiftPackageProductDependency;

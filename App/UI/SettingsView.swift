@@ -71,6 +71,16 @@ struct SettingsView: View {
                         }
                     }
                 } else if settings.ttsBackend == .audio8 {
+                    Picker("Audio8 TTS variant", selection: Binding(
+                        get: { settings.audio8TtsVariant },
+                        set: {
+                            settings.audio8TtsVariant = $0
+                            reloadModels()
+                        })) {
+                        ForEach(Audio8TtsVariant.allCases, id: \.self) { variant in
+                            Text(variant.displayName).tag(variant)
+                        }
+                    }
                     LabeledContent("Audio8 model dir") {
                         HStack {
                             Text(audio8DirPath.isEmpty ? "Not set" : audio8DirPath)

@@ -1,8 +1,10 @@
 import Foundation
+import ModelBundle
 
 enum ModelDownloadState: Equatable {
     case notStarted
     case downloading(fraction: Double?, receivedBytes: Int64, totalBytes: Int64?)
+    case verifying
     case completed
     case failed(String)
     case cancelled
@@ -55,6 +57,7 @@ final class ModelDownloadManager: NSObject {
 
     private struct Job {
         let asset: ModelAsset
+        let stagingDirectory: URL
         var fileIndex = 0
         var writtenByFile: [Int64]
         var expectedByFile: [Int64?]
@@ -67,6 +70,10 @@ final class ModelDownloadManager: NSObject {
     }
 
     func isDownloaded(_ asset: ModelAsset) -> Bool {
+        if asset.requiresIntegrity {
+            return ModelBundleVerifier.hasActivationMarker(asset.bundleSpecification,
+                                                            at: asset.destinationDirectory)
+        }
         let fm = FileManager.default
         return asset.files.allSatisfy {
             fm.fileExists(atPath: asset.destinationDirectory.appendingPathComponent($0.destinationFilename).path)
@@ -79,8 +86,12 @@ final class ModelDownloadManager: NSObject {
             states[asset.id] = .failed(asset.configurationError ?? "Model download is not configured.")
             return
         }
-        try? FileManager.default.createDirectory(at: asset.destinationDirectory, withIntermediateDirectories: true)
+        let stagingDirectory = asset.destinationDirectory
+            .appendingPathComponent(".staging", isDirectory: true)
+            .appendingPathComponent(asset.id, isDirectory: true)
+        try? FileManager.default.createDirectory(at: stagingDirectory, withIntermediateDirectories: true)
         jobs[asset.id] = Job(asset: asset,
+                              stagingDirectory: stagingDirectory,
                               writtenByFile: Array(repeating: 0, count: asset.files.count),
                               expectedByFile: Array(repeating: nil, count: asset.files.count))
         states[asset.id] = .downloading(fraction: 0, receivedBytes: 0, totalBytes: nil)
@@ -97,8 +108,7 @@ final class ModelDownloadManager: NSObject {
     private func launchCurrentFile(assetID: String) {
         guard var job = jobs[assetID] else { return }
         guard job.fileIndex < job.asset.files.count else {
-            jobs[assetID] = nil
-            states[assetID] = .completed
+            beginVerification(assetID: assetID)
             return
         }
         let file = job.asset.files[job.fileIndex]
@@ -106,9 +116,11 @@ final class ModelDownloadManager: NSObject {
             fail(assetID: job.asset.id, error: ModelDownloadError.unconfigured(job.asset.title))
             return
         }
-        let dest = job.asset.destinationDirectory.appendingPathComponent(file.destinationFilename)
-        // Same skip-if-exists behavior as fetch-models.sh's fetch().
-        if (try? dest.checkResourceIsReachable()) == true {
+        let dest = job.stagingDirectory.appendingPathComponent(file.destinationFilename)
+        let canResume = assetFileIsComplete(file,
+                                            for: job.asset,
+                                            at: job.stagingDirectory)
+        if canResume {
             job.fileIndex += 1
             jobs[assetID] = job
             launchCurrentFile(assetID: assetID)
@@ -119,6 +131,21 @@ final class ModelDownloadManager: NSObject {
         jobs[assetID] = job
         registry.register(taskID: task.taskIdentifier, assetID: assetID, destination: dest)
         task.resume()
+    }
+
+    private func assetFileIsComplete(_ file: ModelFile,
+                                     for asset: ModelAsset,
+                                     at stagingDirectory: URL) -> Bool {
+        let url = stagingDirectory.appendingPathComponent(file.destinationFilename)
+        guard (try? url.checkResourceIsReachable()) == true else { return false }
+        guard asset.requiresIntegrity else { return true }
+        let specification = ModelBundleSpecification(
+            identifier: asset.id,
+            requiresIntegrity: true,
+            files: [ModelBundleFile(filename: file.destinationFilename,
+                                     expectedBytes: file.expectedBytes,
+                                     sha256: file.sha256)])
+        return (try? ModelBundleVerifier.verify(specification, at: stagingDirectory)) != nil
     }
 
     private func updateProgress(assetID: String, fileIndex: Int, written: Int64, expected: Int64?) {
@@ -141,6 +168,37 @@ final class ModelDownloadManager: NSObject {
         launchCurrentFile(assetID: assetID)
     }
 
+    private func beginVerification(assetID: String) {
+        guard let job = jobs[assetID] else { return }
+        states[assetID] = .verifying
+        let specification = job.asset.bundleSpecification
+        let stagingDirectory = job.stagingDirectory
+        Task { [weak self] in
+            let errorMessage: String? = await Task.detached(priority: .utility) {
+                do {
+                    try ModelBundleVerifier.verify(specification, at: stagingDirectory)
+                    return nil
+                } catch {
+                    return error.localizedDescription
+                }
+            }.value
+            guard let self else { return }
+            if let errorMessage {
+                self.fail(assetID: assetID, message: errorMessage)
+                return
+            }
+            do {
+                try ModelBundleVerifier.activate(specification,
+                                                 from: stagingDirectory,
+                                                 to: job.asset.destinationDirectory)
+                self.jobs[assetID] = nil
+                self.states[assetID] = .completed
+            } catch {
+                self.fail(assetID: assetID, error: error)
+            }
+        }
+    }
+
     private func fail(assetID: String, error: Error) {
         jobs[assetID] = nil
         let nsError = error as NSError
@@ -149,6 +207,11 @@ final class ModelDownloadManager: NSObject {
         } else {
             states[assetID] = .failed(error.localizedDescription)
         }
+    }
+
+    private func fail(assetID: String, message: String) {
+        jobs[assetID] = nil
+        states[assetID] = .failed(message)
     }
 }
 

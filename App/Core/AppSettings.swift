@@ -1,4 +1,5 @@
 import Foundation
+import ModelBundle
 
 /// User-configurable settings, persisted to UserDefaults. Model directories
 /// are chosen via NSOpenPanel (sandboxed) and kept as security-scoped
@@ -43,6 +44,9 @@ final class AppSettings {
     var audio8ReferenceTranscript: String {
         didSet { UserDefaults.standard.set(audio8ReferenceTranscript, forKey: Keys.audio8ReferenceTranscript) }
     }
+    var audio8TtsVariant: Audio8TtsVariant {
+        didSet { UserDefaults.standard.set(audio8TtsVariant.rawValue, forKey: Keys.audio8TtsVariant) }
+    }
 
     /// When on, typed text is read aloud verbatim in the custom voice instead
     /// of being sent to the assistant LLM (the "speak as me" path).
@@ -80,6 +84,7 @@ final class AppSettings {
         static let qwenModelVariant = "qwenModelVariant"
         static let qwenModelQuantization = "qwenModelQuantization"
         static let audio8ReferenceTranscript = "audio8ReferenceTranscript"
+        static let audio8TtsVariant = "audio8TtsVariant"
         static let readAloudMode = "readAloudMode"
         static let customVoiceName = "customVoiceName"
         static let customVoiceFilename = "customVoiceFilename"
@@ -105,6 +110,7 @@ final class AppSettings {
         qwenModelVariant = d.string(forKey: Keys.qwenModelVariant).flatMap(QwenTtsVariant.init(rawValue:)) ?? .base06b
         qwenModelQuantization = d.string(forKey: Keys.qwenModelQuantization).flatMap(QwenTtsQuantization.init(rawValue:)) ?? .q4_k_m
         audio8ReferenceTranscript = d.string(forKey: Keys.audio8ReferenceTranscript) ?? ""
+        audio8TtsVariant = d.string(forKey: Keys.audio8TtsVariant).flatMap(Audio8TtsVariant.init(rawValue:)) ?? .f32Reference
         readAloudMode = d.bool(forKey: Keys.readAloudMode)
         customVoiceName = d.string(forKey: Keys.customVoiceName) ?? ""
         customVoiceFilename = d.string(forKey: Keys.customVoiceFilename) ?? ""
@@ -184,7 +190,22 @@ final class AppSettings {
     }
 
     func audio8ModelResources() -> Audio8ModelResources? {
-        ModelCatalog.audio8Resources(in: audio8ModelDirURL())
+        let directory = audio8ModelDirURL()
+        guard let resources = ModelCatalog.audio8Resources(for: audio8TtsVariant, in: directory) else {
+            return nil
+        }
+        // App-managed release bundles must retain their activation marker and
+        // pass the full manifest/hash check immediately before native loading.
+        // A user-selected directory is a deliberate manual-import path and is
+        // still handed to Audio8Tts, whose native loader validates GGUF.
+        if directory == ModelCatalog.audio8Directory,
+           let asset = ModelCatalog.audio8Asset(for: audio8TtsVariant),
+           asset.requiresIntegrity {
+            guard ModelBundleVerifier.isActivated(asset.bundleSpecification, at: directory) else {
+                return nil
+            }
+        }
+        return resources
     }
 
     func audio8SttModelURL() -> URL? {
@@ -193,12 +214,30 @@ final class AppSettings {
 
     func audio8ModelReadinessMessage() -> String {
         let directory = audio8ModelDirURL()
-        if ModelCatalog.audio8Resources(in: directory) != nil {
-            return "Audio8 model resources are ready."
+        if let memoryMessage = audio8MemoryCompatibilityMessage() {
+            return memoryMessage
         }
-        let readiness = ModelCatalog.audio8ReadinessMessage(in: directory)
-        guard !ModelCatalog.audio8Assets[0].isDownloadConfigured else { return readiness }
-        return readiness + " In-app Audio8 download URLs are not configured; choose a directory containing the three resources."
+        if ModelCatalog.audio8Resources(for: audio8TtsVariant, in: directory) != nil {
+            if audio8ModelResources() != nil {
+                return "Audio8 \(audio8TtsVariant.displayName) resources are ready."
+            }
+            return "Audio8 \(audio8TtsVariant.displayName) files are present but the active bundle manifest/version/integrity check has not passed."
+        }
+        let readiness = ModelCatalog.audio8ReadinessMessage(for: audio8TtsVariant, in: directory)
+        guard let asset = ModelCatalog.audio8Asset(for: audio8TtsVariant),
+              !asset.isDownloadConfigured else { return readiness }
+        return readiness + " In-app Audio8 release URLs and integrity metadata are not configured yet."
+    }
+
+    func audio8MemoryCompatibilityMessage() -> String? {
+        let available = ProcessInfo.processInfo.physicalMemory
+        let minimum = Audio8TtsVariant.minimumSupportedPhysicalMemoryBytes
+        guard available >= minimum else {
+            let formatter = ByteCountFormatter()
+            formatter.countStyle = .memory
+            return "Audio8 \(audio8TtsVariant.displayName) requires at least \(formatter.string(fromByteCount: Int64(minimum))) unified memory; this device reports \(formatter.string(fromByteCount: Int64(available)))."
+        }
+        return nil
     }
 
     func audio8SttModelReadinessMessage() -> String {

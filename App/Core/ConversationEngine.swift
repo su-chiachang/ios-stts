@@ -83,6 +83,10 @@ final class ConversationEngine {
                                   variant: settings.qwenModelVariant,
                                   quantization: settings.qwenModelQuantization)
             case .audio8:
+                if let memoryMessage = settings.audio8MemoryCompatibilityMessage() {
+                    state = .error(memoryMessage)
+                    return
+                }
                 guard let resources = settings.audio8ModelResources() else {
                     state = .error(settings.audio8ModelReadinessMessage())
                     return
