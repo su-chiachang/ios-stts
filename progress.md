@@ -7,6 +7,11 @@ Last updated: 2026-08-03
 - Verified Audio8 native archives and Swift integration for macOS arm64 and iOS arm64.
 - Defined Audio8 integration as model download plus `loadModels()`, covering independently selectable Audio8 TTS and ARK-ASR STT.
 - Selected the baseline models: Audio8 TTS Preview 0.6B and ARK-ASR 0.6B.
+- Revalidated the official Audio8 TTS source release and found the pinned
+  checkpoint locally: `Audio8/Audio8-TTS-Preview-0.6b`, revision
+  `f9612f13a0ab40facf3d050fc908b9e6db05c2be`. The source files are
+  `model.safetensors` (1,202,342,528 bytes, BF16), `codec.pth`
+  (1,349,857,559 bytes, FP32), and `tokenizer.json` (12,217,872 bytes).
 - Recorded the quantization design in [ADR-0001](docs/adr/0001-q8-0-hybrid-tts-quantization.md).
 
 ## Accepted quantization direction
@@ -54,6 +59,9 @@ Last updated: 2026-08-03
 - Final rerun after the selector-harness and Q8 discovery fixes: CPU CTest
   5/5, Metal CTest 6/6, Python 32 passed/2 skipped, and all three App
   destinations remained green.
+- Real-checkpoint export/quantization rerun is now in progress from the pinned
+  source snapshot; generated artifact checksums and model-backed CTest results
+  will be recorded after completion.
 
 ## Remaining release gates
 
