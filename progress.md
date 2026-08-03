@@ -43,6 +43,9 @@ Last updated: 2026-08-04
 - Fixed the macOS Audio8 vendor script to build its registered
   `audio8-quant-policy-smoke` target before running ctest.
 - Added `docs/tdd/audio8-q8-hybrid-tdd.zh-TW.md` with red → green seams and current evidence.
+- Added the native release-manifest handoff: local F32/Q8_0/Codec/tokenizer
+  artifacts can now produce deterministic bytes/SHA-256 records, canonical App
+  destination filenames, source revision, and optional HTTPS release URLs.
 
 ## Verification
 
@@ -53,7 +56,7 @@ Last updated: 2026-08-04
   - Q8_0-hybrid Generator: 1,178,352,288 bytes,
     SHA-256 `96fe2ed44114ecb6d8c8a0439a28052f0ec4895c06858dc0bb6b5dd1ca878512`.
   - F32 Codec: 1,349,626,432 bytes,
-    SHA-256 `8bc2374d16a66d0b8cde4c8c0085173faeb3f9bca05347b93a601fb4998393d2`.
+    SHA-256 `8bc2374d16a66b0d8cde4c8c0085173faeb3f9bca05347b93a601fb4998393d2`.
   - Source tokenizer: 12,217,872 bytes,
     SHA-256 `f24e08099d45a8adf3f52f5f0b03276e433bb9d689bb15fcbcc48ce58744588b`.
 - Native real-checkpoint CPU CTest: 14/14 passed, including F32/Q8_0 model
@@ -73,16 +76,22 @@ Last updated: 2026-08-04
   (~3.72 GiB) for F32 and 2,737,537,024 bytes (~2.55 GiB) for Q8_0. The App's
   accepted 8 GiB physical-memory gate remains conservative pending longer
   corpus measurements.
-- Audio8 Python tests remain 32 passed, 2 optional tests skipped;
-  ModelBundle XCTest remains 5/5; macOS vendor ctest remains 6/6; STTS macOS,
+- Native Python suite: 43/43 passed with no skips; ModelBundle XCTest remains
+  5/5; macOS vendor ctest remains 6/6; STTS macOS,
   generic iOS device, and generic iOS Simulator arm64 builds remain green.
+- Release-manifest TDD is green: 11 focused tests and the full native Python
+  suite are 43/43 passed. The builder also verifies the actual Generator/Codec
+  GGUF metadata and pinned source revision. The real local audit manifest
+  reproduces all four artifact hashes and is marked `publishable=false` because
+  no hosting URL was supplied.
 
 ## Remaining release gates
 
-- The generated GGUF artifacts are currently local only. No trusted public
-  GGUF host/release manifest or upload credential is available, so the App
-  intentionally leaves Audio8 download URLs, byte sizes, and SHA-256 values
-  unset. The official source checkpoint is not itself a GGUF runtime bundle.
+- The release-manifest schema/generator is ready, but the generated GGUF
+  artifacts are currently local only. No trusted public GGUF host/release
+  manifest or upload credential is available, so the App intentionally leaves
+  Audio8 download URLs, byte sizes, and SHA-256 values unset. The official
+  source checkpoint is not itself a GGUF runtime bundle.
 - The new Q8_0 parity gate is a fixed one-prompt quality smoke, not yet the
   full golden corpus. Longer-corpus audio quality, sustained peak memory, and
   Metal p95 RTF on a real Apple GPU are still required before publishing.

@@ -1,6 +1,6 @@
 # Audio8 Q8_0 Hybrid TDD
 
-Status: slices 1–5 green on the pinned checkpoint; release-quality corpus and
+Status: slices 1–6 green on the pinned checkpoint; release-quality corpus and
 Metal-device gates remain pending
 
 本文件是 Audio8 TTS 量化實作的 red → green 記錄。測試只觀察已同意的邊界：native Generator 的 GGUF model contract、離線 quantized artifact contract，以及 App 可載入的完整 TTS model bundle。
@@ -48,10 +48,21 @@ Metal-device gates remain pending
   optional Codec waveform drift. The real checkpoint passed the fixed-prompt
   smoke with one acoustic-code mismatch and waveform RMSE `0.0458928`.
 
+### Slice 6 — Versioned release-manifest handoff
+
+- Red: the manifest test initially imported the not-yet-existing
+  `audio8_release_manifest` module and failed before any artifact could be
+  treated as downloadable.
+- Green: the native tool now hashes the local F32/Q8_0 Generator, shared F32
+  Codec, and tokenizer, records canonical App filenames and pinned source
+  revision, validates both bundle variants, and only marks a manifest
+  publishable when every file has an HTTPS release URL.
+
 ## Evidence
 
 - `audio8-quant-policy-smoke`: native policy boundary, CPU and Metal green.
-- `tests/test_audio8_export.py`: 14 tests green (one optional numeric test skipped).
+- Native Python suite: 43/43 tests green with no skips, including exporter and
+  release-manifest contracts.
 - `Packages/ModelBundle`: 5 XCTest cases green, including versioned activation-marker ordering and post-activation tamper rejection.
 - Real-checkpoint CPU CTest: 14/14 green, including Generator/Codec/pipeline
   parity, runtime smoke, quantization parity, and model-backed C ABI dtype
@@ -68,6 +79,10 @@ Metal-device gates remain pending
 - Local artifact evidence: F32 Generator 2,404,653,632 bytes; Q8_0 Generator
   1,178,352,288 bytes; F32 Codec 1,349,626,432 bytes. Runtime-smoke maximum
   RSS was ~3.72 GiB for F32 and ~2.55 GiB for Q8_0.
+- Release-manifest tests: 11 focused tests green; full native Python suite:
+  43/43 green. The builder reads the actual Generator/Codec GGUF metadata and
+  rejects a non-pinned source revision. The real local audit manifest is valid
+  and explicitly `publishable=false` until hosting is supplied.
 
 ## Remaining red / release gate
 
