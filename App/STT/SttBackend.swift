@@ -2,14 +2,12 @@ import Foundation
 
 enum SttBackend: String, CaseIterable, Identifiable, Sendable {
     case parakeet
-    case audio8
 
     var id: String { rawValue }
 
     var displayName: String {
         switch self {
         case .parakeet: "Parakeet"
-        case .audio8: "Audio8 ARK-ASR"
         }
     }
 }

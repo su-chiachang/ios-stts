@@ -46,7 +46,6 @@
 		DDCCA5244460485A45F70D27 /* CAudio8 in Frameworks */ = {isa = PBXBuildFile; productRef = B0BDA9F60F6760BFE7060CE0 /* CAudio8 */; };
 		DFCB74B76DEDB0A6B1AACB0E /* SourceMediaPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AA57699541365E25920DDA8 /* SourceMediaPlayer.swift */; };
 		EA70D656620C8BB22A3BC1AF /* EndpointDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE0B25B4B24E56038095D13D /* EndpointDetector.swift */; };
-		EAE3E9F4960A6C8F904E6EF2 /* Audio8Stt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E27B832EA550E66FD676532 /* Audio8Stt.swift */; };
 		EB4B10340C9DF6072D8906E7 /* ConversationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4D2071A40A847AAC1412D33 /* ConversationEngine.swift */; };
 		F0723CF7C0D8E7D044BE3BE0 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFD52BD5D2BD91B97886D2FF /* AppSettings.swift */; };
 		F767CB8A8A03472B1A9F1052 /* CoreML.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7A73D66467B6DD9599F2411B /* CoreML.framework */; platformFilters = (macos, ); };
@@ -71,7 +70,6 @@
 		30E2F92202284B9A5C477037 /* SttBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SttBackend.swift; sourceTree = "<group>"; };
 		3269A59068E75771E6844A78 /* ReferenceAudioImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReferenceAudioImporter.swift; sourceTree = "<group>"; };
 		36BE7153E424B9F40D52C5F2 /* TranscriptSegmenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptSegmenter.swift; sourceTree = "<group>"; };
-		3E27B832EA550E66FD676532 /* Audio8Stt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Audio8Stt.swift; sourceTree = "<group>"; };
 		3E8F755F79115D9D4D9E0B1B /* AudioPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPlayer.swift; sourceTree = "<group>"; };
 		3FEAF6FA21FC687D4DF5D7FD /* VoiceClipRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceClipRecorder.swift; sourceTree = "<group>"; };
 		45EB14C6E593D09487F38568 /* LanguageDetect.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageDetect.swift; sourceTree = "<group>"; };
@@ -241,7 +239,6 @@
 		E65BD66FF5E0A3E42599E2FE /* STT */ = {
 			isa = PBXGroup;
 			children = (
-				3E27B832EA550E66FD676532 /* Audio8Stt.swift */,
 				EE0B25B4B24E56038095D13D /* EndpointDetector.swift */,
 				DC640AB2F54F38B0DDCEE60D /* ParakeetStt.swift */,
 				30E2F92202284B9A5C477037 /* SttBackend.swift */,
@@ -441,7 +438,6 @@
 			files = (
 				F0723CF7C0D8E7D044BE3BE0 /* AppSettings.swift in Sources */,
 				28FC22CF5A316C83C2890109 /* Audio8ReleaseManifest.swift in Sources */,
-				EAE3E9F4960A6C8F904E6EF2 /* Audio8Stt.swift in Sources */,
 				87C5E6EA8087DD24FF23892F /* Audio8Tts.swift in Sources */,
 				5FD48DEFBC0365E1F9AB139B /* AudioFileInput.swift in Sources */,
 				1441363D242C380FEF2A43BD /* AudioInputManager.swift in Sources */,

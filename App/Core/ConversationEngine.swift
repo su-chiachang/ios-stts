@@ -106,11 +106,6 @@ final class ConversationEngine {
                     "Parakeet STT is not ready. Pick a parakeet .gguf file in Settings or download a Parakeet asset.")
             }
             return try ParakeetStt(modelPath: parakeetURL.path)
-        case .audio8:
-            guard let audio8URL = settings.audio8SttModelURL() else {
-                throw ConversationModelLoadError.stt(settings.audio8SttModelReadinessMessage())
-            }
-            return try Audio8Stt(modelURL: audio8URL)
         }
     }
 

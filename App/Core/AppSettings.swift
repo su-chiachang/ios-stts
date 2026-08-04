@@ -208,10 +208,6 @@ final class AppSettings {
         return resources
     }
 
-    func audio8SttModelURL() -> URL? {
-        ModelCatalog.audio8SttModelURL(in: audio8ModelDirURL())
-    }
-
     func audio8ModelReadinessMessage() -> String {
         let directory = audio8ModelDirURL()
         if let memoryMessage = audio8MemoryCompatibilityMessage() {
@@ -238,12 +234,6 @@ final class AppSettings {
             return "Audio8 \(audio8TtsVariant.displayName) requires at least \(formatter.string(fromByteCount: Int64(minimum))) unified memory; this device reports \(formatter.string(fromByteCount: Int64(available)))."
         }
         return nil
-    }
-
-    func audio8SttModelReadinessMessage() -> String {
-        let readiness = ModelCatalog.audio8SttReadinessMessage(in: audio8ModelDirURL())
-        guard !ModelCatalog.audio8SttAssets[0].isDownloadConfigured else { return readiness }
-        return readiness + " In-app Audio8 ARK-ASR download URL is not configured; add a converted GGUF to that directory."
     }
 
     private func downloadedParakeetModelURL() -> URL? {

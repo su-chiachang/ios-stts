@@ -116,12 +116,10 @@ enum ModelCatalog {
     static let audio8TokenizerFilename = "tokenizer.json"
     static let audio8Q8GeneratorFilename = "audio8-generator-Q8_0-hybrid-v1.gguf"
     static let audio8Q8CodecFilename = "audio8-codec-F32-Q8_0-hybrid-v1.gguf"
-    static let audio8SttModelFilename = "ark-asr-0.6b-f16.gguf"
     private static let audio8GeneratorPrefix = "audio8-generator"
     private static let audio8CodecPrefix = "audio8-codec"
     private static let audio8Q8GeneratorPrefix = "audio8-generator-Q8_0-hybrid"
     private static let audio8Q8CodecPrefix = "audio8-codec-F32-Q8_0-hybrid"
-    private static let audio8SttModelPrefix = "ark-asr-"
 
     static let sttAssets: [ModelAsset] = [
         ModelAsset(
@@ -132,19 +130,6 @@ enum ModelCatalog {
                 remoteURL: URL(string: "\(hf)/mudler/parakeet-cpp-gguf/resolve/main/\(sttModelName)")!,
                 destinationFilename: sttModelName)],
             destinationDirectory: parakeetDirectory),
-    ]
-
-    /// Audio8's ARK-ASR checkpoint is converted from the official
-    /// Audio8/ARK-ASR release with audio8.cpp's exporter. The project does
-    /// not assume a hosted conversion URL; users can place the GGUF in the
-    /// selected Audio8 directory.
-    static let audio8SttAssets: [ModelAsset] = [
-        ModelAsset(
-            id: "stt.audio8.ark-asr",
-            title: "Audio8 ARK-ASR (0.6B)",
-            subtitle: "ark-asr-0.6b-f16.gguf",
-            files: [ModelFile(remoteURL: nil, destinationFilename: audio8SttModelFilename)],
-            destinationDirectory: audio8Directory),
     ]
 
     private static func ttsAsset(_ variant: QwenTtsVariant,
@@ -256,20 +241,6 @@ enum ModelCatalog {
             return "Audio8 \(variant.displayName) resources are incomplete; missing: \(missing.joined(separator: ", "))."
         }
         return "Audio8 \(variant.displayName) resources are unavailable."
-    }
-
-    static func audio8SttModelURL(in directory: URL) -> URL? {
-        let candidates = audio8ResourceCandidates(in: directory,
-                                                   exactName: audio8SttModelFilename,
-                                                   prefix: audio8SttModelPrefix)
-        return candidates.first
-    }
-
-    static func audio8SttReadinessMessage(in directory: URL) -> String {
-        if audio8SttModelURL(in: directory) != nil {
-            return "Audio8 ARK-ASR model is ready."
-        }
-        return "Audio8 ARK-ASR model is missing; add ark-asr-*.gguf to the Audio8 model directory."
     }
 
     private static func audio8ResourceCandidates(in directory: URL,

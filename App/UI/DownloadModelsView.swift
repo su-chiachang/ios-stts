@@ -2,8 +2,8 @@ import SwiftUI
 
 /// Lets the user fetch the STT and TTS models straight into the app's
 /// sandbox container, in lieu of running scripts/fetch-models.sh by hand.
-/// Each row is one downloadable asset (an STT file, a Qwen talker/codec pair,
-/// or the atomic Audio8 generator/codec/tokenizer group).
+/// Each row is one downloadable asset (a Parakeet STT file, a Qwen
+/// talker/codec pair, or the atomic Audio8 generator/codec/tokenizer group).
 struct DownloadModelsView: View {
     var settings = AppSettings.shared
     var manager = ModelDownloadManager.shared
@@ -19,18 +19,6 @@ struct DownloadModelsView: View {
                                   isSelected: settings.sttBackend == .parakeet,
                                   onFinished: notifyChanged)
                 }
-            }
-
-            Section("Audio8 speech-to-text") {
-                ForEach(ModelCatalog.audio8SttAssets) { asset in
-                    ModelAssetRow(asset: asset, manager: manager,
-                                  isSelected: settings.sttBackend == .audio8,
-                                  onFinished: notifyChanged)
-                }
-                Text("Audio8 ARK-ASR requires a converted ark-asr-*.gguf checkpoint from audio8.cpp. Its download URL is not configured in this app.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Section("Qwen text-to-speech") {
