@@ -1,6 +1,32 @@
 # Progress
 
-Last updated: 2026-08-04
+Last updated: 2026-08-05
+
+## 2026-08-05 — Audio8 STT (ARK-ASR) reverted; Audio8 is TTS-only
+
+- Removed Audio8 ARK-ASR STT from the app entirely (issues #9, #10, #11).
+  Parakeet is now the app's only STT backend; Audio8 remains TTS-only,
+  unchanged. `docs/specs/audio8-stt-integration-spec.zh-TW-en.md` is marked
+  reverted/removed at the top and kept as historical record.
+- Reason: the native ARK-ASR build permanently required an external
+  CrispASR source checkout (`third_party/CrispASR`) that this repo doesn't
+  vendor or control. Rather than carry that external dependency indefinitely
+  — or wait on upstream `audio8.cpp` to vendor the ARK-ASR kernel itself —
+  the STT feature was dropped instead.
+- App layer: deleted `App/STT/Audio8Stt.swift`; `SttBackend` now only has
+  `.parakeet`; removed the Audio8-STT-specific members from `AppSettings`
+  and `ModelCatalog`; removed the corresponding Settings/Download Models UI,
+  including the now-single-option STT backend picker.
+- Native build: `scripts/build-audio8-macos.sh` and
+  `scripts/build-audio8-ios.sh` no longer clone CrispASR or build the
+  `audio8-ark-asr` target; deleted `audio8_ark_asr_shim.cpp`,
+  `audio8_ark_asr_c_smoke.c`, and `audio8_ark_asr_capi.h`. Rebuilt native
+  archives verified via `nm` to contain only the Audio8 TTS C ABI
+  (`_audio8_runtime_*`, `_audio8_audio_buffer_*`, `_audio8_error_free`) —
+  no `_audio8_ark_asr_*` symbols remain. macOS arm64 and iOS Simulator
+  arm64 app builds pass against the rebuilt archives.
+- Removed the local `third_party/CrispASR` checkout; it was already
+  gitignored and unreferenced by any script.
 
 ## 2026-08-04 — App model-loading TDD red phase
 
