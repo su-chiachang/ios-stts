@@ -13,6 +13,8 @@ Last updated: 2026-08-04
   `model.safetensors` (1,202,342,528 bytes, BF16), `codec.pth`
   (1,349,857,559 bytes, FP32), and `tokenizer.json` (12,217,872 bytes).
 - Recorded the quantization design in [ADR-0001](docs/adr/0001-q8-0-hybrid-tts-quantization.md).
+- Recorded the requested F32/BF16/Q8_0/Q4_K_M bundle-size and runtime-memory
+  comparison in [Audio8 TTS model sizing](docs/model-sizing/audio8-tts-model-sizing.zh-TW.md).
 
 ## Accepted quantization direction
 
@@ -90,13 +92,13 @@ Last updated: 2026-08-04
 - Native Python suite: 43/43 passed with no skips; ModelBundle XCTest remains
   5/5; macOS vendor ctest remains 6/6; STTS macOS,
   generic iOS device, and generic iOS Simulator arm64 builds remain green.
-- App `STTSTests` XCTest: 11/11 passed on arm64 macOS, covering versioned F32 and
+- App `STTSTests` XCTest: 12/12 passed on arm64 macOS, covering versioned F32 and
   Q8_0 discovery, missing-tokenizer and mismatched-pair rejection, ambiguous
   versioned-pair rejection, and non-regular-file rejection for Generator and
   tokenizer. Its red phases reproduced the pre-fix Q8_0 discovery failure,
   arbitrary version choice, and directory acceptance. Release-manifest tests
-  cover publishable mapping, non-publishable safety, dtype drift, and the
-  bundled unavailable fallback.
+  cover publishable mapping, non-publishable safety, dtype drift,
+  release-base containment, and the bundled unavailable fallback.
 - Release-manifest TDD is green: 11 focused tests and the full native Python
   suite are 43/43 passed. The builder also verifies the actual Generator/Codec
   GGUF metadata and pinned source revision. The real local audit manifest

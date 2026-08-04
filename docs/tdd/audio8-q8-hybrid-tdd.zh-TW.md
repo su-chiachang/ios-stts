@@ -86,12 +86,15 @@ Metal-device gates remain pending
 - Red: App tests referenced the native release-manifest handoff before the App
   had a parser or a safe mapping into `ModelAsset`, so the new manifest tests
   could not compile.
+- Red: a fixture pointed one Q8_0 file outside `release_base_url`; the first
+  parser accepted it instead of preserving the native release-manifest trust
+  boundary.
 - Green: `Audio8ReleaseManifest` now validates the pinned schema, model ID,
   source revision, exact F32/Q8_0 bundle/file roles, HTTPS URLs, byte sizes,
-  and SHA-256 values, then maps both atomic three-file bundles into the existing
-  `ModelDownloadManager` contract. A bundled local-audit manifest remains
-  unavailable until every file has a publishable URL; no unverified download
-  is enabled.
+  release-base containment, and SHA-256 values, then maps both atomic
+  three-file bundles into the existing `ModelDownloadManager` contract. A
+  bundled local-audit manifest remains unavailable until every file has a
+  publishable URL; no unverified download is enabled.
 
 ## Evidence
 
@@ -111,13 +114,14 @@ Metal-device gates remain pending
 - `audio8_runtime_create_for_export_dtype()` is wired through the C consumer
   target and App wrapper; versioned Q8_0 user filenames are discoverable, and
   real F32/Q8_0 mismatch behavior is now model-backed.
-- App macOS XCTest: `STTSTests` 11/11 passed on arm64 macOS, covering versioned
+- App macOS XCTest: `STTSTests` 12/12 passed on arm64 macOS, covering versioned
   F32 and Q8_0 Generator/Codec/tokenizer discovery, missing-tokenizer and
   mismatched-pair rejection, ambiguous-pair rejection, and non-regular-file
   rejection for Generator and tokenizer. The red phases reproduced the
   pre-fix `nil` resource pair, arbitrary version selection, and directory
   acceptance. The release-manifest tests also cover publishable mapping,
-  non-publishable safety, dtype drift, and the bundled unavailable fallback.
+  non-publishable safety, dtype drift, release-base containment, and the
+  bundled unavailable fallback.
 - Local artifact evidence: F32 Generator 2,404,653,632 bytes; Q8_0 Generator
   1,178,352,288 bytes; F32 Codec 1,349,626,432 bytes. Runtime-smoke maximum
   RSS was ~3.72 GiB for F32 and ~2.55 GiB for Q8_0.

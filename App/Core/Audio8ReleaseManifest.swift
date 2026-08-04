@@ -186,12 +186,15 @@ struct Audio8ReleaseManifest: Sendable {
             }
             for (file, expectedFile) in zip(bundle.files, expected.files) {
                 guard file.role == expectedFile.role,
+                      !file.artifactFilename.isEmpty,
                       file.destinationFilename == expectedFile.destination,
                       file.bytes > 0,
                       file.sha256.count == 64,
                       file.sha256 == file.sha256.lowercased(),
                       file.sha256.allSatisfy({ $0.isHexDigit }),
-                      file.remoteURL != nil || !document.publishable else {
+                      isValidRemoteURL(file,
+                                       releaseBaseURL: document.releaseBaseURL,
+                                       publishable: document.publishable) else {
                     throw Audio8ReleaseManifestError.invalidBundle(expected.id)
                 }
             }
@@ -207,5 +210,30 @@ struct Audio8ReleaseManifest: Sendable {
         } else if document.releaseBaseURL != nil {
             throw Audio8ReleaseManifestError.invalidBundle("release_base_url")
         }
+    }
+
+    private func isValidRemoteURL(_ file: ReleaseFile,
+                                  releaseBaseURL: String?,
+                                  publishable: Bool) -> Bool {
+        guard let remoteURLString = file.remoteURLString else {
+            return !publishable
+        }
+        guard let releaseBaseURL,
+              let baseURL = URL(string: releaseBaseURL),
+              baseURL.scheme?.lowercased() == "https",
+              baseURL.host != nil,
+              baseURL.query == nil,
+              baseURL.fragment == nil,
+              let remoteURL = file.remoteURL,
+              remoteURL.query == nil,
+              remoteURL.fragment == nil,
+              !remoteURL.path.isEmpty,
+              !remoteURL.path.hasSuffix("/") else {
+            return false
+        }
+        let normalizedBase = releaseBaseURL.hasSuffix("/")
+            ? String(releaseBaseURL.dropLast())
+            : releaseBaseURL
+        return remoteURLString.hasPrefix(normalizedBase + "/")
     }
 }
