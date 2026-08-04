@@ -78,6 +78,10 @@ Last updated: 2026-08-04
   generation, finite 44.1 kHz PCM validation, repeated Q8_0 determinism, and
   relative output-length checking. Native commit `4fa6056` is pushed to
   `audio8.cpp` `origin/main`.
+- Added an explicit `--max-new-tokens`/CMake override for a bounded structural
+  sweep of the entire corpus. Native commit `b0e22f9` is pushed to
+  `audio8.cpp` `origin/main`; the release-quality manifest caps remain
+  unchanged when the override is omitted.
 
 ## Verification
 
@@ -108,7 +112,7 @@ Last updated: 2026-08-04
   (~3.72 GiB) for F32 and 2,737,537,024 bytes (~2.55 GiB) for Q8_0. The App's
   accepted 8 GiB physical-memory gate remains conservative pending longer
   corpus measurements.
-- Native Python suite: 43/43 passed with no skips; ModelBundle XCTest remains
+- Native Python suite: 46/46 passed with no skips; ModelBundle XCTest remains
   5/5; macOS vendor ctest remains 6/6; STTS macOS,
   generic iOS device, and generic iOS Simulator arm64 builds remain green.
 - App `STTSTests` XCTest: 13/13 passed on arm64 macOS, covering versioned F32 and
@@ -124,7 +128,7 @@ Last updated: 2026-08-04
   transport: the Audio8 three-file bundle reaches `completed` only after
   ModelBundle verification and activation-marker publication.
 - Release-manifest TDD is green: 11 focused tests and the full native Python
-  suite are 43/43 passed. The builder also verifies the actual Generator/Codec
+  suite are 46/46 passed. The builder also verifies the actual Generator/Codec
   GGUF metadata and pinned source revision. The real local audit manifest
   reproduces all four artifact hashes and is marked `publishable=false` because
   no hosting URL was supplied.
@@ -133,9 +137,10 @@ Last updated: 2026-08-04
   command. No model bytes are copied into the App repository.
 - Native corpus adapter TDD is green: 3/3 tests cover stable manifest-to-TSV
   rendering, native command wiring, and tab/newline rejection. The configured
-  real CTest tracer bullet passed 1/1; a six-case real run also exited 0. The
-  first observed case produced F32 18 frames versus deterministic Q8_0 27
-  frames, relative length delta `0.333333`, and waveform RMSE `0.218656`.
+  real CTest tracer bullet passed 1/1, and the capped full-corpus adapter run
+  passed 18/18 across English/Chinese short/medium/long cases. Every capped
+  case produced deterministic Q8_0 output with zero decoded-length delta; the
+  largest observed capped waveform RMSE was `0.0279019`.
 
 ## Remaining release gates
 
@@ -147,9 +152,9 @@ Last updated: 2026-08-04
   bundle; replace this manifest at release packaging time with the native
   tool's publishable JSON once hosting is authorized.
 - The Q8_0 path now has both the fixed-prompt diagnostic and an opt-in
-  multi-case structural/determinism gate, but the complete 18-case run and
-  calibrated waveform RMSE thresholds are still pending. Sustained peak
-  memory and Metal p95 RTF on a real Apple GPU are also required before
-  publishing.
+  multi-case structural/determinism gate; its fast cap=1 sweep is green for
+  18/18 cases. The uncapped manifest run (`32`, `64`, and `128` tokens) and
+  calibrated waveform RMSE thresholds are still pending. Sustained peak memory
+  and Metal p95 RTF on a real Apple GPU are also required before publishing.
 - F32 remains the reference/default; Q8_0 hybrid is loadable and selectable;
   BF16 and Q4_K_M are not claimed as native Audio8 deployment artifacts.

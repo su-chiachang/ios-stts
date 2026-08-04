@@ -1,6 +1,6 @@
 # Audio8 Q8_0 Hybrid TDD
 
-Status: slices 1–12 green on the pinned checkpoint; release-quality corpus and
+Status: slices 1–13 green on the pinned checkpoint; release-quality corpus and
 Metal-device gates remain pending
 
 本文件是 Audio8 TTS 量化實作的 red → green 記錄。測試只觀察已同意的邊界：native Generator 的 GGUF model contract、離線 quantized artifact contract，以及 App 可載入的完整 TTS model bundle。
@@ -140,10 +140,23 @@ Metal-device gates remain pending
   PCM, repeated Q8_0 determinism, and relative decoded length. It reports
   waveform RMSE but leaves the release threshold opt-in until calibration.
 
+### Slice 13 — Full-corpus structural sweep token cap
+
+- Red: the pinned corpus intentionally contains `max_new_tokens` values of
+  `32`, `64`, and `128`; running every medium/long case uncapped on the CPU
+  makes the fast gate dominated by native graph-build cost. The adapter test
+  first rejected the new `--max-new-tokens` option as an unknown argument.
+- Green: the Python adapter, native runner, and CMake CTest wiring now accept
+  an explicit positive token cap. With `max_new_tokens=1`, all 18 English and
+  Chinese short/medium/long cases passed tokenization, no-reference prompt
+  construction, F32/Q8_0 generation, finite PCM validation, deterministic Q8_0
+  re-run, and length checks. This cap is a structural sweep, not an audio
+  quality claim; uncapped manifest values remain the release-quality path.
+
 ## Evidence
 
 - `audio8-quant-policy-smoke`: native policy boundary, CPU and Metal green.
-- Native Python suite: 43/43 tests green with no skips, including exporter and
+- Native Python suite: 46/46 tests green with no skips, including exporter and
   release-manifest contracts.
 - `Packages/ModelBundle`: 5 XCTest cases green, including versioned activation-marker ordering and post-activation tamper rejection.
 - Real-checkpoint CPU CTest: 14/14 green, including Generator/Codec/pipeline
@@ -181,9 +194,9 @@ Metal-device gates remain pending
   forced `--require-release-url`, missing URL rejection, and native command
   delegation.
 - Native corpus adapter tests: 3/3 green. The configured real CTest corpus
-  tracer bullet passed 1/1; a six-case real run also exited successfully. The
-  first case observed F32 18 frames, Q8_0 27 deterministic frames, decoded
-  length ratio `0.333333`, and waveform RMSE `0.218656`.
+  tracer bullet passed 1/1, and the capped full-corpus structural sweep passed
+  18/18. Every capped case had zero decoded-length delta and deterministic
+  Q8_0 output; the largest observed capped waveform RMSE was `0.0279019`.
 
 ## Remaining red / release gate
 
@@ -193,9 +206,9 @@ values unset rather than inventing release assets. A user-provided local model
 directory can still be selected and loaded through `loadModels()`.
 
 The fixed-prompt parity smoke remains a finite/shape/semantic diagnostic, while
-the new corpus gate currently proves structural validity and Q8_0 repeatability
-only. The complete 18-case run, calibrated waveform thresholds, sustained peak
-memory, and Metal p95 RTF on a real Apple GPU remain release gates. BF16 source
-input and Q4_K_M remain outside the native Audio8 deployment contract; the
-accepted deployment pair is F32 reference or Q8_0-hybrid Generator plus F32
-Codec.
+the capped corpus sweep proves structural validity and Q8_0 repeatability only.
+The uncapped 18-case run at manifest values `32`, `64`, and `128`, calibrated
+waveform thresholds, sustained peak memory, and Metal p95 RTF on a real Apple
+GPU remain release gates. BF16 source input and Q4_K_M remain outside the
+native Audio8 deployment contract; the accepted deployment pair is F32
+reference or Q8_0-hybrid Generator plus F32 Codec.
