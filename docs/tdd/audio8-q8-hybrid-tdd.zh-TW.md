@@ -1,6 +1,6 @@
 # Audio8 Q8_0 Hybrid TDD
 
-Status: slices 1–10 green on the pinned checkpoint; release-quality corpus and
+Status: slices 1–11 green on the pinned checkpoint; release-quality corpus and
 Metal-device gates remain pending
 
 本文件是 Audio8 TTS 量化實作的 red → green 記錄。測試只觀察已同意的邊界：native Generator 的 GGUF model contract、離線 quantized artifact contract，以及 App 可載入的完整 TTS model bundle。
@@ -116,6 +116,18 @@ Metal-device gates remain pending
   `notStarted` and can be downloaded again instead of being passed to
   `loadModels()`.
 
+### Slice 11 — Publishable release packaging entry point
+
+- Red: the App repository had a native manifest generator and a safe local
+  audit manifest, but no release command that made the hosting requirement
+  impossible to overlook; a wrapper test first imported the missing command
+  module.
+- Green: `scripts/audio8_release_package.py` now requires an explicit HTTPS
+  `--release-base-url`, checks that the sibling `audio8.cpp` release tool
+  exists, and always delegates with `--require-release-url`. The wrapper only
+  passes artifact paths and writes the native manifest output; it never copies
+  model bytes into the App repository.
+
 ## Evidence
 
 - `audio8-quant-policy-smoke`: native policy boundary, CPU and Metal green.
@@ -153,6 +165,9 @@ Metal-device gates remain pending
   43/43 green. The builder reads the actual Generator/Codec GGUF metadata and
   rejects a non-pinned source revision. The real local audit manifest is valid
   and explicitly `publishable=false` until hosting is supplied.
+- Release-package wrapper tests: 4/4 green; they cover required HTTPS hosting,
+  forced `--require-release-url`, missing URL rejection, and native command
+  delegation.
 
 ## Remaining red / release gate
 

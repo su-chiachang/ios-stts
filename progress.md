@@ -66,6 +66,11 @@ Last updated: 2026-08-04
 - Added the native release-manifest handoff: local F32/Q8_0/Codec/tokenizer
   artifacts can now produce deterministic bytes/SHA-256 records, canonical App
   destination filenames, source revision, and optional HTTPS release URLs.
+- Added `scripts/audio8_release_package.py` as the App-repository release
+  entry point. It requires an explicit HTTPS `--release-base-url`, delegates
+  to the native generator with `--require-release-url`, and refuses to run if
+  the native release tool is missing; this prevents a local-audit manifest
+  from being mistaken for a downloadable App release.
 
 ## Verification
 
@@ -106,6 +111,8 @@ Last updated: 2026-08-04
   arbitrary version choice, and directory acceptance. Release-manifest tests
   cover publishable mapping, non-publishable safety, dtype drift,
   release-base containment, and the bundled unavailable fallback.
+- The dedicated `STTSTests` scheme remains green at 13/13 on arm64 macOS, and
+  the generic iOS `STTS` target builds successfully with signing disabled.
 - The App download integration test passes with an injected URLSession
   transport: the Audio8 three-file bundle reaches `completed` only after
   ModelBundle verification and activation-marker publication.
@@ -114,6 +121,9 @@ Last updated: 2026-08-04
   GGUF metadata and pinned source revision. The real local audit manifest
   reproduces all four artifact hashes and is marked `publishable=false` because
   no hosting URL was supplied.
+- Release-package wrapper TDD is green: 4/4 tests cover the forced native
+  publishability flag, required release URL, HTTPS validation, and delegation
+  command. No model bytes are copied into the App repository.
 
 ## Remaining release gates
 

@@ -4,6 +4,7 @@ vendor/
 models/
 .build/
 .swiftpm/
+__pycache__/
 xcuserdata/
 .DS_Store
 .codebase-memory/
