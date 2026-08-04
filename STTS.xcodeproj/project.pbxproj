@@ -29,6 +29,7 @@
 		6D670AA20C9CB39B57B630C9 /* ModelDownloadManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07E13B98BA499EACD667C0EE /* ModelDownloadManager.swift */; };
 		72413F9CCE8B7535D7C15267 /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FC91B63BC6B01D4524AC3630 /* MetalKit.framework */; };
 		87C5E6EA8087DD24FF23892F /* Audio8Tts.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFA341859255E8D66C9D5A9D /* Audio8Tts.swift */; };
+		A230FE0298E2DE2E31653B15 /* ModelCatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6249E153C3FABA02244A4DFB /* ModelCatalogTests.swift */; };
 		A666F2CFE775D83AF3E32BFF /* SentenceChunker.swift in Sources */ = {isa = PBXBuildFile; fileRef = C23DE73B788924DF1EC67A9C /* SentenceChunker.swift */; };
 		B6D7592F5652D21E37C375C0 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84FEBD4B5611CECB465387C1 /* SettingsView.swift */; };
 		C228FE56D4D5D15B537C7A09 /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 54015CE032053C6A56560C85 /* AVFoundation.framework */; };
@@ -47,6 +48,16 @@
 		F772E74BC3A8AB9B28C577E5 /* TtsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED75ECEDF32D44313C7A2EA5 /* TtsView.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		FD8B1887830150FEEED87208 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 65AAE637460D64AF1E4367F3 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E1C867299251B55FDF15AA1C;
+			remoteInfo = STTS;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		0262B8F74259172FCD62E601 /* ModelCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelCatalog.swift; sourceTree = "<group>"; };
 		07E13B98BA499EACD667C0EE /* ModelDownloadManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelDownloadManager.swift; sourceTree = "<group>"; };
@@ -62,10 +73,12 @@
 		53655B48CD7D4C4B131AF347 /* SpeechPipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechPipeline.swift; sourceTree = "<group>"; };
 		54015CE032053C6A56560C85 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
 		60EF1F23059238736690A6B5 /* TtsBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TtsBackend.swift; sourceTree = "<group>"; };
+		6249E153C3FABA02244A4DFB /* ModelCatalogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelCatalogTests.swift; sourceTree = "<group>"; };
 		7399E6E4410594811B61FE24 /* AudioFileInput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioFileInput.swift; sourceTree = "<group>"; };
 		74134B85542325CA6ABDDB04 /* NativeShims */ = {isa = PBXFileReference; lastKnownFileType = folder; name = NativeShims; path = Packages/NativeShims; sourceTree = SOURCE_ROOT; };
 		7A73D66467B6DD9599F2411B /* CoreML.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreML.framework; path = System/Library/Frameworks/CoreML.framework; sourceTree = SDKROOT; };
 		84FEBD4B5611CECB465387C1 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		9276F59453065581A0421C5E /* STTSTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = STTSTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9283F0E6CE2A9A6E0303D629 /* Accelerate.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Accelerate.framework; path = System/Library/Frameworks/Accelerate.framework; sourceTree = SDKROOT; };
 		A42B0D01C33A472025C17A0F /* STTSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = STTSApp.swift; sourceTree = "<group>"; };
 		A893796C0A5D3D725D60F065 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
@@ -111,6 +124,7 @@
 			isa = PBXGroup;
 			children = (
 				E24F882EC35A5A2B5CB54E7D /* STTS.app */,
+				9276F59453065581A0421C5E /* STTSTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -182,6 +196,7 @@
 			isa = PBXGroup;
 			children = (
 				3A657C8961192AA165142FB5 /* App */,
+				F6E6B5262673340350BB557E /* AppTests */,
 				50045EF8D9B264AD8A73B677 /* Packages */,
 				11B5E42613BBA5B0A4DC6E84 /* Frameworks */,
 				10002ADC22DA1CA856DF0E76 /* Products */,
@@ -230,9 +245,35 @@
 			path = LLM;
 			sourceTree = "<group>";
 		};
+		F6E6B5262673340350BB557E /* AppTests */ = {
+			isa = PBXGroup;
+			children = (
+				6249E153C3FABA02244A4DFB /* ModelCatalogTests.swift */,
+			);
+			path = AppTests;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		D02BDD4B70800EB6A5465D6E /* STTSTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DE0A1729C347DC0DD8069038 /* Build configuration list for PBXNativeTarget "STTSTests" */;
+			buildPhases = (
+				B274D8B52595592C219F3480 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				EBBB9F1B3157D319A689B6DD /* PBXTargetDependency */,
+			);
+			name = STTSTests;
+			packageProductDependencies = (
+			);
+			productName = STTSTests;
+			productReference = 9276F59453065581A0421C5E /* STTSTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		E1C867299251B55FDF15AA1C /* STTS */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 25F8BD9F723968F53FF90016 /* Build configuration list for PBXNativeTarget "STTS" */;
@@ -267,6 +308,10 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					D02BDD4B70800EB6A5465D6E = {
+						DevelopmentTeam = FPY8L862BK;
+						ProvisioningStyle = Automatic;
+					};
 					E1C867299251B55FDF15AA1C = {
 						DevelopmentTeam = FPY8L862BK;
 						ProvisioningStyle = Automatic;
@@ -292,6 +337,7 @@
 			projectRoot = "";
 			targets = (
 				E1C867299251B55FDF15AA1C /* STTS */,
+				D02BDD4B70800EB6A5465D6E /* STTSTests */,
 			);
 		};
 /* End PBXProject section */
@@ -390,7 +436,23 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B274D8B52595592C219F3480 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A230FE0298E2DE2E31653B15 /* ModelCatalogTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		EBBB9F1B3157D319A689B6DD /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E1C867299251B55FDF15AA1C /* STTS */;
+			targetProxy = FD8B1887830150FEEED87208 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		235229A4631CAF9A4CAE479A /* Release */ = {
@@ -409,6 +471,22 @@
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		67B191FF0B8AA5C6B9DE49BF /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.jiajing.STTSTests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/STTS.app/Contents/MacOS/STTS";
 			};
 			name = Release;
 		};
@@ -642,6 +720,22 @@
 			};
 			name = Debug;
 		};
+		F81DB593784638602EBF6FA7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.jiajing.STTSTests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/STTS.app/Contents/MacOS/STTS";
+			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -650,6 +744,15 @@
 			buildConfigurations = (
 				EE17A5CFBE4229E59BC01F70 /* Debug */,
 				235229A4631CAF9A4CAE479A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		DE0A1729C347DC0DD8069038 /* Build configuration list for PBXNativeTarget "STTSTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F81DB593784638602EBF6FA7 /* Debug */,
+				67B191FF0B8AA5C6B9DE49BF /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

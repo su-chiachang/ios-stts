@@ -40,6 +40,12 @@ Last updated: 2026-08-04
 - Extended user-provided Q8_0 discovery to the versioned
   `audio8-generator-Q8_0-hybrid*` / `audio8-codec-F32-Q8_0-hybrid*` pair while
   retaining native metadata enforcement.
+- Added the App XCTest target and fixed variant-specific suffix matching so a
+  user-provided versioned Q8_0 Generator/Codec pair is discovered atomically
+  with `tokenizer.json` before `loadModels()`.
+- Tightened Audio8 resource discovery to accept only regular files for exact
+  and versioned Generator/Codec/tokenizer bundles, rejecting directories with
+  `.gguf`- or `tokenizer.json`-looking names.
 - Fixed the macOS Audio8 vendor script to build its registered
   `audio8-quant-policy-smoke` target before running ctest.
 - Added `docs/tdd/audio8-q8-hybrid-tdd.zh-TW.md` with red → green seams and current evidence.
@@ -79,6 +85,11 @@ Last updated: 2026-08-04
 - Native Python suite: 43/43 passed with no skips; ModelBundle XCTest remains
   5/5; macOS vendor ctest remains 6/6; STTS macOS,
   generic iOS device, and generic iOS Simulator arm64 builds remain green.
+- App `STTSTests` XCTest: 7/7 passed on arm64 macOS, covering versioned F32 and
+  Q8_0 discovery, missing-tokenizer and mismatched-pair rejection, ambiguous
+  versioned-pair rejection, and non-regular-file rejection for Generator and
+  tokenizer. Its red phases reproduced the pre-fix Q8_0 discovery failure,
+  arbitrary version choice, and directory acceptance.
 - Release-manifest TDD is green: 11 focused tests and the full native Python
   suite are 43/43 passed. The builder also verifies the actual Generator/Codec
   GGUF metadata and pinned source revision. The real local audit manifest

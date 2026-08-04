@@ -217,7 +217,7 @@ enum ModelCatalog {
                                 in directory: URL) -> Audio8ModelResources? {
         guard let asset = audio8Asset(for: variant), asset.files.count == 3 else { return nil }
         let urls = asset.files.map { directory.appendingPathComponent($0.destinationFilename) }
-        if urls.allSatisfy({ FileManager.default.fileExists(atPath: $0.path) }) {
+        if urls.allSatisfy({ isRegularFile($0) }) {
             return Audio8ModelResources(generatorURL: urls[0], codecURL: urls[1], tokenizerURL: urls[2])
         }
 
@@ -229,7 +229,7 @@ enum ModelCatalog {
         guard let (generator, codec) = audio8ResourcePair(in: directory,
                                                           variant: variant) else { return nil }
         let tokenizer = directory.appendingPathComponent(audio8TokenizerFilename)
-        guard FileManager.default.fileExists(atPath: tokenizer.path) else { return nil }
+        guard isRegularFile(tokenizer) else { return nil }
         return Audio8ModelResources(generatorURL: generator,
                                     codecURL: codec,
                                     tokenizerURL: tokenizer)
@@ -271,16 +271,27 @@ enum ModelCatalog {
     private static func audio8ResourceCandidates(in directory: URL,
                                                  exactName: String,
                                                  prefix: String) -> [URL] {
-        let fileManager = FileManager.default
         let exact = directory.appendingPathComponent(exactName)
-        if fileManager.fileExists(atPath: exact.path) { return [exact] }
-        guard let candidates = try? fileManager.contentsOfDirectory(
+        if isRegularFile(exact) { return [exact] }
+        guard let candidates = try? FileManager.default.contentsOfDirectory(
             at: directory,
             includingPropertiesForKeys: [.isRegularFileKey],
             options: [.skipsHiddenFiles]) else { return [] }
         return candidates
-            .filter { $0.pathExtension.lowercased() == "gguf" && $0.deletingPathExtension().lastPathComponent.hasPrefix(prefix) }
+            .filter {
+                $0.pathExtension.lowercased() == "gguf" &&
+                isRegularFile($0) &&
+                $0.deletingPathExtension().lastPathComponent.hasPrefix(prefix)
+            }
             .sorted { $0.lastPathComponent < $1.lastPathComponent }
+    }
+
+    private static func isRegularFile(_ url: URL) -> Bool {
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
+              let type = attributes[.type] as? FileAttributeType else {
+            return false
+        }
+        return type == .typeRegular
     }
 
     private static func audio8ResourcePair(in directory: URL,
@@ -301,15 +312,17 @@ enum ModelCatalog {
                                                    ? audio8Q8CodecFilename
                                                    : audio8CodecFilename,
                                                prefix: codecPrefix)
+        var pairs: [(generator: URL, codec: URL)] = []
         for generator in generators {
-            let suffix = String(generator.deletingPathExtension().lastPathComponent.dropFirst(audio8GeneratorPrefix.count))
-            if let codec = codecs.first(where: {
-                let codecSuffix = String($0.deletingPathExtension().lastPathComponent.dropFirst(audio8CodecPrefix.count))
+            let suffix = String(generator.deletingPathExtension().lastPathComponent.dropFirst(generatorPrefix.count))
+            let matches = codecs.filter {
+                let codecSuffix = String($0.deletingPathExtension().lastPathComponent.dropFirst(codecPrefix.count))
                 return codecSuffix == suffix
-            }) {
-                return (generator, codec)
+            }
+            if matches.count == 1, let codec = matches.first {
+                pairs.append((generator, codec))
             }
         }
-        return nil
+        return pairs.count == 1 ? pairs[0] : nil
     }
 }

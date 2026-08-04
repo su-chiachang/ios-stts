@@ -1,6 +1,6 @@
 # Audio8 Q8_0 Hybrid TDD
 
-Status: slices 1–6 green on the pinned checkpoint; release-quality corpus and
+Status: slices 1–7 green on the pinned checkpoint; release-quality corpus and
 Metal-device gates remain pending
 
 本文件是 Audio8 TTS 量化實作的 red → green 記錄。測試只觀察已同意的邊界：native Generator 的 GGUF model contract、離線 quantized artifact contract，以及 App 可載入的完整 TTS model bundle。
@@ -10,6 +10,7 @@ Metal-device gates remain pending
 1. `GeneratorModel`：F32 與 Q8_0 artifact 的 metadata、tensor names、shape、type 必須被嚴格驗證。
 2. Offline artifact：F32 reference 產生的 Q8_0 hybrid GGUF 必須保留 manifest，且只有 Generator attention/FFN matrix weights 使用 Q8_0。
 3. TTS model bundle：Generator、Codec、tokenizer 必須以同一 variant、版本與 SHA-256 完整驗證後才可交給 `loadModels()`。
+4. `ModelCatalog.audio8Resources`：使用者提供的 versioned F32/Q8_0 Generator/Codec 檔名必須被配成同一 variant，並保留 tokenizer。
 
 ## Red → green slices
 
@@ -58,6 +59,28 @@ Metal-device gates remain pending
   revision, validates both bundle variants, and only marks a manifest
   publishable when every file has an HTTPS release URL.
 
+### Slice 7 — Versioned user-provided Q8_0 resource discovery
+
+- Red: the new macOS App XCTest created versioned filename fixtures for the
+  Q8_0 pair
+  `audio8-generator-Q8_0-hybrid-f9612f13.gguf` and
+  `audio8-codec-F32-Q8_0-hybrid-f9612f13.gguf`; `audio8Resources(for: .q8_0Hybrid,
+  in:)` returned `nil` for all three resources because the two variant prefixes
+  were stripped with the generic prefixes.
+- Red: a second fixture with two valid Q8_0 version suffixes showed that the
+  previous implementation silently selected the lexicographically first pair
+  instead of rejecting an ambiguous manual-import directory.
+- Red: a directory named like the canonical Q8_0 Generator `.gguf` file was
+  accepted because the exact-name path only checked `fileExists`.
+- Red: a versioned Generator/Codec pair with a `tokenizer.json` directory was
+  accepted because the fallback tokenizer path only checked `fileExists`.
+- Green: `ModelCatalog.audio8ResourcePair` now strips the selected variant's
+  Generator and Codec prefixes before comparing the source suffix, and returns
+  no pair unless exactly one versioned pair matches. F32 and Q8_0 discovery,
+  tokenizer retention, mismatched-pair rejection, and ambiguous-pair rejection
+  pass `STTSTests` 7/7; exact and discovered paths now require regular files
+  for Generator, Codec, and tokenizer.
+
 ## Evidence
 
 - `audio8-quant-policy-smoke`: native policy boundary, CPU and Metal green.
@@ -76,6 +99,12 @@ Metal-device gates remain pending
 - `audio8_runtime_create_for_export_dtype()` is wired through the C consumer
   target and App wrapper; versioned Q8_0 user filenames are discoverable, and
   real F32/Q8_0 mismatch behavior is now model-backed.
+- App macOS XCTest: `STTSTests` 7/7 passed on arm64 macOS, covering versioned
+  F32 and Q8_0 Generator/Codec/tokenizer discovery, missing-tokenizer and
+  mismatched-pair rejection, ambiguous-pair rejection, and non-regular-file
+  rejection for Generator and tokenizer. The red phases reproduced the
+  pre-fix `nil` resource pair, arbitrary version selection, and directory
+  acceptance.
 - Local artifact evidence: F32 Generator 2,404,653,632 bytes; Q8_0 Generator
   1,178,352,288 bytes; F32 Codec 1,349,626,432 bytes. Runtime-smoke maximum
   RSS was ~3.72 GiB for F32 and ~2.55 GiB for Q8_0.

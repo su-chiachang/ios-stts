@@ -10,6 +10,7 @@ configs:
 settings:
   base:
     SWIFT_VERSION: 5.0
+    SDKROOT: auto
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
     INFOPLIST_KEY_NSMicrophoneUsageDescription: "STTS needs microphone access to listen to your voice."
@@ -57,6 +58,21 @@ packages:
     path: Packages/NativeShims
   ModelBundle:
     path: Packages/ModelBundle
+
+schemes:
+  STTS:
+    build:
+      targets:
+        STTS: all
+  STTSTests:
+    build:
+      targets:
+        STTS: all
+        STTSTests: test
+    test:
+      gatherCoverageData: false
+      targets:
+        - name: STTSTests
 
 targets:
   STTS:
@@ -174,3 +190,15 @@ targets:
               codesign --force --sign "$EXPANDED_CODE_SIGN_IDENTITY" --timestamp=none "$dest/$(basename "$lib")" || true
             done
           fi
+
+  STTSTests:
+    type: bundle.unit-test
+    platform: macOS
+    settings:
+      base:
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/STTS.app/Contents/MacOS/STTS"
+    sources:
+      - path: AppTests
+    dependencies:
+      - target: STTS
