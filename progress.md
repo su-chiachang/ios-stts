@@ -57,6 +57,9 @@ Last updated: 2026-08-04
   `ModelDownloadManager` and an App integration test that downloads a
   publishable three-file Audio8 bundle through the delegate path, verifies
   size/SHA-256, and asserts atomic activation only after all files pass.
+- Tightened downloaded-state reporting so a completed Audio8 bundle is only
+  considered installed while `ModelBundleVerifier.isActivated` still passes;
+  tampering now returns the asset to a re-downloadable state.
 - Fixed the macOS Audio8 vendor script to build its registered
   `audio8-quant-policy-smoke` target before running ctest.
 - Added `docs/tdd/audio8-q8-hybrid-tdd.zh-TW.md` with red → green seams and current evidence.

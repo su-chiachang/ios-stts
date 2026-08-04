@@ -74,13 +74,19 @@ final class ModelDownloadManager: NSObject {
     }
 
     func state(for asset: ModelAsset) -> ModelDownloadState {
-        states[asset.id] ?? (isDownloaded(asset) ? .completed : .notStarted)
+        if let state = states[asset.id] {
+            if case .completed = state, !isDownloaded(asset) {
+                return .notStarted
+            }
+            return state
+        }
+        return isDownloaded(asset) ? .completed : .notStarted
     }
 
     func isDownloaded(_ asset: ModelAsset) -> Bool {
         if asset.requiresIntegrity {
-            return ModelBundleVerifier.hasActivationMarker(asset.bundleSpecification,
-                                                            at: asset.destinationDirectory)
+            return ModelBundleVerifier.isActivated(asset.bundleSpecification,
+                                                   at: asset.destinationDirectory)
         }
         let fm = FileManager.default
         return asset.files.allSatisfy {

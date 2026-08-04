@@ -49,6 +49,10 @@ final class ModelDownloadManagerTests: XCTestCase {
                 try Data(contentsOf: root.appendingPathComponent(filename)),
                 payloads[filename])
         }
+
+        try Data("tampered".utf8)
+            .write(to: root.appendingPathComponent("generator.gguf"))
+        XCTAssertFalse(manager.isDownloaded(asset))
     }
 
     private func waitUntilCompleted(_ asset: ModelAsset,

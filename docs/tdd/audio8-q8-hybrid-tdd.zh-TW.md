@@ -1,6 +1,6 @@
 # Audio8 Q8_0 Hybrid TDD
 
-Status: slices 1–9 green on the pinned checkpoint; release-quality corpus and
+Status: slices 1–10 green on the pinned checkpoint; release-quality corpus and
 Metal-device gates remain pending
 
 本文件是 Audio8 TTS 量化實作的 red → green 記錄。測試只觀察已同意的邊界：native Generator 的 GGUF model contract、離線 quantized artifact contract，以及 App 可載入的完整 TTS model bundle。
@@ -106,6 +106,15 @@ Metal-device gates remain pending
   verifies that all three files download, pass the ModelBundle size/SHA checks,
   and become visible only after the activation marker is written. Production
   keeps the default URLSession configuration.
+
+### Slice 10 — Integrity-aware completed state
+
+- Red: after a completed bundle was tampered with, the download manager only
+  checked the completion marker and continued to report the asset as downloaded.
+- Green: completed-state lookup now calls `ModelBundleVerifier.isActivated`,
+  which rechecks every file's size and SHA-256; a tampered bundle is exposed as
+  `notStarted` and can be downloaded again instead of being passed to
+  `loadModels()`.
 
 ## Evidence
 
