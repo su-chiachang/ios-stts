@@ -11,23 +11,10 @@ STTS_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 AUDIO8_SRC="${AUDIO8_SRC:-$STTS_DIR/../audio8.cpp}"
 GGML_SRC="${AUDIO8_GGML_SOURCE_DIR:-$STTS_DIR/../audio.cpp/external/ggml}"
 TOKENIZER_SRC="${AUDIO8_TOKENIZER_SOURCE_DIR:-$STTS_DIR/../audio.cpp}"
-ARK_ASR_SRC="${AUDIO8_ARK_ASR_SOURCE_DIR:-$STTS_DIR/third_party/CrispASR/src}"
 VENDOR="$STTS_DIR/vendor/audio8-ios"
 ARCH="arm64"
 JOBS="${BUILD_JOBS:-$(sysctl -n hw.ncpu 2>/dev/null || true)}"
 JOBS="${JOBS:-4}"
-
-if [ ! -f "$ARK_ASR_SRC/ark_asr.cpp" ]; then
-  if [ -n "${AUDIO8_ARK_ASR_SOURCE_DIR:-}" ]; then
-    echo "error: AUDIO8_ARK_ASR_SOURCE_DIR must contain ark_asr.cpp: $ARK_ASR_SRC" >&2
-    exit 1
-  fi
-  CRISP_ASR_ROOT="$STTS_DIR/third_party/CrispASR"
-  if [ ! -d "$CRISP_ASR_ROOT" ]; then
-    git clone --recursive https://github.com/CrispStrobe/CrispASR "$CRISP_ASR_ROOT"
-  fi
-  ARK_ASR_SRC="$CRISP_ASR_ROOT/src"
-fi
 
 for required in "$AUDIO8_SRC/CMakeLists.txt" "$AUDIO8_SRC/tools/audio8_c_consumer_smoke.c" \
   "$GGML_SRC/CMakeLists.txt" "$TOKENIZER_SRC/external/cJSON/cJSON.c"; do
@@ -56,14 +43,12 @@ for PLATFORM in $PLATFORMS; do
     -DBUILD_SHARED_LIBS=OFF \
     -DAUDIO8_BUILD_TESTS=ON \
     -DAUDIO8_BUILD_RUNTIME=ON \
-    -DAUDIO8_BUILD_ARK_ASR=ON \
-    -DAUDIO8_ARK_ASR_SOURCE_DIR="$ARK_ASR_SRC" \
     -DAUDIO8_ENABLE_METAL=ON \
     -DAUDIO8_ENABLE_INSTALL=ON \
     -DAUDIO8_GGML_SOURCE_DIR="$GGML_SRC" \
     -DAUDIO8_TOKENIZER_SOURCE_DIR="$TOKENIZER_SRC" \
     -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR"
-  cmake --build "$BUILD_DIR" --target audio8-core audio8-ark-asr \
+  cmake --build "$BUILD_DIR" --target audio8-core \
     -j"$JOBS"
   cmake --install "$BUILD_DIR" --prefix "$INSTALL_DIR"
 
@@ -78,19 +63,9 @@ for PLATFORM in $PLATFORMS; do
     *) echo "error: unsupported iOS platform: $PLATFORM" >&2; exit 1 ;;
   esac
   IOS_SYSROOT="$(xcrun --sdk "$PLATFORM" --show-sdk-path)"
-  SHIM_OBJECT="$BUILD_DIR/audio8_ark_asr_shim.o"
-  xcrun --sdk "$PLATFORM" clang++ \
-    -target "$CLANG_TARGET" \
-    -isysroot "$IOS_SYSROOT" \
-    -std=c++17 -stdlib=libc++ \
-    -I"$STTS_DIR/Packages/NativeShims/Sources/CAudio8/include" \
-    -I"$AUDIO8_SRC/include" \
-    -c "$STTS_DIR/scripts/audio8_ark_asr_shim.cpp" \
-    -o "$SHIM_OBJECT"
 
   PUBLIC_SYMS="$BUILD_DIR/audio8_public_symbols.txt"
   nm -gU "$BUILD_DIR/libaudio8-core.a" \
-    "$SHIM_OBJECT" \
     | rg -o '_audio8_[A-Za-z0-9_]+' \
     | sort -u > "$PUBLIC_SYMS" || true
   if [ ! -s "$PUBLIC_SYMS" ]; then
@@ -100,7 +75,6 @@ for PLATFORM in $PLATFORMS; do
 
   ARCHIVES=(
     "$BUILD_DIR/libaudio8-core.a"
-    "$BUILD_DIR/libaudio8-ark-asr.a"
     "$BUILD_DIR/ggml/src/libggml.a"
     "$BUILD_DIR/ggml/src/libggml-base.a"
     "$BUILD_DIR/ggml/src/libggml-cpu.a"
@@ -128,33 +102,11 @@ for PLATFORM in $PLATFORMS; do
   # shellcheck disable=SC2086
   ld -r -arch "$ARCH" -platform_version $PLATFORM_VERSION_ARGS \
     -exported_symbols_list "$PUBLIC_SYMS" \
-    "${ARCHIVES[0]}" \
-    "$SHIM_OBJECT" \
-    "${ARCHIVES[@]:1}" \
+    "${ARCHIVES[@]}" \
     -o "$LOCALIZED_O"
 
   mkdir -p "$OUT_DIR"
   libtool -static -o "$OUT_DIR/libaudio8_ios.a" "$LOCALIZED_O"
-
-  ASR_SMOKE_OBJECT="$BUILD_DIR/audio8_ark_asr_c_smoke.o"
-  ASR_SMOKE_BINARY="$BUILD_DIR/audio8-ark-asr-c-smoke"
-  xcrun --sdk "$PLATFORM" clang \
-    -target "$CLANG_TARGET" \
-    -isysroot "$IOS_SYSROOT" \
-    -I "$STTS_DIR/Packages/NativeShims/Sources/CAudio8/include" \
-    -c "$STTS_DIR/scripts/audio8_ark_asr_c_smoke.c" \
-    -o "$ASR_SMOKE_OBJECT"
-  xcrun --sdk "$PLATFORM" clang \
-    -target "$CLANG_TARGET" \
-    -isysroot "$IOS_SYSROOT" \
-    "$ASR_SMOKE_OBJECT" \
-    -L "$OUT_DIR" \
-    -laudio8_ios \
-    -lc++ \
-    -framework Accelerate \
-    -framework Metal \
-    -framework Foundation \
-    -o "$ASR_SMOKE_BINARY"
 
   CONSUMER_OBJECT="$BUILD_DIR/audio8-c-consumer-smoke.o"
   CONSUMER_BINARY="$BUILD_DIR/audio8-c-consumer-smoke"
