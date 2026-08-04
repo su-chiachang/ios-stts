@@ -13,6 +13,7 @@
 		18FB71CBD5AACF8A6A28CCD3 /* AudioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E8F755F79115D9D4D9E0B1B /* AudioPlayer.swift */; };
 		1FE52BA02157AFDE4BBDA00E /* CParakeet in Frameworks */ = {isa = PBXBuildFile; productRef = F5CC40963F85E1E537062BE6 /* CParakeet */; };
 		25D84C68749055BAA81459A5 /* VoiceClipRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FEAF6FA21FC687D4DF5D7FD /* VoiceClipRecorder.swift */; };
+		28FC22CF5A316C83C2890109 /* Audio8ReleaseManifest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7560AD8E50BF38B508F0FAA4 /* Audio8ReleaseManifest.swift */; };
 		2D8DE29A558BD92BFE939520 /* STTSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A42B0D01C33A472025C17A0F /* STTSApp.swift */; };
 		337718A8F502C4B51E723F95 /* DownloadModelsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED552EF21385746C2D1045A1 /* DownloadModelsView.swift */; };
 		37D9FDFEF712C56359D45E2B /* LanguageDetect.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45EB14C6E593D09487F38568 /* LanguageDetect.swift */; };
@@ -26,8 +27,10 @@
 		5FD48DEFBC0365E1F9AB139B /* AudioFileInput.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7399E6E4410594811B61FE24 /* AudioFileInput.swift */; };
 		628CCBFF5A670CD19667B2A6 /* ModelBundle in Frameworks */ = {isa = PBXBuildFile; productRef = E3C7CAA06981B501C19B439D /* ModelBundle */; };
 		62C4E856AF5A2E0A2CEFF84B /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A893796C0A5D3D725D60F065 /* Metal.framework */; };
+		6C4CC26454EB7C4461CF97D4 /* audio8-release-manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = 4AF33749E271184EDA78D47F /* audio8-release-manifest.json */; };
 		6D670AA20C9CB39B57B630C9 /* ModelDownloadManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07E13B98BA499EACD667C0EE /* ModelDownloadManager.swift */; };
 		72413F9CCE8B7535D7C15267 /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FC91B63BC6B01D4524AC3630 /* MetalKit.framework */; };
+		75DB99D948F7F685467B8164 /* Audio8ReleaseManifestTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED88F4C03FDD87E703A96190 /* Audio8ReleaseManifestTests.swift */; };
 		87C5E6EA8087DD24FF23892F /* Audio8Tts.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFA341859255E8D66C9D5A9D /* Audio8Tts.swift */; };
 		A230FE0298E2DE2E31653B15 /* ModelCatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6249E153C3FABA02244A4DFB /* ModelCatalogTests.swift */; };
 		A666F2CFE775D83AF3E32BFF /* SentenceChunker.swift in Sources */ = {isa = PBXBuildFile; fileRef = C23DE73B788924DF1EC67A9C /* SentenceChunker.swift */; };
@@ -70,12 +73,14 @@
 		3E8F755F79115D9D4D9E0B1B /* AudioPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPlayer.swift; sourceTree = "<group>"; };
 		3FEAF6FA21FC687D4DF5D7FD /* VoiceClipRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceClipRecorder.swift; sourceTree = "<group>"; };
 		45EB14C6E593D09487F38568 /* LanguageDetect.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageDetect.swift; sourceTree = "<group>"; };
+		4AF33749E271184EDA78D47F /* audio8-release-manifest.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "audio8-release-manifest.json"; sourceTree = "<group>"; };
 		53655B48CD7D4C4B131AF347 /* SpeechPipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechPipeline.swift; sourceTree = "<group>"; };
 		54015CE032053C6A56560C85 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
 		60EF1F23059238736690A6B5 /* TtsBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TtsBackend.swift; sourceTree = "<group>"; };
 		6249E153C3FABA02244A4DFB /* ModelCatalogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelCatalogTests.swift; sourceTree = "<group>"; };
 		7399E6E4410594811B61FE24 /* AudioFileInput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioFileInput.swift; sourceTree = "<group>"; };
 		74134B85542325CA6ABDDB04 /* NativeShims */ = {isa = PBXFileReference; lastKnownFileType = folder; name = NativeShims; path = Packages/NativeShims; sourceTree = SOURCE_ROOT; };
+		7560AD8E50BF38B508F0FAA4 /* Audio8ReleaseManifest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Audio8ReleaseManifest.swift; sourceTree = "<group>"; };
 		7A73D66467B6DD9599F2411B /* CoreML.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreML.framework; path = System/Library/Frameworks/CoreML.framework; sourceTree = SDKROOT; };
 		84FEBD4B5611CECB465387C1 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		9276F59453065581A0421C5E /* STTSTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = STTSTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -94,6 +99,7 @@
 		E24F882EC35A5A2B5CB54E7D /* STTS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = STTS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		ED552EF21385746C2D1045A1 /* DownloadModelsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadModelsView.swift; sourceTree = "<group>"; };
 		ED75ECEDF32D44313C7A2EA5 /* TtsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TtsView.swift; sourceTree = "<group>"; };
+		ED88F4C03FDD87E703A96190 /* Audio8ReleaseManifestTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Audio8ReleaseManifestTests.swift; sourceTree = "<group>"; };
 		EE0B25B4B24E56038095D13D /* EndpointDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EndpointDetector.swift; sourceTree = "<group>"; };
 		F184732A7DE3E3F2150DD692 /* AudioInputManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioInputManager.swift; sourceTree = "<group>"; };
 		F4D2071A40A847AAC1412D33 /* ConversationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationEngine.swift; sourceTree = "<group>"; };
@@ -148,6 +154,7 @@
 				71CA56CC739FBF162F191590 /* Audio */,
 				444FA2D62E5AD8324E9BE44E /* Core */,
 				F6CD7913384E56A18E1F2E72 /* LLM */,
+				F0796BD4EC2BAD0CCF598495 /* Resources */,
 				E65BD66FF5E0A3E42599E2FE /* STT */,
 				8A96B60917AFD24C7D7497E2 /* TTS */,
 				3E824EA3F338AA8EAF87895D /* UI */,
@@ -172,6 +179,7 @@
 			isa = PBXGroup;
 			children = (
 				CFD52BD5D2BD91B97886D2FF /* AppSettings.swift */,
+				7560AD8E50BF38B508F0FAA4 /* Audio8ReleaseManifest.swift */,
 				F4D2071A40A847AAC1412D33 /* ConversationEngine.swift */,
 				45EB14C6E593D09487F38568 /* LanguageDetect.swift */,
 				0262B8F74259172FCD62E601 /* ModelCatalog.swift */,
@@ -237,6 +245,14 @@
 			path = STT;
 			sourceTree = "<group>";
 		};
+		F0796BD4EC2BAD0CCF598495 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				4AF33749E271184EDA78D47F /* audio8-release-manifest.json */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
 		F6CD7913384E56A18E1F2E72 /* LLM */ = {
 			isa = PBXGroup;
 			children = (
@@ -248,6 +264,7 @@
 		F6E6B5262673340350BB557E /* AppTests */ = {
 			isa = PBXGroup;
 			children = (
+				ED88F4C03FDD87E703A96190 /* Audio8ReleaseManifestTests.swift */,
 				6249E153C3FABA02244A4DFB /* ModelCatalogTests.swift */,
 			);
 			path = AppTests;
@@ -281,6 +298,7 @@
 				8EF66A3BFA86C8215CDCDA10 /* Check native libs */,
 				71EB5C16D9852F20012EF07F /* Vendor libs present? */,
 				B027CFFE2DE6556D06FD7055 /* Sources */,
+				D30874C7DC44861FA5DCCABE /* Resources */,
 				CBCD04A6CBF66FBE5A547FB0 /* Frameworks */,
 				D959C8AFE8266C00D90EA586 /* Embed qwentts dylibs */,
 			);
@@ -341,6 +359,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		D30874C7DC44861FA5DCCABE /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6C4CC26454EB7C4461CF97D4 /* audio8-release-manifest.json in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
 		71EB5C16D9852F20012EF07F /* Vendor libs present? */ = {
@@ -405,6 +434,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F0723CF7C0D8E7D044BE3BE0 /* AppSettings.swift in Sources */,
+				28FC22CF5A316C83C2890109 /* Audio8ReleaseManifest.swift in Sources */,
 				EAE3E9F4960A6C8F904E6EF2 /* Audio8Stt.swift in Sources */,
 				87C5E6EA8087DD24FF23892F /* Audio8Tts.swift in Sources */,
 				5FD48DEFBC0365E1F9AB139B /* AudioFileInput.swift in Sources */,
@@ -440,6 +470,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				75DB99D948F7F685467B8164 /* Audio8ReleaseManifestTests.swift in Sources */,
 				A230FE0298E2DE2E31653B15 /* ModelCatalogTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

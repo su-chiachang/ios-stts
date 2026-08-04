@@ -82,6 +82,8 @@ targets:
       - path: App
         excludes:
           - Resources/STTS.entitlements
+    resources:
+      - path: App/Resources/audio8-release-manifest.json
     dependencies:
       - package: NativeShims
         product: CParakeet

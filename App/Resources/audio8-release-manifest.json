@@ -1,0 +1,71 @@
+{
+  "bundles": [
+    {
+      "export_dtype": "F32",
+      "files": [
+        {
+          "artifact_filename": "audio8-generator-F32-f9612f13.gguf",
+          "bytes": 2404653632,
+          "destination_filename": "audio8-generator-F32.gguf",
+          "remote_url": null,
+          "role": "generator",
+          "sha256": "d435f97a3f755a2b494ecefffda50631173db8275b5723f647d750c049039909"
+        },
+        {
+          "artifact_filename": "audio8-codec-F32-f9612f13.gguf",
+          "bytes": 1349626432,
+          "destination_filename": "audio8-codec-F32.gguf",
+          "remote_url": null,
+          "role": "codec",
+          "sha256": "8bc2374d16a66b0d8cde4c8c0085173faeb3f9bca05347b93a601fb4998393d2"
+        },
+        {
+          "artifact_filename": "tokenizer.json",
+          "bytes": 12217872,
+          "destination_filename": "tokenizer.json",
+          "remote_url": null,
+          "role": "tokenizer",
+          "sha256": "f24e08099d45a8adf3f52f5f0b03276e433bb9d689bb15fcbcc48ce58744588b"
+        }
+      ],
+      "id": "tts.audio8.f32-reference",
+      "version": "f32-reference-v1"
+    },
+    {
+      "export_dtype": "Q8_0",
+      "files": [
+        {
+          "artifact_filename": "audio8-generator-Q8_0-hybrid-f9612f13.gguf",
+          "bytes": 1178352288,
+          "destination_filename": "audio8-generator-Q8_0-hybrid-v1.gguf",
+          "remote_url": null,
+          "role": "generator",
+          "sha256": "96fe2ed44114ecb6d8c8a0439a28052f0ec4895c06858dc0bb6b5dd1ca878512"
+        },
+        {
+          "artifact_filename": "audio8-codec-F32-f9612f13.gguf",
+          "bytes": 1349626432,
+          "destination_filename": "audio8-codec-F32-Q8_0-hybrid-v1.gguf",
+          "remote_url": null,
+          "role": "codec",
+          "sha256": "8bc2374d16a66b0d8cde4c8c0085173faeb3f9bca05347b93a601fb4998393d2"
+        },
+        {
+          "artifact_filename": "tokenizer.json",
+          "bytes": 12217872,
+          "destination_filename": "tokenizer.json",
+          "remote_url": null,
+          "role": "tokenizer",
+          "sha256": "f24e08099d45a8adf3f52f5f0b03276e433bb9d689bb15fcbcc48ce58744588b"
+        }
+      ],
+      "id": "tts.audio8.q8-0-hybrid",
+      "version": "q8-0-hybrid-v1"
+    }
+  ],
+  "model_id": "Audio8/Audio8-TTS-Preview-0.6b",
+  "publishable": false,
+  "release_base_url": null,
+  "schema_version": 1,
+  "source_revision": "f9612f13a0ab40facf3d050fc908b9e6db05c2be"
+}

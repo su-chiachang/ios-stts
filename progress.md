@@ -46,6 +46,11 @@ Last updated: 2026-08-04
 - Tightened Audio8 resource discovery to accept only regular files for exact
   and versioned Generator/Codec/tokenizer bundles, rejecting directories with
   `.gguf`- or `tokenizer.json`-looking names.
+- Added the App-side `Audio8ReleaseManifest` parser and bundled local-audit
+  manifest. Publishable release JSON now maps into the existing atomic
+  `ModelAsset`/`ModelDownloadManager` flow only after pinned schema, bundle
+  roles, HTTPS URL, size, and SHA-256 validation; the current no-URL manifest
+  remains unavailable by design.
 - Fixed the macOS Audio8 vendor script to build its registered
   `audio8-quant-policy-smoke` target before running ctest.
 - Added `docs/tdd/audio8-q8-hybrid-tdd.zh-TW.md` with red → green seams and current evidence.
@@ -85,11 +90,13 @@ Last updated: 2026-08-04
 - Native Python suite: 43/43 passed with no skips; ModelBundle XCTest remains
   5/5; macOS vendor ctest remains 6/6; STTS macOS,
   generic iOS device, and generic iOS Simulator arm64 builds remain green.
-- App `STTSTests` XCTest: 7/7 passed on arm64 macOS, covering versioned F32 and
+- App `STTSTests` XCTest: 11/11 passed on arm64 macOS, covering versioned F32 and
   Q8_0 discovery, missing-tokenizer and mismatched-pair rejection, ambiguous
   versioned-pair rejection, and non-regular-file rejection for Generator and
   tokenizer. Its red phases reproduced the pre-fix Q8_0 discovery failure,
-  arbitrary version choice, and directory acceptance.
+  arbitrary version choice, and directory acceptance. Release-manifest tests
+  cover publishable mapping, non-publishable safety, dtype drift, and the
+  bundled unavailable fallback.
 - Release-manifest TDD is green: 11 focused tests and the full native Python
   suite are 43/43 passed. The builder also verifies the actual Generator/Codec
   GGUF metadata and pinned source revision. The real local audit manifest
@@ -100,9 +107,11 @@ Last updated: 2026-08-04
 
 - The release-manifest schema/generator is ready, but the generated GGUF
   artifacts are currently local only. No trusted public GGUF host/release
-  manifest or upload credential is available, so the App intentionally leaves
-  Audio8 download URLs, byte sizes, and SHA-256 values unset. The official
-  source checkpoint is not itself a GGUF runtime bundle.
+  upload credential is available, so the bundled App manifest intentionally
+  has no download URLs and the App remains unavailable for in-app Audio8
+  downloads. The official source checkpoint is not itself a GGUF runtime
+  bundle; replace this manifest at release packaging time with the native
+  tool's publishable JSON once hosting is authorized.
 - The new Q8_0 parity gate is a fixed one-prompt quality smoke, not yet the
   full golden corpus. Longer-corpus audio quality, sustained peak memory, and
   Metal p95 RTF on a real Apple GPU are still required before publishing.

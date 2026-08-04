@@ -170,10 +170,10 @@ enum ModelCatalog {
         QwenTtsQuantization.allCases.map { ttsAsset(variant, quantization: $0) }
     }
 
-    /// Audio8 URLs and integrity values stay unset until the converted,
-    /// versioned upstream release exists. The variants remain visible so the
-    /// UI reports an explicit unavailable state rather than falling back.
-    static let audio8Assets: [ModelAsset] = [
+    /// Safe local-audit fallback. A publishable `audio8-release-manifest.json`
+    /// bundled by a release build takes precedence and supplies URLs, sizes,
+    /// and SHA-256 values from the offline exporter handoff.
+    private static let fallbackAudio8Assets: [ModelAsset] = [
         ModelAsset(
             id: "tts.audio8.f32-reference",
             version: "f32-reference-v1",
@@ -199,6 +199,10 @@ enum ModelCatalog {
             destinationDirectory: audio8Directory,
             requiresIntegrity: true),
     ]
+
+    static let audio8Assets: [ModelAsset] =
+        Audio8ReleaseManifest.bundledAssets(destinationDirectory: audio8Directory)
+        ?? fallbackAudio8Assets
 
     static func audio8Asset(for variant: Audio8TtsVariant) -> ModelAsset? {
         audio8Assets.first { $0.id == "tts.audio8.\(variant.rawValue)" }
