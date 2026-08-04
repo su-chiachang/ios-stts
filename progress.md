@@ -141,6 +141,14 @@ Last updated: 2026-08-04
   passed 18/18 across English/Chinese short/medium/long cases. Every capped
   case produced deterministic Q8_0 output with zero decoded-length delta; the
   largest observed capped waveform RMSE was `0.0279019`.
+- 2026-08-04: Native benchmark convergence progressed from a timing-only JSONL
+  seam to an auditable contract: F32/Q8_0 trial identity and output counts,
+  load/e2e/synthesis timing, graph/process RSS, failed-case diagnostics,
+  deterministic p50/p95/RTF summaries, and Markdown output. An isolated native
+  cold-load child now measures F32 `1021.575 ms` / `3,815,145,472` bytes and
+  Q8_0 `690.430 ms` / `2,660,696,064` bytes; real CTest remained `1/1`.
+  The native qwentts adapter also parses F32/BF16/Q8_0/Q4_K_M logs, but keeps
+  the existing no-timestamp limitation visible instead of claiming warm p50/p95.
 
 ## Remaining release gates
 

@@ -1,6 +1,6 @@
 # Audio8 Q8_0 Hybrid TDD
 
-Status: slices 1–13 green on the pinned checkpoint; release-quality corpus and
+Status: slices 1–14 green on the pinned checkpoint; release-quality corpus and
 Metal-device gates remain pending
 
 本文件是 Audio8 TTS 量化實作的 red → green 記錄。測試只觀察已同意的邊界：native Generator 的 GGUF model contract、離線 quantized artifact contract，以及 App 可載入的完整 TTS model bundle。
@@ -153,10 +153,26 @@ Metal-device gates remain pending
   re-run, and length checks. This cap is a structural sweep, not an audio
   quality claim; uncapped manifest values remain the release-quality path.
 
+### Slice 14 — Benchmark JSONL, cold load, and diagnostic records
+
+- Red: the corpus gate emitted human-readable parity lines only; it had no
+  stable trial schema for warmups, p50/p95 timing, RTF, graph diagnostics, or
+  process RSS. The adapter first rejected `--warmups`, `--trials`, and
+  `--report-jsonl` as unknown options.
+- Green: the native corpus runner now emits validated JSONL records for F32 and
+  Q8_0 measured trials, including runtime/artifact identity, output
+  shape/duration/counts, load/e2e/synthesis timings, graph metrics, and
+  `load_peak_rss_bytes` versus cumulative `process_peak_rss_bytes`. A separate
+  `audio8-quant-load-smoke` child records isolated cold F32/Q8_0 load timing and
+  RSS. Failed prompt/generation/decode cases remain as diagnostic records.
+  The Python report module validates all three record types, excludes warmups
+  from p50/p95/RTF summaries, interpolates p50 and p95 deterministically, and
+  renders synthesis plus cold-load Markdown tables.
+
 ## Evidence
 
 - `audio8-quant-policy-smoke`: native policy boundary, CPU and Metal green.
-- Native Python suite: 46/46 tests green with no skips, including exporter and
+- Native Python suite: 59/59 tests green with no skips, including exporter and
   release-manifest contracts.
 - `Packages/ModelBundle`: 5 XCTest cases green, including versioned activation-marker ordering and post-activation tamper rejection.
 - Real-checkpoint CPU CTest: 14/14 green, including Generator/Codec/pipeline
@@ -197,6 +213,12 @@ Metal-device gates remain pending
   tracer bullet passed 1/1, and the capped full-corpus structural sweep passed
   18/18. Every capped case had zero decoded-length delta and deterministic
   Q8_0 output; the largest observed capped waveform RMSE was `0.0279019`.
+- Benchmark/report TDD: 8/8 report tests plus 5/5 corpus-adapter tests and
+  3/3 qwentts-adapter tests are green. A real one-case CTest report with one
+  warmup and two trials per variant produced six validator-clean synthesis
+  records plus two isolated cold-load records. Cold load measured F32
+  `1021.575 ms` / `3,815,145,472` bytes and Q8_0 `690.430 ms` /
+  `2,660,696,064` bytes on the current host.
 
 ## Remaining red / release gate
 
@@ -208,7 +230,8 @@ directory can still be selected and loaded through `loadModels()`.
 The fixed-prompt parity smoke remains a finite/shape/semantic diagnostic, while
 the capped corpus sweep proves structural validity and Q8_0 repeatability only.
 The uncapped 18-case run at manifest values `32`, `64`, and `128`, calibrated
-waveform thresholds, sustained peak memory, and Metal p95 RTF on a real Apple
-GPU remain release gates. BF16 source input and Q4_K_M remain outside the
+waveform thresholds, sustained full-corpus memory, and Metal p95 RTF on a real
+Apple GPU remain release gates. The new RSS report seam supplies the required
+measurement shape but not yet the complete release dataset. BF16 source input and Q4_K_M remain outside the
 native Audio8 deployment contract; the accepted deployment pair is F32
 reference or Q8_0-hybrid Generator plus F32 Codec.
