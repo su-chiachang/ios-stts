@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		00BEFC970825CA2C72D7062E /* TtsBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60EF1F23059238736690A6B5 /* TtsBackend.swift */; };
+		05F4B890FE5CC9B9D055ABD9 /* ModelDownloadManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6C969839811F04A66D1AB31 /* ModelDownloadManagerTests.swift */; };
 		1441363D242C380FEF2A43BD /* AudioInputManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F184732A7DE3E3F2150DD692 /* AudioInputManager.swift */; };
 		16F8CA09AC89E5E3C6F2644F /* QwenTts.swift in Sources */ = {isa = PBXBuildFile; fileRef = B84C057F42527C6C039326B5 /* QwenTts.swift */; };
 		18FB71CBD5AACF8A6A28CCD3 /* AudioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E8F755F79115D9D4D9E0B1B /* AudioPlayer.swift */; };
@@ -103,6 +104,7 @@
 		EE0B25B4B24E56038095D13D /* EndpointDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EndpointDetector.swift; sourceTree = "<group>"; };
 		F184732A7DE3E3F2150DD692 /* AudioInputManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioInputManager.swift; sourceTree = "<group>"; };
 		F4D2071A40A847AAC1412D33 /* ConversationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationEngine.swift; sourceTree = "<group>"; };
+		F6C969839811F04A66D1AB31 /* ModelDownloadManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelDownloadManagerTests.swift; sourceTree = "<group>"; };
 		FC91B63BC6B01D4524AC3630 /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
@@ -266,6 +268,7 @@
 			children = (
 				ED88F4C03FDD87E703A96190 /* Audio8ReleaseManifestTests.swift */,
 				6249E153C3FABA02244A4DFB /* ModelCatalogTests.swift */,
+				F6C969839811F04A66D1AB31 /* ModelDownloadManagerTests.swift */,
 			);
 			path = AppTests;
 			sourceTree = "<group>";
@@ -472,6 +475,7 @@
 			files = (
 				75DB99D948F7F685467B8164 /* Audio8ReleaseManifestTests.swift in Sources */,
 				A230FE0298E2DE2E31653B15 /* ModelCatalogTests.swift in Sources */,
+				05F4B890FE5CC9B9D055ABD9 /* ModelDownloadManagerTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

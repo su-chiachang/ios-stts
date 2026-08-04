@@ -52,7 +52,10 @@ final class ModelDownloadManager: NSObject {
 
     private(set) var states: [String: ModelDownloadState] = [:]
 
-    @ObservationIgnored private lazy var session = URLSession(configuration: .default, delegate: self, delegateQueue: nil)
+    @ObservationIgnored private let sessionConfiguration: URLSessionConfiguration
+    @ObservationIgnored private lazy var session = URLSession(configuration: sessionConfiguration,
+                                                               delegate: self,
+                                                               delegateQueue: nil)
     @ObservationIgnored private let registry = TaskRegistry()
 
     private struct Job {
@@ -64,6 +67,11 @@ final class ModelDownloadManager: NSObject {
         var task: URLSessionDownloadTask?
     }
     @ObservationIgnored private var jobs: [String: Job] = [:]
+
+    init(configuration: URLSessionConfiguration = .default) {
+        sessionConfiguration = configuration
+        super.init()
+    }
 
     func state(for asset: ModelAsset) -> ModelDownloadState {
         states[asset.id] ?? (isDownloaded(asset) ? .completed : .notStarted)

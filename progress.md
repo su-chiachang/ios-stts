@@ -53,6 +53,10 @@ Last updated: 2026-08-04
   `ModelAsset`/`ModelDownloadManager` flow only after pinned schema, bundle
   roles, HTTPS URL, size, and SHA-256 validation; the current no-URL manifest
   remains unavailable by design.
+- Added a deterministic `URLSessionConfiguration` seam to
+  `ModelDownloadManager` and an App integration test that downloads a
+  publishable three-file Audio8 bundle through the delegate path, verifies
+  size/SHA-256, and asserts atomic activation only after all files pass.
 - Fixed the macOS Audio8 vendor script to build its registered
   `audio8-quant-policy-smoke` target before running ctest.
 - Added `docs/tdd/audio8-q8-hybrid-tdd.zh-TW.md` with red → green seams and current evidence.
@@ -92,13 +96,16 @@ Last updated: 2026-08-04
 - Native Python suite: 43/43 passed with no skips; ModelBundle XCTest remains
   5/5; macOS vendor ctest remains 6/6; STTS macOS,
   generic iOS device, and generic iOS Simulator arm64 builds remain green.
-- App `STTSTests` XCTest: 12/12 passed on arm64 macOS, covering versioned F32 and
+- App `STTSTests` XCTest: 13/13 passed on arm64 macOS, covering versioned F32 and
   Q8_0 discovery, missing-tokenizer and mismatched-pair rejection, ambiguous
   versioned-pair rejection, and non-regular-file rejection for Generator and
   tokenizer. Its red phases reproduced the pre-fix Q8_0 discovery failure,
   arbitrary version choice, and directory acceptance. Release-manifest tests
   cover publishable mapping, non-publishable safety, dtype drift,
   release-base containment, and the bundled unavailable fallback.
+- The App download integration test passes with an injected URLSession
+  transport: the Audio8 three-file bundle reaches `completed` only after
+  ModelBundle verification and activation-marker publication.
 - Release-manifest TDD is green: 11 focused tests and the full native Python
   suite are 43/43 passed. The builder also verifies the actual Generator/Codec
   GGUF metadata and pinned source revision. The real local audit manifest

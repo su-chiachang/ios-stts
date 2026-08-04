@@ -1,6 +1,6 @@
 # Audio8 Q8_0 Hybrid TDD
 
-Status: slices 1–8 green on the pinned checkpoint; release-quality corpus and
+Status: slices 1–9 green on the pinned checkpoint; release-quality corpus and
 Metal-device gates remain pending
 
 本文件是 Audio8 TTS 量化實作的 red → green 記錄。測試只觀察已同意的邊界：native Generator 的 GGUF model contract、離線 quantized artifact contract，以及 App 可載入的完整 TTS model bundle。
@@ -96,6 +96,17 @@ Metal-device gates remain pending
   bundled local-audit manifest remains unavailable until every file has a
   publishable URL; no unverified download is enabled.
 
+### Slice 9 — Atomic App download execution
+
+- Red: the new App integration test required a `ModelDownloadManager` session
+  seam, but the manager constructed its URLSession internally and could not be
+  driven by a deterministic transport in XCTest.
+- Green: `ModelDownloadManager` now accepts an optional
+  `URLSessionConfiguration`; the test injects a URLProtocol transport and
+  verifies that all three files download, pass the ModelBundle size/SHA checks,
+  and become visible only after the activation marker is written. Production
+  keeps the default URLSession configuration.
+
 ## Evidence
 
 - `audio8-quant-policy-smoke`: native policy boundary, CPU and Metal green.
@@ -114,7 +125,7 @@ Metal-device gates remain pending
 - `audio8_runtime_create_for_export_dtype()` is wired through the C consumer
   target and App wrapper; versioned Q8_0 user filenames are discoverable, and
   real F32/Q8_0 mismatch behavior is now model-backed.
-- App macOS XCTest: `STTSTests` 12/12 passed on arm64 macOS, covering versioned
+- App macOS XCTest: `STTSTests` 13/13 passed on arm64 macOS, covering versioned
   F32 and Q8_0 Generator/Codec/tokenizer discovery, missing-tokenizer and
   mismatched-pair rejection, ambiguous-pair rejection, and non-regular-file
   rejection for Generator and tokenizer. The red phases reproduced the
@@ -122,6 +133,10 @@ Metal-device gates remain pending
   acceptance. The release-manifest tests also cover publishable mapping,
   non-publishable safety, dtype drift, release-base containment, and the
   bundled unavailable fallback.
+- The App download integration test uses an injected URLSession transport to
+  exercise the real `ModelDownloadManager` delegate path; it verifies the
+  publishable three-file bundle reaches `completed` only after integrity
+  verification and atomic activation.
 - Local artifact evidence: F32 Generator 2,404,653,632 bytes; Q8_0 Generator
   1,178,352,288 bytes; F32 Codec 1,349,626,432 bytes. Runtime-smoke maximum
   RSS was ~3.72 GiB for F32 and ~2.55 GiB for Q8_0.
