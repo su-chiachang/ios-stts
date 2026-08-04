@@ -1,6 +1,6 @@
 # Audio8 Q8_0 Hybrid TDD
 
-Status: slices 1–11 green on the pinned checkpoint; release-quality corpus and
+Status: slices 1–12 green on the pinned checkpoint; release-quality corpus and
 Metal-device gates remain pending
 
 本文件是 Audio8 TTS 量化實作的 red → green 記錄。測試只觀察已同意的邊界：native Generator 的 GGUF model contract、離線 quantized artifact contract，以及 App 可載入的完整 TTS model bundle。
@@ -128,6 +128,18 @@ Metal-device gates remain pending
   passes artifact paths and writes the native manifest output; it never copies
   model bytes into the App repository.
 
+### Slice 12 — Multi-case quantized parity corpus
+
+- Red: the existing quantized parity smoke only exercised one hard-coded token
+  and had no corpus CTest registration; the new adapter tests first imported
+  the missing `tools.audio8_quant_corpus` module.
+- Green: the adjacent native repo now validates the pinned 18-case bilingual
+  manifest, renders temporary TSV records, and runs
+  `audio8-quant-corpus-smoke` over selected cases. The native runner uses the
+  real tokenizer and no-reference prompt builder, checks F32/Q8_0 valid finite
+  PCM, repeated Q8_0 determinism, and relative decoded length. It reports
+  waveform RMSE but leaves the release threshold opt-in until calibration.
+
 ## Evidence
 
 - `audio8-quant-policy-smoke`: native policy boundary, CPU and Metal green.
@@ -168,6 +180,10 @@ Metal-device gates remain pending
 - Release-package wrapper tests: 4/4 green; they cover required HTTPS hosting,
   forced `--require-release-url`, missing URL rejection, and native command
   delegation.
+- Native corpus adapter tests: 3/3 green. The configured real CTest corpus
+  tracer bullet passed 1/1; a six-case real run also exited successfully. The
+  first case observed F32 18 frames, Q8_0 27 deterministic frames, decoded
+  length ratio `0.333333`, and waveform RMSE `0.218656`.
 
 ## Remaining red / release gate
 
@@ -176,9 +192,10 @@ release manifest is available, so the App keeps download URLs and SHA-256
 values unset rather than inventing release assets. A user-provided local model
 directory can still be selected and loaded through `loadModels()`.
 
-The fixed-prompt parity smoke is only a finite/shape/semantic sanity check;
-drift values and code mismatches are diagnostics, not calibrated release
-thresholds. Longer-corpus audio quality, sustained peak memory, and Metal p95
-RTF on a real Apple GPU remain release gates. BF16 source input and Q4_K_M
-remain outside the native Audio8 deployment contract; the accepted deployment
-pair is F32 reference or Q8_0-hybrid Generator plus F32 Codec.
+The fixed-prompt parity smoke remains a finite/shape/semantic diagnostic, while
+the new corpus gate currently proves structural validity and Q8_0 repeatability
+only. The complete 18-case run, calibrated waveform thresholds, sustained peak
+memory, and Metal p95 RTF on a real Apple GPU remain release gates. BF16 source
+input and Q4_K_M remain outside the native Audio8 deployment contract; the
+accepted deployment pair is F32 reference or Q8_0-hybrid Generator plus F32
+Codec.

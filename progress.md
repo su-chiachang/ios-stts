@@ -71,6 +71,13 @@ Last updated: 2026-08-04
   to the native generator with `--require-release-url`, and refuses to run if
   the native release tool is missing; this prevents a local-audit manifest
   from being mistaken for a downloadable App release.
+- Added the native opt-in multi-case quantization gate beside the App repo:
+  the existing 18-case bilingual corpus is validated by a Python adapter and
+  passed as temporary TSV records to `audio8-quant-corpus-smoke`. Each case
+  exercises native tokenization, no-reference prompt construction, F32/Q8_0
+  generation, finite 44.1 kHz PCM validation, repeated Q8_0 determinism, and
+  relative output-length checking. Native commit `4fa6056` is pushed to
+  `audio8.cpp` `origin/main`.
 
 ## Verification
 
@@ -124,6 +131,11 @@ Last updated: 2026-08-04
 - Release-package wrapper TDD is green: 4/4 tests cover the forced native
   publishability flag, required release URL, HTTPS validation, and delegation
   command. No model bytes are copied into the App repository.
+- Native corpus adapter TDD is green: 3/3 tests cover stable manifest-to-TSV
+  rendering, native command wiring, and tab/newline rejection. The configured
+  real CTest tracer bullet passed 1/1; a six-case real run also exited 0. The
+  first observed case produced F32 18 frames versus deterministic Q8_0 27
+  frames, relative length delta `0.333333`, and waveform RMSE `0.218656`.
 
 ## Remaining release gates
 
@@ -134,8 +146,10 @@ Last updated: 2026-08-04
   downloads. The official source checkpoint is not itself a GGUF runtime
   bundle; replace this manifest at release packaging time with the native
   tool's publishable JSON once hosting is authorized.
-- The new Q8_0 parity gate is a fixed one-prompt quality smoke, not yet the
-  full golden corpus. Longer-corpus audio quality, sustained peak memory, and
-  Metal p95 RTF on a real Apple GPU are still required before publishing.
+- The Q8_0 path now has both the fixed-prompt diagnostic and an opt-in
+  multi-case structural/determinism gate, but the complete 18-case run and
+  calibrated waveform RMSE thresholds are still pending. Sustained peak
+  memory and Metal p95 RTF on a real Apple GPU are also required before
+  publishing.
 - F32 remains the reference/default; Q8_0 hybrid is loadable and selectable;
   BF16 and Q4_K_M are not claimed as native Audio8 deployment artifacts.
