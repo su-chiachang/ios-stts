@@ -14,6 +14,22 @@ Last updated: 2026-08-04
   compiler reports both missing-initializer arguments. This is the recorded
   TDD red phase before implementation.
 
+## 2026-08-04 — App model-loading TDD green phase
+
+- Added injectable `SttModelLoader`/`TtsModelLoader` seams while preserving the
+  production Qwen, Audio8, Parakeet, and Audio8 ARK-ASR constructors.
+- Changed `loadModels()` to construct the selected STT/TTS pair before
+  publishing either engine. A failed TTS load therefore cannot expose a
+  partially loaded pair; reload still waits for active cancellation and audio
+  flush before the previous actor can be released.
+- The focused two-case App XCTest passed (exit 0), and the complete App test
+  target completed without failures during the green run. A later repeat after
+  only error-type wording cleanup was blocked by the sandbox's package
+  manifest/cache permissions and approval quota; `swiftc -parse` passed for
+  the edited production file.
+- Red-phase commit `7de8a8a` is pushed to `origin/feature/audio8`; the green
+  implementation and this progress update are pending the next commit.
+
 ## Completed
 
 - Verified Audio8 native archives and Swift integration for macOS arm64 and iOS arm64.

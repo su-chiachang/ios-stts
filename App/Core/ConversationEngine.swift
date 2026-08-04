@@ -9,6 +9,17 @@ enum ConversationState: Equatable {
     case error(String)
 }
 
+private enum ConversationModelLoadError: Error, LocalizedError {
+    case stt(String)
+    case tts(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .stt(let message), .tts(let message): message
+        }
+    }
+}
+
 struct ChatBubble: Identifiable, Equatable {
     enum Role { case user, assistant }
     let id: UUID
@@ -27,6 +38,9 @@ struct ChatBubble: Identifiable, Equatable {
 @MainActor
 @Observable
 final class ConversationEngine {
+    typealias SttModelLoader = @MainActor (AppSettings) throws -> any SttEngine
+    typealias TtsModelLoader = @MainActor (AppSettings) throws -> any TtsEngine
+
     private(set) var state: ConversationState = .loadingModels
     private(set) var bubbles: [ChatBubble] = []
     private(set) var partialTranscript: String = ""
@@ -52,6 +66,17 @@ final class ConversationEngine {
     private var pendingCancellation: Task<Void, Never>?
     private(set) var inputRMS: Float = 0
 
+    private let sttLoader: SttModelLoader
+    private let ttsLoader: TtsModelLoader
+
+    init(
+        sttLoader: @escaping SttModelLoader = ConversationEngine.defaultSttModel,
+        ttsLoader: @escaping TtsModelLoader = ConversationEngine.defaultTtsModel
+    ) {
+        self.sttLoader = sttLoader
+        self.ttsLoader = ttsLoader
+    }
+
     func loadModels() async {
         await cancelCurrentTurnAndWait()
         state = .loadingModels
@@ -59,46 +84,57 @@ final class ConversationEngine {
         tts = nil
         let settings = AppSettings.shared
         do {
-            switch settings.sttBackend {
-            case .parakeet:
-                guard let parakeetURL = settings.parakeetModelURL() else {
-                    state = .error("Parakeet STT is not ready. Pick a parakeet .gguf file in Settings or download a Parakeet asset.")
-                    return
-                }
-                stt = try ParakeetStt(modelPath: parakeetURL.path)
-            case .audio8:
-                guard let audio8URL = settings.audio8SttModelURL() else {
-                    state = .error(settings.audio8SttModelReadinessMessage())
-                    return
-                }
-                stt = try Audio8Stt(modelURL: audio8URL)
-            }
-            switch settings.ttsBackend {
-            case .qwen:
-                guard let qwenDirURL = settings.qwenModelDirURL() else {
-                    state = .error("Qwen TTS is not ready. Pick the qwen3-tts model folder in Settings or download a Qwen asset.")
-                    return
-                }
-                tts = try QwenTts(modelDir: qwenDirURL.path,
-                                  variant: settings.qwenModelVariant,
-                                  quantization: settings.qwenModelQuantization)
-            case .audio8:
-                if let memoryMessage = settings.audio8MemoryCompatibilityMessage() {
-                    state = .error(memoryMessage)
-                    return
-                }
-                guard let resources = settings.audio8ModelResources() else {
-                    state = .error(settings.audio8ModelReadinessMessage())
-                    return
-                }
-                tts = try Audio8Tts(generatorURL: resources.generatorURL,
-                                    codecURL: resources.codecURL,
-                                    tokenizerURL: resources.tokenizerURL,
-                                    expectedExportDtype: settings.audio8TtsVariant.exportDtype)
-            }
+            // Construct both selected engines off to the side. Publishing the
+            // pair only after both loaders succeed prevents a failed TTS
+            // switch from leaving a newly loaded STT engine visible as a
+            // partially ready model set.
+            let loadedStt = try sttLoader(settings)
+            let loadedTts = try ttsLoader(settings)
+            stt = loadedStt
+            tts = loadedTts
             state = .idle
         } catch {
             state = .error(error.localizedDescription)
+        }
+    }
+
+    static func defaultSttModel(_ settings: AppSettings) throws -> any SttEngine {
+        switch settings.sttBackend {
+        case .parakeet:
+            guard let parakeetURL = settings.parakeetModelURL() else {
+                throw ConversationModelLoadError.stt(
+                    "Parakeet STT is not ready. Pick a parakeet .gguf file in Settings or download a Parakeet asset.")
+            }
+            return try ParakeetStt(modelPath: parakeetURL.path)
+        case .audio8:
+            guard let audio8URL = settings.audio8SttModelURL() else {
+                throw ConversationModelLoadError.stt(settings.audio8SttModelReadinessMessage())
+            }
+            return try Audio8Stt(modelURL: audio8URL)
+        }
+    }
+
+    static func defaultTtsModel(_ settings: AppSettings) throws -> any TtsEngine {
+        switch settings.ttsBackend {
+        case .qwen:
+            guard let qwenDirURL = settings.qwenModelDirURL() else {
+                throw ConversationModelLoadError.tts(
+                    "Qwen TTS is not ready. Pick the qwen3-tts model folder in Settings or download a Qwen asset.")
+            }
+            return try QwenTts(modelDir: qwenDirURL.path,
+                               variant: settings.qwenModelVariant,
+                               quantization: settings.qwenModelQuantization)
+        case .audio8:
+            if let memoryMessage = settings.audio8MemoryCompatibilityMessage() {
+                throw ConversationModelLoadError.tts(memoryMessage)
+            }
+            guard let resources = settings.audio8ModelResources() else {
+                throw ConversationModelLoadError.tts(settings.audio8ModelReadinessMessage())
+            }
+            return try Audio8Tts(generatorURL: resources.generatorURL,
+                                 codecURL: resources.codecURL,
+                                 tokenizerURL: resources.tokenizerURL,
+                                 expectedExportDtype: settings.audio8TtsVariant.exportDtype)
         }
     }
 

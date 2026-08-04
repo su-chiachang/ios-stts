@@ -1,6 +1,6 @@
 # Audio8 Q8_0 Hybrid TDD
 
-Status: slices 1–14 green on the pinned checkpoint; release-quality corpus and
+Status: slices 1–15 green on the pinned checkpoint; release-quality corpus and
 Metal-device gates remain pending
 
 本文件是 Audio8 TTS 量化實作的 red → green 記錄。測試只觀察已同意的邊界：native Generator 的 GGUF model contract、離線 quantized artifact contract，以及 App 可載入的完整 TTS model bundle。
@@ -176,9 +176,14 @@ Metal-device gates remain pending
   production engine still constructs native model types directly and has no
   test seam. The cases cover persisted Qwen → Audio8 selection, old-runtime
   release on reload, and atomic failure when TTS loading throws.
-- Green: pending implementation. The production path must retain the current
-  Qwen/Audio8 constructors while routing them through injectable loaders, then
-  publish both engines only after both selected backends load successfully.
+- Green: `ConversationEngine` retains the current Qwen/Audio8 constructors
+  behind injectable `SttModelLoader`/`TtsModelLoader` closures. `loadModels()`
+  now publishes both engines only after both selected loaders succeed, so a
+  TTS failure cannot leave a partially ready STT/TTS pair. The focused
+  two-case XCTest passed; the full target also completed without failures in
+  the green run. A subsequent rerun after error-type-only cleanup was blocked
+  by this host's SwiftPM cache permissions/approval quota, so it is not counted
+  as new test evidence.
 
 ## Evidence
 
