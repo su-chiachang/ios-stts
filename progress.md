@@ -2,6 +2,18 @@
 
 Last updated: 2026-08-04
 
+## 2026-08-04 — App model-loading TDD red phase
+
+- Added `AppTests/ConversationEngineModelLoadingTests.swift` for the next
+  integration seam: persisted Qwen/Audio8 selection must drive `loadModels()`;
+  reloading must release the previous TTS runtime; and a TTS load failure must
+  not publish a partially loaded STT/TTS pair.
+- Generated the Xcode project from `project.yml` and ran the new App XCTest
+  target. The test suite is intentionally red at the seam because
+  `ConversationEngine` does not yet expose injectable STT/TTS loaders; the
+  compiler reports both missing-initializer arguments. This is the recorded
+  TDD red phase before implementation.
+
 ## Completed
 
 - Verified Audio8 native archives and Swift integration for macOS arm64 and iOS arm64.

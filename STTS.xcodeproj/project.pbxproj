@@ -22,6 +22,7 @@
 		3F6E99EC438B3ED10CAF803F /* OpenAIChatClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE2D2D7657A98CD8BE6EF9BC /* OpenAIChatClient.swift */; };
 		408D8C9053A1E2C507548F9F /* SpeechPipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53655B48CD7D4C4B131AF347 /* SpeechPipeline.swift */; };
 		4F4E357F8ABC3FD94063F888 /* Accelerate.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9283F0E6CE2A9A6E0303D629 /* Accelerate.framework */; };
+		5280B0E526F93018AF1DAAA2 /* ConversationEngineModelLoadingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CD9C9C26B3D6BB22835E98B /* ConversationEngineModelLoadingTests.swift */; };
 		547215BB690A45DBCF61F452 /* ConversationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA6B8448D19080817053D361 /* ConversationView.swift */; };
 		5A7A35D75C029B7E41458A97 /* TranscriptSegmenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36BE7153E424B9F40D52C5F2 /* TranscriptSegmenter.swift */; };
 		5E08411ED74B235D07644B00 /* CQwenTTS in Frameworks */ = {isa = PBXBuildFile; productRef = 0E87EBA5A6684AB37D10EBA7 /* CQwenTTS */; };
@@ -83,6 +84,7 @@
 		74134B85542325CA6ABDDB04 /* NativeShims */ = {isa = PBXFileReference; lastKnownFileType = folder; name = NativeShims; path = Packages/NativeShims; sourceTree = SOURCE_ROOT; };
 		7560AD8E50BF38B508F0FAA4 /* Audio8ReleaseManifest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Audio8ReleaseManifest.swift; sourceTree = "<group>"; };
 		7A73D66467B6DD9599F2411B /* CoreML.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreML.framework; path = System/Library/Frameworks/CoreML.framework; sourceTree = SDKROOT; };
+		7CD9C9C26B3D6BB22835E98B /* ConversationEngineModelLoadingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationEngineModelLoadingTests.swift; sourceTree = "<group>"; };
 		84FEBD4B5611CECB465387C1 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		9276F59453065581A0421C5E /* STTSTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = STTSTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9283F0E6CE2A9A6E0303D629 /* Accelerate.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Accelerate.framework; path = System/Library/Frameworks/Accelerate.framework; sourceTree = SDKROOT; };
@@ -267,6 +269,7 @@
 			isa = PBXGroup;
 			children = (
 				ED88F4C03FDD87E703A96190 /* Audio8ReleaseManifestTests.swift */,
+				7CD9C9C26B3D6BB22835E98B /* ConversationEngineModelLoadingTests.swift */,
 				6249E153C3FABA02244A4DFB /* ModelCatalogTests.swift */,
 				F6C969839811F04A66D1AB31 /* ModelDownloadManagerTests.swift */,
 			);
@@ -474,6 +477,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				75DB99D948F7F685467B8164 /* Audio8ReleaseManifestTests.swift in Sources */,
+				5280B0E526F93018AF1DAAA2 /* ConversationEngineModelLoadingTests.swift in Sources */,
 				A230FE0298E2DE2E31653B15 /* ModelCatalogTests.swift in Sources */,
 				05F4B890FE5CC9B9D055ABD9 /* ModelDownloadManagerTests.swift in Sources */,
 			);

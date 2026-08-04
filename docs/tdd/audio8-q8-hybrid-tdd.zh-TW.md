@@ -169,6 +169,17 @@ Metal-device gates remain pending
   from p50/p95/RTF summaries, interpolates p50 and p95 deterministically, and
   renders synthesis plus cold-load Markdown tables.
 
+### Slice 15 — Explicit backend model-loading seam
+
+- Red: `ConversationEngineModelLoadingTests` now asks `ConversationEngine` to
+  inject fake STT/TTS loaders. The first run fails at compile time because the
+  production engine still constructs native model types directly and has no
+  test seam. The cases cover persisted Qwen → Audio8 selection, old-runtime
+  release on reload, and atomic failure when TTS loading throws.
+- Green: pending implementation. The production path must retain the current
+  Qwen/Audio8 constructors while routing them through injectable loaders, then
+  publish both engines only after both selected backends load successfully.
+
 ## Evidence
 
 - `audio8-quant-policy-smoke`: native policy boundary, CPU and Metal green.
