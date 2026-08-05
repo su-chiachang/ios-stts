@@ -72,7 +72,7 @@ actor ParakeetStt: SttEngine {
         guard let cstr else { throw ParakeetError.callFailed(lastError()) }
         defer { parakeet_capi_free_string(cstr) }
         let text = Self.strippingLanguageTag(String(cString: cstr))
-        return SttFeedResult(newText: text,
+        return SttFeedResult(textUpdate: .append(text),
                              eou: eou & Int32(PARAKEET_EVENT_EOU) != 0,
                              eob: eou & Int32(PARAKEET_EVENT_EOB) != 0)
     }
@@ -128,8 +128,8 @@ actor ParakeetStt: SttEngine {
 
     /// Flush the tail of the current turn and free the stream.
     @discardableResult
-    func endTurn() throws -> String {
-        guard let stream else { return "" }
+    func endTurn() throws -> SttTextUpdate {
+        guard let stream else { return .append("") }
         defer {
             parakeet_capi_stream_free(stream)
             self.stream = nil
@@ -138,7 +138,7 @@ actor ParakeetStt: SttEngine {
             throw ParakeetError.callFailed(lastError())
         }
         defer { parakeet_capi_free_string(cstr) }
-        return Self.strippingLanguageTag(String(cString: cstr))
+        return .append(Self.strippingLanguageTag(String(cString: cstr)))
     }
 
     /// nemotron emits a literal `<zh-CN>` / `<en-US>` locale token inline in

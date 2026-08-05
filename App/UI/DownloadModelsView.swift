@@ -13,11 +13,21 @@ struct DownloadModelsView: View {
 
     var body: some View {
         Form {
-            Section("speech-to-text") {
-                ForEach(ModelCatalog.sttAssets) { asset in
-                    ModelAssetRow(asset: asset, manager: manager,
-                                  isSelected: settings.sttBackend == .parakeet,
-                                  onFinished: notifyChanged)
+            if settings.sttBackend == .parakeet {
+                Section("speech-to-text") {
+                    ForEach(ModelCatalog.sttAssets) { asset in
+                        ModelAssetRow(asset: asset, manager: manager,
+                                      isSelected: true,
+                                      onFinished: notifyChanged)
+                    }
+                }
+            } else {
+                Section("speech-to-text") {
+                    Label("Apple Speech", systemImage: "checkmark.shield")
+                    Text("Apple manages the on-device SpeechTranscriber assets. They are downloaded and installed when Apple Speech is selected and models are reloaded.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
 

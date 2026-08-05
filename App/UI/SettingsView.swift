@@ -22,6 +22,16 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section("Models") {
+                Picker("STT backend", selection: Binding(get: { settings.sttBackend },
+                                                          set: {
+                                                              settings.sttBackend = $0
+                                                              reloadModels()
+                                                          })) {
+                    ForEach(SttBackend.allCases) { backend in
+                        Text(backend.displayName).tag(backend)
+                    }
+                }
+
                 Picker("TTS backend", selection: Binding(get: { settings.ttsBackend },
                                                           set: {
                                                               settings.ttsBackend = $0
@@ -32,14 +42,25 @@ struct SettingsView: View {
                     }
                 }
 
-                LabeledContent("Parakeet STT") {
-                    HStack {
-                        Text(parakeetPath.isEmpty ? "Not set" : parakeetPath)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                            .foregroundStyle(parakeetPath.isEmpty ? .secondary : .primary)
-                        Button("Choose…") { pickParakeetModel() }
+                if settings.sttBackend == .parakeet {
+                    LabeledContent("Parakeet STT") {
+                        HStack {
+                            Text(parakeetPath.isEmpty ? "Not set" : parakeetPath)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                                .foregroundStyle(parakeetPath.isEmpty ? .secondary : .primary)
+                            Button("Choose…") { pickParakeetModel() }
+                        }
                     }
+                } else {
+                    LabeledContent("Apple Speech") {
+                        Label("System-managed on-device model", systemImage: "checkmark.shield")
+                            .foregroundStyle(.secondary)
+                    }
+                    Text("Apple Speech requires iOS 26 or macOS 26. Its locale model is prepared when you reload models; Auto uses the current system locale.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 if settings.ttsBackend == .qwen {
                     LabeledContent("Qwen TTS dir") {
@@ -103,7 +124,12 @@ struct SettingsView: View {
 
             Section("Speech detection") {
                 Picker("STT locale", selection: Binding(get: { settings.sttLocale },
-                                                          set: { settings.sttLocale = $0 })) {
+                                                          set: {
+                                                              settings.sttLocale = $0
+                                                              if settings.sttBackend == .appleSpeech {
+                                                                  reloadModels()
+                                                              }
+                                                          })) {
                     Text("Auto").tag("auto")
                     Text("Chinese").tag("zh-CN")
                     Text("English").tag("en")

@@ -38,7 +38,7 @@ struct ChatBubble: Identifiable, Equatable {
 @MainActor
 @Observable
 final class ConversationEngine {
-    typealias SttModelLoader = @MainActor (AppSettings) throws -> any SttEngine
+    typealias SttModelLoader = @MainActor (AppSettings) async throws -> any SttEngine
     typealias TtsModelLoader = @MainActor (AppSettings) throws -> any TtsEngine
 
     private(set) var state: ConversationState = .loadingModels
@@ -92,7 +92,7 @@ final class ConversationEngine {
             // pair only after both loaders succeed prevents a failed TTS
             // switch from leaving a newly loaded STT engine visible as a
             // partially ready model set.
-            let loadedStt = try sttLoader(settings)
+            let loadedStt = try await sttLoader(settings)
             let loadedTts = try ttsLoader(settings)
             stt = loadedStt
             tts = loadedTts
@@ -102,7 +102,7 @@ final class ConversationEngine {
         }
     }
 
-    static func defaultSttModel(_ settings: AppSettings) throws -> any SttEngine {
+    static func defaultSttModel(_ settings: AppSettings) async throws -> any SttEngine {
         switch settings.sttBackend {
         case .parakeet:
             guard let parakeetURL = settings.parakeetModelURL() else {
@@ -110,6 +110,12 @@ final class ConversationEngine {
                     "Parakeet STT is not ready. Pick a parakeet .gguf file in Settings or download a Parakeet asset.")
             }
             return try ParakeetStt(modelPath: parakeetURL.path)
+        case .appleSpeech:
+            guard #available(iOS 26.0, macOS 26.0, *) else {
+                throw ConversationModelLoadError.stt(
+                    "Apple Speech requires iOS 26 or macOS 26. Select Parakeet in Settings on this OS.")
+            }
+            return try await AppleSpeechStt.make(localeIdentifier: settings.sttLocale)
         }
     }
 
@@ -137,8 +143,6 @@ final class ConversationEngine {
         }
     }
 
-    var isReady: Bool { stt != nil && tts != nil }
-
     enum ModelScope { case stt, tts, both }
 
     /// Loads whichever model(s) `scope` needs and drops the other, so only
@@ -165,7 +169,7 @@ final class ConversationEngine {
         var loadedTts = tts
         do {
             if needsSTT && loadedStt == nil {
-                loadedStt = try sttLoader(settings)
+                loadedStt = try await sttLoader(settings)
             }
             if needsTTS && loadedTts == nil {
                 loadedTts = try ttsLoader(settings)
@@ -223,9 +227,7 @@ final class ConversationEngine {
                     try Task.checkCancellation()
                     let result = try await stt.feed(chunk)
                     guard isCurrentTurn(turnID) else { return }
-                    if !result.newText.isEmpty {
-                        partialTranscript += result.newText
-                    }
+                    applySttUpdate(result.textUpdate)
                     if endpoint.process(chunk, modelEOU: result.eou,
                                         hasTranscript: !partialTranscript.isEmpty
                                             || canEndTurnWithoutTranscript) {
@@ -273,13 +275,12 @@ final class ConversationEngine {
                     try Task.checkCancellation()
                     let result = try await stt.feed(chunk)
                     guard isCurrentTurn(turnID) else { return }
-                    if !result.newText.isEmpty {
-                        partialTranscript += result.newText
-                    }
+                    applySttUpdate(result.textUpdate)
                 }
-                let tail = try await stt.endTurn()
+                let finalUpdate = try await stt.endTurn()
                 guard isCurrentTurn(turnID) else { return }
-                let finalText = (partialTranscript + tail)
+                applySttUpdate(finalUpdate)
+                let finalText = partialTranscript
                     .trimmingCharacters(in: .whitespacesAndNewlines)
                 partialTranscript = ""
                 dictatedText = finalText
@@ -330,11 +331,12 @@ final class ConversationEngine {
                     try Task.checkCancellation()
                     samples.append(contentsOf: chunk)
                 }
-                // Auto-detect language (nil) for file transcription rather than
-                // forcing the conversation tab's configured locale onto an
-                // arbitrary file: forcing e.g. "en" onto Chinese audio makes the
-                // model return zero clips (an empty transcript).
-                let result = try await stt.transcribeFileWords(pcm: samples, lang: nil)
+                // Parakeet can auto-detect a file language. Apple Speech is
+                // locale-bound, so pass the loaded locale explicitly there.
+                let fileLanguage = AppSettings.shared.sttBackend == .appleSpeech
+                    ? AppSettings.shared.sttLocale
+                    : nil
+                let result = try await stt.transcribeFileWords(pcm: samples, lang: fileLanguage)
                 guard isCurrentTurn(turnID) else { return }
                 timestampedWords = result.words
                 timestampFrameSec = result.frameSec
@@ -388,9 +390,7 @@ final class ConversationEngine {
                     guard isCurrentTurn(turnID) else { return }
                     inputRMS = chunk.rms
                     let result = try await stt.feed(chunk.samples)
-                    if !result.newText.isEmpty {
-                        partialTranscript += result.newText
-                    }
+                    applySttUpdate(result.textUpdate)
                     if endpoint.process(chunk.samples, modelEOU: result.eou,
                                         hasTranscript: !partialTranscript.isEmpty
                                             || canEndTurnWithoutTranscript) {
@@ -618,10 +618,15 @@ final class ConversationEngine {
         activeTurnID == turnID
     }
 
+    private func applySttUpdate(_ update: SttTextUpdate) {
+        partialTranscript = update.applying(to: partialTranscript)
+    }
+
     private func finalizeSttTurn(_ stt: any SttEngine, turnID: UUID) async throws {
-        let tail = try await stt.endTurn()
+        let finalUpdate = try await stt.endTurn()
         guard isCurrentTurn(turnID) else { return }
-        let finalText = (partialTranscript + tail)
+        applySttUpdate(finalUpdate)
+        let finalText = partialTranscript
             .trimmingCharacters(in: .whitespacesAndNewlines)
         partialTranscript = ""
         if !finalText.isEmpty {

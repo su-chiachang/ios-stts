@@ -14,6 +14,7 @@ settings:
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
     INFOPLIST_KEY_NSMicrophoneUsageDescription: "STTS needs microphone access to listen to your voice."
+    INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: "STTS uses on-device Apple Speech to transcribe your voice."
     GENERATE_INFOPLIST_FILE: YES
     DEVELOPMENT_TEAM: FPY8L862BK
     CODE_SIGN_STYLE: Automatic
@@ -97,6 +98,8 @@ targets:
       - sdk: Metal.framework
       - sdk: MetalKit.framework
       - sdk: AVFoundation.framework
+      - sdk: Speech.framework
+        weak: true
       - sdk: CoreML.framework
         destinationFilters: [macOS]
     preBuildScripts:

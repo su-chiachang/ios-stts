@@ -84,10 +84,10 @@ private actor StubSttEngine: SttEngine {
     func beginTurn(lang: String?) throws {}
 
     func feed(_ pcm: [Float]) throws -> SttFeedResult {
-        SttFeedResult(newText: "", eou: false, eob: false)
+        SttFeedResult(textUpdate: .append(""), eou: false, eob: false)
     }
 
-    func endTurn() throws -> String { "" }
+    func endTurn() throws -> SttTextUpdate { .append("") }
 
     func transcribeFileWords(pcm: [Float], lang: String?) throws -> SttTimestampedResult {
         SttTimestampedResult(words: [], frameSec: 0)
