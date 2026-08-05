@@ -5,9 +5,12 @@ set -euo pipefail
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 
 STTS_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-AUDIO8_SRC="${AUDIO8_SRC:-$STTS_DIR/../audio8.cpp}"
-GGML_SRC="${AUDIO8_GGML_SOURCE_DIR:-$STTS_DIR/../audio.cpp/external/ggml}"
-TOKENIZER_SRC="${AUDIO8_TOKENIZER_SOURCE_DIR:-$STTS_DIR/../audio.cpp}"
+
+if [ ! -d "$STTS_DIR/third_party/audio8.cpp" ]; then
+  git clone --recursive https://github.com/su-chiachang/audio8.cpp "$STTS_DIR/third_party/audio8.cpp"
+fi
+
+AUDIO8_SRC="${AUDIO8_SRC:-$STTS_DIR/third_party/audio8.cpp}"
 BUILD_DIR="$STTS_DIR/build/audio8-macos"
 INSTALL_DIR="$BUILD_DIR/install"
 VENDOR="$STTS_DIR/vendor/audio8"
@@ -24,21 +27,17 @@ CMAKE_ARGS=(
   -DAUDIO8_BUILD_RUNTIME=ON
   -DAUDIO8_ENABLE_METAL=ON
   -DAUDIO8_ENABLE_INSTALL=ON
-  -DAUDIO8_GGML_SOURCE_DIR="$GGML_SRC"
-  -DAUDIO8_TOKENIZER_SOURCE_DIR="$TOKENIZER_SRC"
+  -DAUDIO8_GGML_SOURCE_DIR="${AUDIO8_GGML_SOURCE_DIR:-}"
   -DAUDIO8_TEST_GENERATOR_GGUF="${AUDIO8_TEST_GENERATOR_GGUF:-}"
   -DAUDIO8_TEST_CODEC_GGUF="${AUDIO8_TEST_CODEC_GGUF:-}"
   -DAUDIO8_TEST_TOKENIZER_JSON="${AUDIO8_TEST_TOKENIZER_JSON:-}"
   -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR"
 )
 
-for required in "$AUDIO8_SRC/CMakeLists.txt" "$GGML_SRC/CMakeLists.txt" \
-  "$TOKENIZER_SRC/external/cJSON/cJSON.c"; do
-  if [ ! -e "$required" ]; then
-    echo "error: missing Audio8 build dependency: $required" >&2
-    exit 1
-  fi
-done
+if [ ! -e "$AUDIO8_SRC/CMakeLists.txt" ]; then
+  echo "error: missing Audio8 build dependency: $AUDIO8_SRC/CMakeLists.txt" >&2
+  exit 1
+fi
 
 cmake -S "$AUDIO8_SRC" -B "$BUILD_DIR" "${CMAKE_ARGS[@]}"
 

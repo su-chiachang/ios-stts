@@ -8,16 +8,18 @@ export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 IOS_DEPLOYMENT_TARGET="17.0"
 PLATFORMS="${1:-iphoneos iphonesimulator}"
 STTS_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-AUDIO8_SRC="${AUDIO8_SRC:-$STTS_DIR/../audio8.cpp}"
-GGML_SRC="${AUDIO8_GGML_SOURCE_DIR:-$STTS_DIR/../audio.cpp/external/ggml}"
-TOKENIZER_SRC="${AUDIO8_TOKENIZER_SOURCE_DIR:-$STTS_DIR/../audio.cpp}"
+
+if [ ! -d "$STTS_DIR/third_party/audio8.cpp" ]; then
+  git clone --recursive https://github.com/su-chiachang/audio8.cpp "$STTS_DIR/third_party/audio8.cpp"
+fi
+
+AUDIO8_SRC="${AUDIO8_SRC:-$STTS_DIR/third_party/audio8.cpp}"
 VENDOR="$STTS_DIR/vendor/audio8-ios"
 ARCH="arm64"
 JOBS="${BUILD_JOBS:-$(sysctl -n hw.ncpu 2>/dev/null || true)}"
 JOBS="${JOBS:-4}"
 
-for required in "$AUDIO8_SRC/CMakeLists.txt" "$AUDIO8_SRC/tools/audio8_c_consumer_smoke.c" \
-  "$GGML_SRC/CMakeLists.txt" "$TOKENIZER_SRC/external/cJSON/cJSON.c"; do
+for required in "$AUDIO8_SRC/CMakeLists.txt" "$AUDIO8_SRC/tools/audio8_c_consumer_smoke.c"; do
   if [ ! -e "$required" ]; then
     echo "error: missing Audio8 build dependency: $required" >&2
     exit 1
@@ -45,8 +47,7 @@ for PLATFORM in $PLATFORMS; do
     -DAUDIO8_BUILD_RUNTIME=ON \
     -DAUDIO8_ENABLE_METAL=ON \
     -DAUDIO8_ENABLE_INSTALL=ON \
-    -DAUDIO8_GGML_SOURCE_DIR="$GGML_SRC" \
-    -DAUDIO8_TOKENIZER_SOURCE_DIR="$TOKENIZER_SRC" \
+    -DAUDIO8_GGML_SOURCE_DIR="${AUDIO8_GGML_SOURCE_DIR:-}" \
     -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR"
   cmake --build "$BUILD_DIR" --target audio8-core \
     -j"$JOBS"
