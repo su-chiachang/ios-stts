@@ -3,7 +3,7 @@ options:
   bundleIdPrefix: com.jiajing
   deploymentTarget:
     macOS: "15.0"
-    iOS: "17.0"
+    iOS: "26.0"
 configs:
   Debug: debug
   Release: release
