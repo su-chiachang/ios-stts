@@ -122,7 +122,7 @@ struct TtsView: View {
     }
 
     private var canSpeak: Bool {
-        engine.isReady && !engine.isProcessing
+        engine.isTTSReady && !engine.isProcessing
             && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && (voice == .standard || (voice == .cloned && hasClonedVoice))
     }
