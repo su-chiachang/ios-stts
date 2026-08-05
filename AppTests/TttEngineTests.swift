@@ -4,8 +4,14 @@ import FoundationModels
 
 @MainActor
 final class TttEngineTests: XCTestCase {
+    /// Never touches the real `LanguageModelSession` — finishes immediately
+    /// with no chunks, so `send()`/`retry()` are hermetic in tests.
+    private static func noopRespond(_: LanguageModelSession, _: String) -> AsyncThrowingStream<String, Error> {
+        AsyncThrowingStream { $0.finish() }
+    }
+
     func testSendAppendsUserMessageAndClearsDraft() {
-        let engine = TttEngine()
+        let engine = TttEngine(respond: Self.noopRespond)
         engine.draft = "hello"
         engine.send()
         XCTAssertEqual(engine.messages.first?.text, "hello")
@@ -23,7 +29,7 @@ final class TttEngineTests: XCTestCase {
     }
 
     func testNewChatResetsState() {
-        let engine = TttEngine()
+        let engine = TttEngine(respond: Self.noopRespond)
         engine.draft = "hello"
         engine.send()
         XCTAssertFalse(engine.messages.isEmpty)

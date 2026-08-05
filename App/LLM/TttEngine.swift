@@ -38,11 +38,31 @@ final class TttEngine {
     let model = SystemLanguageModel.default
     private var session: LanguageModelSession
     private var lastUserPrompt: String?
+    private let respond: (LanguageModelSession, String) -> AsyncThrowingStream<String, Error>
 
     private static let instructions = "You are a helpful assistant. Be concise."
 
-    init() {
+    /// `respond` is a seam for tests — injecting a fake avoids the default
+    /// implementation's real `LanguageModelSession.streamResponse` call,
+    /// which isn't mockable directly since `ResponseStream` has no public
+    /// initializer outside the framework.
+    init(respond: ((LanguageModelSession, String) -> AsyncThrowingStream<String, Error>)? = nil) {
         session = LanguageModelSession(instructions: Self.instructions)
+        self.respond = respond ?? { session, prompt in
+            AsyncThrowingStream { continuation in
+                let task = Task {
+                    do {
+                        for try await snapshot in session.streamResponse(to: prompt) {
+                            continuation.yield(snapshot.content)
+                        }
+                        continuation.finish()
+                    } catch {
+                        continuation.finish(throwing: error)
+                    }
+                }
+                continuation.onTermination = { _ in task.cancel() }
+            }
+        }
     }
 
     var canSend: Bool {
@@ -80,10 +100,9 @@ final class TttEngine {
         messages.append(Message(role: .assistant, text: ""))
         Task {
             do {
-                let stream = session.streamResponse(to: prompt)
-                for try await snapshot in stream {
+                for try await chunk in respond(session, prompt) {
                     guard index < messages.count else { return }
-                    messages[index].text = snapshot.content
+                    messages[index].text = chunk
                 }
             } catch let error as LanguageModelSession.GenerationError {
                 guard index < messages.count else { isStreaming = false; return }

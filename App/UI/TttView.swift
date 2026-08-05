@@ -2,6 +2,8 @@ import SwiftUI
 import FoundationModels
 #if os(iOS)
 import UIKit
+#elseif os(macOS)
+import AppKit
 #endif
 
 /// The [ttt] tab: a single on-device chat conversation against
@@ -91,7 +93,8 @@ struct TttView: View {
 
     private var inputBar: some View {
         HStack {
-            Image(systemName: "paperclip")
+            Button {} label: { Image(systemName: "paperclip") }
+                .disabled(true)
                 .foregroundStyle(.tertiary)
             TextField("Message", text: $engine.draft, axis: .vertical)
                 .disabled(engine.isSessionExhausted)
@@ -102,49 +105,49 @@ struct TttView: View {
     }
 
     private func unavailableBanner(_ reason: SystemLanguageModel.Availability.UnavailableReason) -> some View {
-        HStack {
+        let info = unavailableInfo(reason)
+        return HStack {
             Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
             VStack(alignment: .leading, spacing: 2) {
-                Text(unavailableTitle(reason)).font(.caption).bold()
-                if let detail = unavailableDetail(reason) {
+                Text(info.title).font(.caption).bold()
+                if let detail = info.detail {
                     Text(detail).font(.caption2).foregroundStyle(.secondary)
                 }
             }
             Spacer()
-            #if os(iOS)
             if reason == .appleIntelligenceNotEnabled {
                 Button("Open Settings") { openSettings() }
                     .font(.caption)
             }
-            #endif
         }
         .padding()
     }
 
-    private func unavailableTitle(_ reason: SystemLanguageModel.Availability.UnavailableReason) -> String {
+    private func unavailableInfo(_ reason: SystemLanguageModel.Availability.UnavailableReason) -> (title: String, detail: String?) {
         switch reason {
-        case .modelNotReady: "Waiting for the on-device model to finish downloading…"
-        case .appleIntelligenceNotEnabled: "Apple Intelligence is off"
-        case .deviceNotEligible: "This device doesn't support Apple Intelligence"
-        @unknown default: "ttt isn't available right now"
+        case .modelNotReady:
+            ("Waiting for the on-device model to finish downloading…",
+             "ttt will become active automatically once it's ready.")
+        case .appleIntelligenceNotEnabled:
+            ("Apple Intelligence is off", "Turn it on in Settings to use ttt.")
+        case .deviceNotEligible:
+            ("This device doesn't support Apple Intelligence", nil)
+        @unknown default:
+            ("ttt isn't available right now", nil)
         }
     }
 
-    private func unavailableDetail(_ reason: SystemLanguageModel.Availability.UnavailableReason) -> String? {
-        switch reason {
-        case .modelNotReady: "ttt will become active automatically once it's ready."
-        case .appleIntelligenceNotEnabled: "Turn it on in Settings to use ttt."
-        default: nil
-        }
-    }
-
-    #if os(iOS)
     private func openSettings() {
+        #if os(iOS)
         if let url = URL(string: UIApplication.openSettingsURLString) {
             UIApplication.shared.open(url)
         }
+        #elseif os(macOS)
+        if let url = URL(string: "x-apple.systempreferences:") {
+            NSWorkspace.shared.open(url)
+        }
+        #endif
     }
-    #endif
 }
 
 #Preview {
