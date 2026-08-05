@@ -77,6 +77,10 @@ final class ConversationEngine {
         self.ttsLoader = ttsLoader
     }
 
+    /// Both native models loaded at once pushed resident memory past the OS
+    /// jetsam limit on-device (fine on macOS, which has no equivalent
+    /// ceiling). Full validation from Settings still needs both; routine tab
+    /// navigation should only ever pay for what that tab actually uses.
     func loadModels() async {
         await cancelCurrentTurnAndWait()
         state = .loadingModels
@@ -134,6 +138,50 @@ final class ConversationEngine {
     }
 
     var isReady: Bool { stt != nil && tts != nil }
+
+    enum ModelScope { case stt, tts, both }
+
+    /// Loads whichever model(s) `scope` needs and drops the other, so only
+    /// one tab's worth of native models is ever resident at a time (the
+    /// [stts] tab is the one exception — it genuinely needs both, since a
+    /// spoken turn goes mic → STT → LLM → TTS). Called when the active tab
+    /// changes; see `RootTabView`.
+    func activate(_ scope: ModelScope) async {
+        await cancelCurrentTurnAndWait()
+        let needsSTT = scope == .stt || scope == .both
+        let needsTTS = scope == .tts || scope == .both
+        if !needsSTT { stt = nil }
+        if !needsTTS { tts = nil }
+
+        // Unconditional, not just when a load is about to happen: cancelling
+        // above doesn't touch `state`, so a mid-turn tab switch would
+        // otherwise leave `state` stuck on .listening/.thinking/.speaking
+        // (isProcessing == true forever) or on a stale .error from whatever
+        // the previous tab was doing.
+        let needsLoad = (needsSTT && stt == nil) || (needsTTS && tts == nil)
+        state = needsLoad ? .loadingModels : .idle
+        let settings = AppSettings.shared
+        var loadedStt = stt
+        var loadedTts = tts
+        do {
+            if needsSTT && loadedStt == nil {
+                loadedStt = try sttLoader(settings)
+            }
+            if needsTTS && loadedTts == nil {
+                loadedTts = try ttsLoader(settings)
+            }
+            stt = loadedStt
+            tts = loadedTts
+        } catch {
+            state = .error(error.localizedDescription)
+            return
+        }
+        if state == .loadingModels { state = .idle }
+    }
+
+    var isSTTReady: Bool { stt != nil }
+    var isTTSReady: Bool { tts != nil }
+    var isReady: Bool { isSTTReady && isTTSReady }
     var isProcessing: Bool {
         switch state {
         case .listening, .thinking, .speaking: true
@@ -201,8 +249,8 @@ final class ConversationEngine {
     /// voice instead of typing it. Unlike `transcribeFile`, this consumes the
     /// whole clip (no endpoint cutoff) and never plays it back.
     func dictateFile(_ url: URL) {
-        guard let stt, isReady else {
-            state = .error("Models are not loaded. Choose both model locations in Settings, then reload.")
+        guard let stt else {
+            state = .error("STT model is not loaded. Pick a parakeet .gguf file in Settings.")
             return
         }
         cancelCurrentTurn()
@@ -246,13 +294,20 @@ final class ConversationEngine {
 
     func clearDictatedText() { dictatedText = "" }
 
+    /// Surfaces a failure from outside the turn state machine (e.g. a failed
+    /// file pick) through the same `.error` state every other failure here
+    /// uses, so it shows up in the usual status banner.
+    func reportError(_ message: String) {
+        state = .error(message)
+    }
+
     /// Transcribes a whole audio file to per-word timestamps for the [stt] tab
     /// (STT only — no LLM, no playback). Decodes the entire clip to 16 kHz mono
     /// PCM, then runs the batched timestamp path. Results land in
     /// `timestampedWords` / `timestampFrameSec`.
     func transcribeFileTimestamped(_ url: URL) {
-        guard let stt, isReady else {
-            state = .error("Models are not loaded. Choose both model locations in Settings, then reload.")
+        guard let stt else {
+            state = .error("STT model is not loaded. Pick a parakeet .gguf file in Settings.")
             return
         }
         cancelCurrentTurn()
@@ -388,7 +443,7 @@ final class ConversationEngine {
     @discardableResult
     func speakText(_ text: String) -> Bool {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, isReady, !isProcessing else { return false }
+        guard !text.isEmpty, isTTSReady, !isProcessing else { return false }
 
         cancelCurrentTurn()
         let turnID = UUID()
@@ -423,7 +478,7 @@ final class ConversationEngine {
     func speak(_ text: String, referenceWavPath: String?, referenceTranscript: String? = nil,
                speaker: String? = nil, instruction: String? = nil) -> Bool {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, isReady, !isProcessing else { return false }
+        guard !text.isEmpty, isTTSReady, !isProcessing else { return false }
 
         cancelCurrentTurn()
         let turnID = UUID()

@@ -1,14 +1,9 @@
 import SwiftUI
-import UniformTypeIdentifiers
 
 struct ConversationView: View {
     var engine: ConversationEngine
     var settings = AppSettings.shared
     @State private var draft = ""
-    #if os(iOS)
-    @State private var showTranscribePicker = false
-    @State private var showDictatePicker = false
-    #endif
 
     var body: some View {
         VStack(spacing: 0) {
@@ -47,16 +42,6 @@ struct ConversationView: View {
             draft = draft.isEmpty ? text : draft + " " + text
             engine.clearDictatedText()
         }
-        #if os(iOS)
-        .fileImporter(isPresented: $showTranscribePicker,
-                      allowedContentTypes: [.audio, .movie, .mpeg4Movie, .wav, .mp3]) { result in
-            if case .success(let url) = result { engine.transcribeFile(url) }
-        }
-        .fileImporter(isPresented: $showDictatePicker,
-                      allowedContentTypes: [.audio, .movie, .mpeg4Movie, .wav, .mp3]) { result in
-            if case .success(let url) = result { engine.dictateFile(url) }
-        }
-        #endif
     }
 
     // MARK: Header
@@ -82,8 +67,12 @@ struct ConversationView: View {
             .buttonStyle(.plain)
             .help(readAloudHelp)
 
-            headerButton("doc.badge.plus", help: "Transcribe an audio file", action: pickFile)
-                .disabled(!engine.isReady || engine.isProcessing)
+            MediaSourceMenu(onPick: engine.transcribeFile, onError: engine.reportError) {
+                Image(systemName: "doc.badge.plus")
+            }
+            .buttonStyle(.plain)
+            .help("Transcribe an audio file")
+            .disabled(!engine.isReady || engine.isProcessing)
 
             headerButton("square.and.pencil", help: "New conversation", action: engine.resetConversation)
                 .disabled(engine.bubbles.isEmpty && engine.partialTranscript.isEmpty && !engine.isProcessing)
@@ -139,25 +128,11 @@ struct ConversationView: View {
         }
     }
 
-    private func pickFile() {
-        #if os(macOS)
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = true
-        panel.canChooseDirectories = false
-        panel.allowedContentTypes = [.audio, .movie, .mpeg4Movie, .wav, .mp3]
-        if panel.runModal() == .OK, let url = panel.url {
-            engine.transcribeFile(url)
-        }
-        #else
-        showTranscribePicker = true
-        #endif
-    }
-
     // MARK: Composer
 
     private var composer: some View {
         HStack(alignment: .bottom, spacing: 6) {
-            Button(action: dictateFromFile) {
+            MediaSourceMenu(onPick: engine.dictateFile, onError: engine.reportError) {
                 Image(systemName: "plus")
                     .font(.system(size: 15, weight: .semibold))
                     .frame(width: 28, height: 28)
@@ -228,20 +203,6 @@ struct ConversationView: View {
     private func sendDraft() {
         let handled = settings.readAloudMode ? engine.speakText(draft) : engine.sendText(draft)
         if handled { draft = "" }
-    }
-
-    private func dictateFromFile() {
-        #if os(macOS)
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = true
-        panel.canChooseDirectories = false
-        panel.allowedContentTypes = [.audio, .movie, .mpeg4Movie, .wav, .mp3]
-        if panel.runModal() == .OK, let url = panel.url {
-            engine.dictateFile(url)
-        }
-        #else
-        showDictatePicker = true
-        #endif
     }
 
     private func toggleMicrophone() {

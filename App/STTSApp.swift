@@ -32,7 +32,6 @@ struct STTSApp: App {
         #if os(macOS)
         WindowGroup {
             RootTabView(engine: engine)
-                .task { await engine.loadModels() }
         }
         .windowResizability(.contentSize)
 
@@ -42,7 +41,6 @@ struct STTSApp: App {
         #else
         WindowGroup {
             RootTabView(engine: engine)
-                .task { await engine.loadModels() }
         }
         #endif
     }

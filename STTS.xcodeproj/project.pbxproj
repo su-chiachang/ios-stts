@@ -11,6 +11,7 @@
 		05F4B890FE5CC9B9D055ABD9 /* ModelDownloadManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6C969839811F04A66D1AB31 /* ModelDownloadManagerTests.swift */; };
 		1441363D242C380FEF2A43BD /* AudioInputManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F184732A7DE3E3F2150DD692 /* AudioInputManager.swift */; };
 		16F8CA09AC89E5E3C6F2644F /* QwenTts.swift in Sources */ = {isa = PBXBuildFile; fileRef = B84C057F42527C6C039326B5 /* QwenTts.swift */; };
+		171F7CBE0F8B561B2F6912A1 /* MediaSourceMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E420319ED13CC8B10D45B20 /* MediaSourceMenu.swift */; };
 		18FB71CBD5AACF8A6A28CCD3 /* AudioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E8F755F79115D9D4D9E0B1B /* AudioPlayer.swift */; };
 		1FE52BA02157AFDE4BBDA00E /* CParakeet in Frameworks */ = {isa = PBXBuildFile; productRef = F5CC40963F85E1E537062BE6 /* CParakeet */; };
 		25D84C68749055BAA81459A5 /* VoiceClipRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FEAF6FA21FC687D4DF5D7FD /* VoiceClipRecorder.swift */; };
@@ -85,6 +86,7 @@
 		7CD9C9C26B3D6BB22835E98B /* ConversationEngineModelLoadingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationEngineModelLoadingTests.swift; sourceTree = "<group>"; };
 		84FEBD4B5611CECB465387C1 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		9276F59453065581A0421C5E /* STTSTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = STTSTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		8E420319ED13CC8B10D45B20 /* MediaSourceMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaSourceMenu.swift; sourceTree = "<group>"; };
 		9283F0E6CE2A9A6E0303D629 /* Accelerate.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Accelerate.framework; path = System/Library/Frameworks/Accelerate.framework; sourceTree = SDKROOT; };
 		A42B0D01C33A472025C17A0F /* STTSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = STTSApp.swift; sourceTree = "<group>"; };
 		A893796C0A5D3D725D60F065 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
@@ -169,6 +171,7 @@
 			children = (
 				AA6B8448D19080817053D361 /* ConversationView.swift */,
 				ED552EF21385746C2D1045A1 /* DownloadModelsView.swift */,
+				8E420319ED13CC8B10D45B20 /* MediaSourceMenu.swift */,
 				D30A4BAC2E50F07D1620698A /* RootTabView.swift */,
 				84FEBD4B5611CECB465387C1 /* SettingsView.swift */,
 				12C7A01B6EBE0A04C523D9D1 /* SttFileView.swift */,
@@ -447,6 +450,7 @@
 				337718A8F502C4B51E723F95 /* DownloadModelsView.swift in Sources */,
 				EA70D656620C8BB22A3BC1AF /* EndpointDetector.swift in Sources */,
 				37D9FDFEF712C56359D45E2B /* LanguageDetect.swift in Sources */,
+				171F7CBE0F8B561B2F6912A1 /* MediaSourceMenu.swift in Sources */,
 				D13979DF0482ACBD48735F7C /* ModelCatalog.swift in Sources */,
 				6D670AA20C9CB39B57B630C9 /* ModelDownloadManager.swift in Sources */,
 				3F6E99EC438B3ED10CAF803F /* OpenAIChatClient.swift in Sources */,

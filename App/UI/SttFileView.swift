@@ -1,5 +1,4 @@
 import SwiftUI
-import UniformTypeIdentifiers
 
 /// The [stt] tab: import an mp3/wav (or any AVFoundation-readable file) and see
 /// its transcript with timestamps, switchable between sentence-level (default)
@@ -7,9 +6,6 @@ import UniformTypeIdentifiers
 struct SttFileView: View {
     var engine: ConversationEngine
     @State private var granularity: Granularity = .sentence
-    #if os(iOS)
-    @State private var showFilePicker = false
-    #endif
 
     enum Granularity: String, CaseIterable, Identifiable {
         case sentence = "Sentence"
@@ -30,12 +26,6 @@ struct SttFileView: View {
         #if os(macOS)
         .frame(minWidth: 420, minHeight: 500)
         #endif
-        #if os(iOS)
-        .fileImporter(isPresented: $showFilePicker,
-                      allowedContentTypes: [.audio, .movie, .mpeg4Movie, .wav, .mp3]) { result in
-            if case .success(let url) = result { engine.transcribeFileTimestamped(url) }
-        }
-        #endif
     }
 
     private var header: some View {
@@ -47,8 +37,10 @@ struct SttFileView: View {
             .frame(width: 180)
             .disabled(engine.timestampedWords.isEmpty)
 
-            Button("File…") { pickFile() }
-                .disabled(!engine.isReady || engine.isProcessing)
+            MediaSourceMenu(onPick: engine.transcribeFileTimestamped, onError: engine.reportError) {
+                Text("Import…")
+            }
+            .disabled(!engine.isSTTReady || engine.isProcessing)
         }
         .padding()
     }
@@ -116,27 +108,6 @@ struct SttFileView: View {
             .foregroundStyle(isError ? .red : .secondary)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding()
-    }
-
-    // macOS uses NSOpenPanel (not SwiftUI's .fileImporter) to match the rest
-    // of this AppKit-hosted app: its panel-selected URLs are authorized for
-    // the process by the sandbox's user-selected read-only entitlement, so
-    // the engine can read them directly — no security-scoped copy needed.
-    // This is the same pattern ConversationView's Transcribe/Dictate buttons
-    // use. iOS has no AppKit host, so it presents .fileImporter instead;
-    // ConversationEngine brackets the resulting security-scoped URL itself.
-    private func pickFile() {
-        #if os(macOS)
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = true
-        panel.canChooseDirectories = false
-        panel.allowedContentTypes = [.audio, .movie, .mpeg4Movie, .wav, .mp3]
-        if panel.runModal() == .OK, let url = panel.url {
-            engine.transcribeFileTimestamped(url)
-        }
-        #else
-        showFilePicker = true
-        #endif
     }
 
     /// mm:ss for sentence bounds.
