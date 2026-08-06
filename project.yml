@@ -2,8 +2,8 @@ name: STTS
 options:
   bundleIdPrefix: com.jiajing
   deploymentTarget:
-    macOS: "15.0"
-    iOS: "17.0"
+    macOS: "26.0"
+    iOS: "26.0"
 configs:
   Debug: debug
   Release: release
@@ -118,6 +118,8 @@ targets:
       - sdk: AVFoundation.framework
       - sdk: AVFAudio.framework
       - sdk: Speech.framework
+        weak: true
+      - sdk: FoundationModels.framework
         weak: true
       - sdk: CoreML.framework
         destinationFilters: [macOS]

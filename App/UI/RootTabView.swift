@@ -6,7 +6,7 @@ struct RootTabView: View {
     var engine: ConversationEngine
     @State private var selectedTab: Tab = .stt
 
-    private enum Tab { case stt, tts, stts, settings }
+    private enum Tab { case stt, tts, stts, ttt, settings }
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -19,6 +19,9 @@ struct RootTabView: View {
             ConversationView(engine: engine)
                 .tabItem { Label("stts", systemImage: "bubble.left.and.bubble.right") }
                 .tag(Tab.stts)
+            TttView()
+                .tabItem { Label("ttt", systemImage: "bubble.left.and.text.bubble.right") }
+                .tag(Tab.ttt)
             #if os(iOS)
             // macOS reaches SettingsView through the app's Settings scene
             // (Cmd-,); iOS has no such scene, so it needs its own tab.
@@ -39,7 +42,7 @@ struct RootTabView: View {
             case .stt: await engine.activate(.stt)
             case .tts: await engine.activate(.tts)
             case .stts: await engine.activate(.both)
-            case .settings: break
+            case .ttt, .settings: break
             }
         }
     }
