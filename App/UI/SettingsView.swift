@@ -98,6 +98,15 @@ struct SettingsView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    LabeledContent("Apple TTS") {
+                        Label("System-managed voice", systemImage: "checkmark.shield")
+                            .foregroundStyle(.secondary)
+                    }
+                    Text("Apple TTS needs no downloaded model. It selects a system voice from each sentence's language and falls back to the system default.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 HStack {
                     Button("Download Models…") { showDownloadModels = true }
@@ -152,18 +161,23 @@ struct SettingsView: View {
                             .truncationMode(.middle)
                             .foregroundStyle(settings.customVoiceName.isEmpty ? .secondary : .primary)
                         Button("Import…") { importCustomVoice() }
+                            .disabled(settings.ttsBackend == .appleSpeech)
                         if !settings.customVoiceName.isEmpty {
                             Button("Remove") {
                                 settings.clearCustomVoice()
                                 voiceMessage = nil
                             }
+                            .disabled(settings.ttsBackend == .appleSpeech)
                         }
                     }
                 }
                 Toggle("Read typed text aloud in this voice", isOn: Binding(
                     get: { settings.readAloudMode },
                     set: { settings.readAloudMode = $0 }))
-                Text(settings.ttsBackend == .audio8
+                    .disabled(settings.ttsBackend == .appleSpeech)
+                Text(settings.ttsBackend == .appleSpeech
+                     ? "Apple TTS uses the system voice for read-aloud mode. Switch to Qwen or Audio8 to manage a custom reference voice."
+                     : settings.ttsBackend == .audio8
                      ? "When on, Send (or Return) speaks your exact text with Audio8 reference conditioning. A 5–15 s clip works best; enter its transcript in the TTS tab."
                      : "When on, Send (or Return) speaks your exact text in the imported voice instead of asking the assistant. A 5–15 s clip works best; the words spoken in it don't matter.")
                     .font(.caption)

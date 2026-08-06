@@ -32,6 +32,12 @@ final class ConversationEngineModelLoadingTests: XCTestCase {
         XCTAssertEqual(loadedBackends, [.qwen, .audio8])
         XCTAssertTrue(engine.isReady)
         XCTAssertNil(firstEngine, "reload must release the previous TTS runtime")
+
+        settings.ttsBackend = .appleSpeech
+        await engine.loadModels()
+
+        XCTAssertEqual(loadedBackends, [.qwen, .audio8, .appleSpeech])
+        XCTAssertTrue(engine.isReady)
     }
 
     func testLoadModelsDoesNotPublishPartialSttWhenTtsLoadFails() async {

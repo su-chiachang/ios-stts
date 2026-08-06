@@ -18,6 +18,7 @@
 		28FC22CF5A316C83C2890109 /* Audio8ReleaseManifest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7560AD8E50BF38B508F0FAA4 /* Audio8ReleaseManifest.swift */; };
 		2D8DE29A558BD92BFE939520 /* STTSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A42B0D01C33A472025C17A0F /* STTSApp.swift */; };
 		337718A8F502C4B51E723F95 /* DownloadModelsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED552EF21385746C2D1045A1 /* DownloadModelsView.swift */; };
+		34ECD93C28E65EEAF1E2754D /* AppleSpeechWriteLifecycleProbeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AB33C348377EAE1822DCC6F /* AppleSpeechWriteLifecycleProbeTests.swift */; };
 		37D9FDFEF712C56359D45E2B /* LanguageDetect.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45EB14C6E593D09487F38568 /* LanguageDetect.swift */; };
 		39C108230EABFC8A0146ED8D /* ParakeetStt.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC640AB2F54F38B0DDCEE60D /* ParakeetStt.swift */; };
 		3F6E99EC438B3ED10CAF803F /* OpenAIChatClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE2D2D7657A98CD8BE6EF9BC /* OpenAIChatClient.swift */; };
@@ -36,15 +37,19 @@
 		72413F9CCE8B7535D7C15267 /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FC91B63BC6B01D4524AC3630 /* MetalKit.framework */; };
 		75DB99D948F7F685467B8164 /* Audio8ReleaseManifestTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED88F4C03FDD87E703A96190 /* Audio8ReleaseManifestTests.swift */; };
 		87C5E6EA8087DD24FF23892F /* Audio8Tts.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFA341859255E8D66C9D5A9D /* Audio8Tts.swift */; };
+		905A56AC96F6DA92829330AC /* AppleTtsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 973FB162B50E918C1B6A7EB3 /* AppleTtsTests.swift */; };
 		A230FE0298E2DE2E31653B15 /* ModelCatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6249E153C3FABA02244A4DFB /* ModelCatalogTests.swift */; };
 		A666F2CFE775D83AF3E32BFF /* SentenceChunker.swift in Sources */ = {isa = PBXBuildFile; fileRef = C23DE73B788924DF1EC67A9C /* SentenceChunker.swift */; };
+		B2E1BC25141534FFDC405891 /* AppleTts.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00265DB1D4F782270007624 /* AppleTts.swift */; };
 		B6D7592F5652D21E37C375C0 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84FEBD4B5611CECB465387C1 /* SettingsView.swift */; };
+		B96145BA68E58E40CACA12C8 /* AVFAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 07EC02451599AD4C28F239E6 /* AVFAudio.framework */; };
 		C228FE56D4D5D15B537C7A09 /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 54015CE032053C6A56560C85 /* AVFoundation.framework */; };
 		C319E447723CC04184953BBD /* SttFileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12C7A01B6EBE0A04C523D9D1 /* SttFileView.swift */; };
 		C8218D6588CF04C5F24C58C4 /* ReferenceAudioImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3269A59068E75771E6844A78 /* ReferenceAudioImporter.swift */; };
 		CD67B27A626D2AC8C1FBC994 /* Speech.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 19CD082CC7DA4BC98BE28FDD /* Speech.framework */; settings = {ATTRIBUTES = (Weak, ); }; };
 		D13979DF0482ACBD48735F7C /* ModelCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0262B8F74259172FCD62E601 /* ModelCatalog.swift */; };
 		D514FB74D049863FA2A16CBE /* RootTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D30A4BAC2E50F07D1620698A /* RootTabView.swift */; };
+		D70C8E2431749C009D0E2733 /* AppleSpeechWriteLifecycleProbeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AB33C348377EAE1822DCC6F /* AppleSpeechWriteLifecycleProbeTests.swift */; };
 		DAD40336708090579EAFEE73 /* SttBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30E2F92202284B9A5C477037 /* SttBackend.swift */; };
 		DDCCA5244460485A45F70D27 /* CAudio8 in Frameworks */ = {isa = PBXBuildFile; productRef = B0BDA9F60F6760BFE7060CE0 /* CAudio8 */; };
 		DFCB74B76DEDB0A6B1AACB0E /* SourceMediaPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AA57699541365E25920DDA8 /* SourceMediaPlayer.swift */; };
@@ -57,6 +62,20 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		49F636FDA65DADC88A89F226 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 65AAE637460D64AF1E4367F3 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E1C867299251B55FDF15AA1C;
+			remoteInfo = STTS;
+		};
+		99DAFE8BA83EE1CA3EFC069E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 65AAE637460D64AF1E4367F3 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E1C867299251B55FDF15AA1C;
+			remoteInfo = STTS;
+		};
 		FD8B1887830150FEEED87208 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 65AAE637460D64AF1E4367F3 /* Project object */;
@@ -69,6 +88,7 @@
 /* Begin PBXFileReference section */
 		0262B8F74259172FCD62E601 /* ModelCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelCatalog.swift; sourceTree = "<group>"; };
 		07E13B98BA499EACD667C0EE /* ModelDownloadManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelDownloadManager.swift; sourceTree = "<group>"; };
+		07EC02451599AD4C28F239E6 /* AVFAudio.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFAudio.framework; path = System/Library/Frameworks/AVFAudio.framework; sourceTree = SDKROOT; };
 		12C7A01B6EBE0A04C523D9D1 /* SttFileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SttFileView.swift; sourceTree = "<group>"; };
 		19CD082CC7DA4BC98BE28FDD /* Speech.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Speech.framework; path = System/Library/Frameworks/Speech.framework; sourceTree = SDKROOT; };
 		2AA57699541365E25920DDA8 /* SourceMediaPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceMediaPlayer.swift; sourceTree = "<group>"; };
@@ -83,6 +103,7 @@
 		54015CE032053C6A56560C85 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
 		60EF1F23059238736690A6B5 /* TtsBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TtsBackend.swift; sourceTree = "<group>"; };
 		6249E153C3FABA02244A4DFB /* ModelCatalogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelCatalogTests.swift; sourceTree = "<group>"; };
+		6AB33C348377EAE1822DCC6F /* AppleSpeechWriteLifecycleProbeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSpeechWriteLifecycleProbeTests.swift; sourceTree = "<group>"; };
 		6ABE94709829D1DAFC23F68F /* SttBackendTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SttBackendTests.swift; sourceTree = "<group>"; };
 		7399E6E4410594811B61FE24 /* AudioFileInput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioFileInput.swift; sourceTree = "<group>"; };
 		74134B85542325CA6ABDDB04 /* NativeShims */ = {isa = PBXFileReference; lastKnownFileType = folder; name = NativeShims; path = Packages/NativeShims; sourceTree = SOURCE_ROOT; };
@@ -94,6 +115,7 @@
 		9249735C9061EBA41BABD593 /* AppleSpeechStt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSpeechStt.swift; sourceTree = "<group>"; };
 		9276F59453065581A0421C5E /* STTSTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = STTSTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9283F0E6CE2A9A6E0303D629 /* Accelerate.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Accelerate.framework; path = System/Library/Frameworks/Accelerate.framework; sourceTree = SDKROOT; };
+		973FB162B50E918C1B6A7EB3 /* AppleTtsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleTtsTests.swift; sourceTree = "<group>"; };
 		A42B0D01C33A472025C17A0F /* STTSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = STTSApp.swift; sourceTree = "<group>"; };
 		A893796C0A5D3D725D60F065 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
 		AA0F353EE07A8A59C212494F /* ModelBundle */ = {isa = PBXFileReference; lastKnownFileType = folder; name = ModelBundle; path = Packages/ModelBundle; sourceTree = SOURCE_ROOT; };
@@ -103,9 +125,11 @@
 		BFA341859255E8D66C9D5A9D /* Audio8Tts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Audio8Tts.swift; sourceTree = "<group>"; };
 		C23DE73B788924DF1EC67A9C /* SentenceChunker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentenceChunker.swift; sourceTree = "<group>"; };
 		CFD52BD5D2BD91B97886D2FF /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+		D00265DB1D4F782270007624 /* AppleTts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleTts.swift; sourceTree = "<group>"; };
 		D30A4BAC2E50F07D1620698A /* RootTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootTabView.swift; sourceTree = "<group>"; };
 		DC640AB2F54F38B0DDCEE60D /* ParakeetStt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParakeetStt.swift; sourceTree = "<group>"; };
 		E24F882EC35A5A2B5CB54E7D /* STTS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = STTS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E51E209B040508DAEA52C4BC /* AppleSpeechLifecycleProbeMacTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AppleSpeechLifecycleProbeMacTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		ED552EF21385746C2D1045A1 /* DownloadModelsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadModelsView.swift; sourceTree = "<group>"; };
 		ED75ECEDF32D44313C7A2EA5 /* TtsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TtsView.swift; sourceTree = "<group>"; };
 		ED88F4C03FDD87E703A96190 /* Audio8ReleaseManifestTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Audio8ReleaseManifestTests.swift; sourceTree = "<group>"; };
@@ -113,6 +137,7 @@
 		F184732A7DE3E3F2150DD692 /* AudioInputManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioInputManager.swift; sourceTree = "<group>"; };
 		F4D2071A40A847AAC1412D33 /* ConversationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationEngine.swift; sourceTree = "<group>"; };
 		F6C969839811F04A66D1AB31 /* ModelDownloadManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelDownloadManagerTests.swift; sourceTree = "<group>"; };
+		F8BDC2C3F57C33109A771E66 /* AppleSpeechLifecycleProbeIOSTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = AppleSpeechLifecycleProbeIOSTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		FC91B63BC6B01D4524AC3630 /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
@@ -129,6 +154,7 @@
 				62C4E856AF5A2E0A2CEFF84B /* Metal.framework in Frameworks */,
 				72413F9CCE8B7535D7C15267 /* MetalKit.framework in Frameworks */,
 				C228FE56D4D5D15B537C7A09 /* AVFoundation.framework in Frameworks */,
+				B96145BA68E58E40CACA12C8 /* AVFAudio.framework in Frameworks */,
 				CD67B27A626D2AC8C1FBC994 /* Speech.framework in Frameworks */,
 				F767CB8A8A03472B1A9F1052 /* CoreML.framework in Frameworks */,
 			);
@@ -140,6 +166,8 @@
 		10002ADC22DA1CA856DF0E76 /* Products */ = {
 			isa = PBXGroup;
 			children = (
+				F8BDC2C3F57C33109A771E66 /* AppleSpeechLifecycleProbeIOSTests.xctest */,
+				E51E209B040508DAEA52C4BC /* AppleSpeechLifecycleProbeMacTests.xctest */,
 				E24F882EC35A5A2B5CB54E7D /* STTS.app */,
 				9276F59453065581A0421C5E /* STTSTests.xctest */,
 			);
@@ -150,6 +178,7 @@
 			isa = PBXGroup;
 			children = (
 				9283F0E6CE2A9A6E0303D629 /* Accelerate.framework */,
+				07EC02451599AD4C28F239E6 /* AVFAudio.framework */,
 				54015CE032053C6A56560C85 /* AVFoundation.framework */,
 				7A73D66467B6DD9599F2411B /* CoreML.framework */,
 				A893796C0A5D3D725D60F065 /* Metal.framework */,
@@ -219,9 +248,18 @@
 				3A657C8961192AA165142FB5 /* App */,
 				F6E6B5262673340350BB557E /* AppTests */,
 				50045EF8D9B264AD8A73B677 /* Packages */,
+				5E582C178649B34A37C0FF30 /* Probes */,
 				11B5E42613BBA5B0A4DC6E84 /* Frameworks */,
 				10002ADC22DA1CA856DF0E76 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		5E582C178649B34A37C0FF30 /* Probes */ = {
+			isa = PBXGroup;
+			children = (
+				6AB33C348377EAE1822DCC6F /* AppleSpeechWriteLifecycleProbeTests.swift */,
+			);
+			path = Probes;
 			sourceTree = "<group>";
 		};
 		71CA56CC739FBF162F191590 /* Audio */ = {
@@ -240,6 +278,7 @@
 		8A96B60917AFD24C7D7497E2 /* TTS */ = {
 			isa = PBXGroup;
 			children = (
+				D00265DB1D4F782270007624 /* AppleTts.swift */,
 				BFA341859255E8D66C9D5A9D /* Audio8Tts.swift */,
 				B84C057F42527C6C039326B5 /* QwenTts.swift */,
 				60EF1F23059238736690A6B5 /* TtsBackend.swift */,
@@ -277,6 +316,7 @@
 		F6E6B5262673340350BB557E /* AppTests */ = {
 			isa = PBXGroup;
 			children = (
+				973FB162B50E918C1B6A7EB3 /* AppleTtsTests.swift */,
 				ED88F4C03FDD87E703A96190 /* Audio8ReleaseManifestTests.swift */,
 				7CD9C9C26B3D6BB22835E98B /* ConversationEngineModelLoadingTests.swift */,
 				6249E153C3FABA02244A4DFB /* ModelCatalogTests.swift */,
@@ -289,6 +329,42 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		427BBE6FC31A1248D7B9C469 /* AppleSpeechLifecycleProbeMacTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5E13F5C5921DF540F5DE560A /* Build configuration list for PBXNativeTarget "AppleSpeechLifecycleProbeMacTests" */;
+			buildPhases = (
+				905FFD2057DF93EB21EDFD7D /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D2DDF21A2DE8219623620E24 /* PBXTargetDependency */,
+			);
+			name = AppleSpeechLifecycleProbeMacTests;
+			packageProductDependencies = (
+			);
+			productName = AppleSpeechLifecycleProbeMacTests;
+			productReference = E51E209B040508DAEA52C4BC /* AppleSpeechLifecycleProbeMacTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		7784F7248B3F58E7983CCC76 /* AppleSpeechLifecycleProbeIOSTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BEBC0994F743159CA5B58F7E /* Build configuration list for PBXNativeTarget "AppleSpeechLifecycleProbeIOSTests" */;
+			buildPhases = (
+				B37AA7996D74C2E9BD438901 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				E64B24BD95555DFFC537BF2C /* PBXTargetDependency */,
+			);
+			name = AppleSpeechLifecycleProbeIOSTests;
+			packageProductDependencies = (
+			);
+			productName = AppleSpeechLifecycleProbeIOSTests;
+			productReference = F8BDC2C3F57C33109A771E66 /* AppleSpeechLifecycleProbeIOSTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		D02BDD4B70800EB6A5465D6E /* STTSTests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = DE0A1729C347DC0DD8069038 /* Build configuration list for PBXNativeTarget "STTSTests" */;
@@ -342,6 +418,14 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					427BBE6FC31A1248D7B9C469 = {
+						DevelopmentTeam = FPY8L862BK;
+						ProvisioningStyle = Automatic;
+					};
+					7784F7248B3F58E7983CCC76 = {
+						DevelopmentTeam = FPY8L862BK;
+						ProvisioningStyle = Automatic;
+					};
 					D02BDD4B70800EB6A5465D6E = {
 						DevelopmentTeam = FPY8L862BK;
 						ProvisioningStyle = Automatic;
@@ -372,6 +456,8 @@
 			targets = (
 				E1C867299251B55FDF15AA1C /* STTS */,
 				D02BDD4B70800EB6A5465D6E /* STTSTests */,
+				7784F7248B3F58E7983CCC76 /* AppleSpeechLifecycleProbeIOSTests */,
+				427BBE6FC31A1248D7B9C469 /* AppleSpeechLifecycleProbeMacTests */,
 			);
 		};
 /* End PBXProject section */
@@ -445,12 +531,21 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		905FFD2057DF93EB21EDFD7D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D70C8E2431749C009D0E2733 /* AppleSpeechWriteLifecycleProbeTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		B027CFFE2DE6556D06FD7055 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				F0723CF7C0D8E7D044BE3BE0 /* AppSettings.swift in Sources */,
 				66D78419D90DC28495775D18 /* AppleSpeechStt.swift in Sources */,
+				B2E1BC25141534FFDC405891 /* AppleTts.swift in Sources */,
 				28FC22CF5A316C83C2890109 /* Audio8ReleaseManifest.swift in Sources */,
 				87C5E6EA8087DD24FF23892F /* Audio8Tts.swift in Sources */,
 				5FD48DEFBC0365E1F9AB139B /* AudioFileInput.swift in Sources */,
@@ -487,6 +582,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				905A56AC96F6DA92829330AC /* AppleTtsTests.swift in Sources */,
 				75DB99D948F7F685467B8164 /* Audio8ReleaseManifestTests.swift in Sources */,
 				5280B0E526F93018AF1DAAA2 /* ConversationEngineModelLoadingTests.swift in Sources */,
 				A230FE0298E2DE2E31653B15 /* ModelCatalogTests.swift in Sources */,
@@ -495,9 +591,27 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B37AA7996D74C2E9BD438901 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				34ECD93C28E65EEAF1E2754D /* AppleSpeechWriteLifecycleProbeTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		D2DDF21A2DE8219623620E24 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E1C867299251B55FDF15AA1C /* STTS */;
+			targetProxy = 99DAFE8BA83EE1CA3EFC069E /* PBXContainerItemProxy */;
+		};
+		E64B24BD95555DFFC537BF2C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E1C867299251B55FDF15AA1C /* STTS */;
+			targetProxy = 49F636FDA65DADC88A89F226 /* PBXContainerItemProxy */;
+		};
 		EBBB9F1B3157D319A689B6DD /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = E1C867299251B55FDF15AA1C /* STTS */;
@@ -525,6 +639,22 @@
 			};
 			name = Release;
 		};
+		55927FF78E5B0A318E599FE7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.jiajing.AppleSpeechLifecycleProbeMacTests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/STTS.app/Contents/MacOS/STTS";
+			};
+			name = Debug;
+		};
 		67B191FF0B8AA5C6B9DE49BF /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -538,6 +668,22 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.jiajing.STTSTests;
 				SDKROOT = macosx;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/STTS.app/Contents/MacOS/STTS";
+			};
+			name = Release;
+		};
+		7AB04A0B99E4DF96F71B58B4 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.jiajing.AppleSpeechLifecycleProbeIOSTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/STTS.app/STTS";
 			};
 			name = Release;
 		};
@@ -754,6 +900,38 @@
 			};
 			name = Debug;
 		};
+		AC3B06189EAF1DBB2D11047C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.jiajing.AppleSpeechLifecycleProbeIOSTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/STTS.app/STTS";
+			};
+			name = Debug;
+		};
+		D29A992EDB0DA729E798DAA3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.jiajing.AppleSpeechLifecycleProbeMacTests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/STTS.app/Contents/MacOS/STTS";
+			};
+			name = Release;
+		};
 		EE17A5CFBE4229E59BC01F70 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -797,6 +975,24 @@
 			buildConfigurations = (
 				EE17A5CFBE4229E59BC01F70 /* Debug */,
 				235229A4631CAF9A4CAE479A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		5E13F5C5921DF540F5DE560A /* Build configuration list for PBXNativeTarget "AppleSpeechLifecycleProbeMacTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				55927FF78E5B0A318E599FE7 /* Debug */,
+				D29A992EDB0DA729E798DAA3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		BEBC0994F743159CA5B58F7E /* Build configuration list for PBXNativeTarget "AppleSpeechLifecycleProbeIOSTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AC3B06189EAF1DBB2D11047C /* Debug */,
+				7AB04A0B99E4DF96F71B58B4 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

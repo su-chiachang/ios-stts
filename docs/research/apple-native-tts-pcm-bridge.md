@@ -66,6 +66,18 @@ There is no fully documented `write`-specific completion contract to directly ma
 
 A zero-frame callback is not recorded here as an Apple-supported contract: neither the public method documentation nor the SDK header specifies it. If target testing observes that behavior, it should be guarded by regression tests and treated as an implementation detail rather than the only correctness mechanism.
 
+## Target probe observations (2026-08-05)
+
+A throwaway XCTest probe was added at [`Probes/AppleSpeechWriteLifecycleProbeTests.swift`](../../Probes/AppleSpeechWriteLifecycleProbeTests.swift) to capture the behavior that Apple leaves unspecified. These are empirical observations from this environment, not API guarantees.
+
+- iOS 17.5 Simulator (`Version 17.5 (Build 21F79)`): the normal request produced 276 PCM callbacks. The first callback was 512 frames at 22,050 Hz, mono, non-interleaved, and callbacks were delivered on `main`. No zero-frame callback was observed; the terminal delegate event was `didFinish@main`.
+- iOS 17.5 Simulator cancellation: calling `stopSpeaking(at: .immediate)` inside the first data callback returned `true`. One data callback was observed, no callback arrived after the stop request in this run, and the terminal delegate event was `didFinish@main`; `didCancel` was not observed.
+- macOS 26.5.2 (`Version 26.5.2 (Build 25F84)`): the normal request produced 558 callbacks at 22,050 Hz, mono, non-interleaved, followed by two zero-frame callbacks and `didFinish@main`. When stopped inside the first data callback, `stopSpeaking(at: .immediate)` returned `true`, but 557 of the 558 callbacks were still delivered after the stop request; the run again ended with zero-frame callbacks and `didFinish@main`, not `didCancel`.
+
+The production adapter therefore completes its continuation on the first zero-frame callback or delegate finish, clears the active request before cancellation, and filters late callbacks by request/utterance identity. The differing iOS/macOS observations are why zero-frame and `didFinish` remain defensive signals rather than a claimed universal completion contract.
+
+This environment had no macOS 15 runtime and no iOS 17 physical device, so the exact macOS 15 and hardware-specific lifecycle behavior remains open in [Wayfinder #20](https://github.com/su-chiachang/ios-stts/issues/20). The probe closes the iOS 17.5 Simulator portion only.
+
 ## Callback threading and Swift isolation
 
 Apple provides no callback queue or thread guarantee for `BufferCallback` in the public documentation or SDK declaration. The closure is escaping, but there is no queue parameter, main-thread annotation, or documented serialization guarantee. The current SDK also marks `AVSpeechSynthesizer` and `AVSpeechUtterance` as Swift non-sendable, while the delegate protocol is sendable; that does not establish a callback executor.
@@ -130,4 +142,4 @@ Apple’s sample documentation confirms that provider voices are surfaced for sy
 
 The research decision is resolved as follows: implement the Apple backend around `AVSpeechSynthesizer.write`, copy/normalize the voice-specific PCM buffers into the existing `TtsAudioChunk` path, use language-matched installed voices with default fallback, isolate the non-sendable synthesizer, and coordinate cancellation/interruption with `SpeechPipeline` and `AudioPlayer`. Do not implement the provider extension sample.
 
-One precise follow-up is required before production implementation: prototype the `write` stream’s terminal behavior, callback executor, actual formats, and cancellation race on iOS 17 and macOS 15. This is an implementation-risk ticket, not a reason to switch to the system-wide provider model.
+One precise follow-up remains for target-version confidence: prototype the `write` stream’s terminal behavior, callback executor, actual formats, and cancellation race on macOS 15 and an iOS 17 physical device. This is an implementation-risk ticket, not a reason to switch to the system-wide provider model.

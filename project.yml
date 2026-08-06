@@ -74,6 +74,24 @@ schemes:
       gatherCoverageData: false
       targets:
         - name: STTSTests
+  AppleSpeechLifecycleProbeIOS:
+    build:
+      targets:
+        STTS: all
+        AppleSpeechLifecycleProbeIOSTests: test
+    test:
+      gatherCoverageData: false
+      targets:
+        - name: AppleSpeechLifecycleProbeIOSTests
+  AppleSpeechLifecycleProbeMac:
+    build:
+      targets:
+        STTS: all
+        AppleSpeechLifecycleProbeMacTests: test
+    test:
+      gatherCoverageData: false
+      targets:
+        - name: AppleSpeechLifecycleProbeMacTests
 
 targets:
   STTS:
@@ -98,6 +116,7 @@ targets:
       - sdk: Metal.framework
       - sdk: MetalKit.framework
       - sdk: AVFoundation.framework
+      - sdk: AVFAudio.framework
       - sdk: Speech.framework
         weak: true
       - sdk: CoreML.framework
@@ -205,5 +224,29 @@ targets:
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/STTS.app/Contents/MacOS/STTS"
     sources:
       - path: AppTests
+    dependencies:
+      - target: STTS
+
+  AppleSpeechLifecycleProbeIOSTests:
+    type: bundle.unit-test
+    platform: iOS
+    settings:
+      base:
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/STTS.app/STTS"
+    sources:
+      - path: Probes
+    dependencies:
+      - target: STTS
+
+  AppleSpeechLifecycleProbeMacTests:
+    type: bundle.unit-test
+    platform: macOS
+    settings:
+      base:
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/STTS.app/Contents/MacOS/STTS"
+    sources:
+      - path: Probes
     dependencies:
       - target: STTS

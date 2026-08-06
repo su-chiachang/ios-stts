@@ -175,7 +175,11 @@ struct ConversationView: View {
             }
             .buttonStyle(.plain)
             .disabled(!canSend)
-            .help(settings.readAloudMode ? "Read aloud in my voice" : "Send message")
+            .help(settings.readAloudMode
+                  ? (settings.ttsBackend == .appleSpeech
+                     ? "Read aloud with the Apple system voice"
+                     : "Read aloud in my voice")
+                  : "Send message")
         }
         .padding(.leading, 10)
         .padding(.trailing, 6)
@@ -192,6 +196,9 @@ struct ConversationView: View {
     }
 
     private var readAloudHelp: String {
+        if settings.ttsBackend == .appleSpeech {
+            return "Read-aloud mode: speak typed text with a language-matched Apple system voice instead of asking the assistant"
+        }
         let voice = settings.customVoiceName.isEmpty ? "default voice" : settings.customVoiceName
         return "Read-aloud mode: speak typed text verbatim in the custom voice (\(voice)) instead of asking the assistant"
     }

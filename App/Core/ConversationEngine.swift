@@ -1,3 +1,4 @@
+import AVFAudio
 import Foundation
 
 enum ConversationState: Equatable {
@@ -19,6 +20,32 @@ private enum ConversationModelLoadError: Error, LocalizedError {
         }
     }
 }
+
+#if os(iOS)
+private final class AudioInterruptionMonitor {
+    private let observer: NSObjectProtocol
+
+    init(onBegin: @escaping @MainActor @Sendable () -> Void) {
+        observer = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.interruptionNotification,
+            object: AVAudioSession.sharedInstance(),
+            queue: .main
+        ) { notification in
+            guard let rawValue = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+                  AVAudioSession.InterruptionType(rawValue: rawValue) == .began else {
+                return
+            }
+            Task { @MainActor in
+                onBegin()
+            }
+        }
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(observer)
+    }
+}
+#endif
 
 struct ChatBubble: Identifiable, Equatable {
     enum Role { case user, assistant }
@@ -66,6 +93,10 @@ final class ConversationEngine {
     private var pendingCancellation: Task<Void, Never>?
     private(set) var inputRMS: Float = 0
 
+    #if os(iOS)
+    @ObservationIgnored private var audioInterruptionMonitor: AudioInterruptionMonitor?
+    #endif
+
     private let sttLoader: SttModelLoader
     private let ttsLoader: TtsModelLoader
 
@@ -75,6 +106,12 @@ final class ConversationEngine {
     ) {
         self.sttLoader = sttLoader
         self.ttsLoader = ttsLoader
+
+        #if os(iOS)
+        audioInterruptionMonitor = AudioInterruptionMonitor { [weak self] in
+            self?.cancelCurrentTurn()
+        }
+        #endif
     }
 
     /// Both native models loaded at once pushed resident memory past the OS
@@ -140,6 +177,8 @@ final class ConversationEngine {
                                  codecURL: resources.codecURL,
                                  tokenizerURL: resources.tokenizerURL,
                                  expectedExportDtype: settings.audio8TtsVariant.exportDtype)
+        case .appleSpeech:
+            return AppleTts()
         }
     }
 

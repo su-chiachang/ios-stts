@@ -4,6 +4,24 @@ This context defines the language used for Audio8 speech-service integration in 
 
 ## Runtime Integration
 
+## Speech Backends
+
+**Apple native TTS backend**:
+An app-internal text-to-speech backend that uses the operating system's managed speech voices for STTS playback. It is distinct from a custom speech synthesizer provider extension, which registers voices for system-wide use.
+_Avoid_: custom speech provider, Audio Unit extension, Apple TTS model
+
+**Speech provider extension**:
+A separate system integration that exposes custom voices through Apple's speech synthesis provider Audio Unit APIs. It is outside the app-internal Apple native TTS backend unless explicitly brought into scope.
+_Avoid_: native TTS backend, in-app voice
+
+**Language-matched system voice**:
+The Apple native TTS voice selected from the text's detected spoken language, with the operating system's default voice as the fallback when no matching voice is available.
+_Avoid_: cloned voice, reference voice, provider extension voice
+
+**Custom voice**:
+An imported reference recording used only by TTS backends that support voice conditioning; Apple native TTS does not consume it, but switching back to a supporting backend preserves it.
+_Avoid_: Apple system voice, provider extension voice
+
 **Audio8 runtime integration**:
 The app provides a complete path from downloading the required Audio8 model assets to loading the selected speech service for use. The integration is complete only when asset acquisition and model loading succeed; it does not imply that source code or model assets are bundled in the app.
 _Avoid_: build-only integration, manual model setup, Audio8 fully bundled
