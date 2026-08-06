@@ -1,67 +1,48 @@
-import XCTest
+import Foundation
 import FoundationModels
+import XCTest
 @testable import STTS
 
 @MainActor
 final class TttEngineTests: XCTestCase {
-    /// Never touches the real `LanguageModelSession` — finishes immediately
-    /// with no chunks, so `send()`/`retry()` are hermetic in tests.
+    private static func snapshotRespond(_: LanguageModelSession, _: String) -> AsyncThrowingStream<String, Error> {
+        AsyncThrowingStream { continuation in
+            continuation.yield("hello")
+            continuation.yield("hello world")
+            continuation.finish()
+        }
+    }
+
     private static func noopRespond(_: LanguageModelSession, _: String) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { $0.finish() }
     }
 
-    func testSendAppendsUserMessageAndClearsDraft() {
-        let engine = TttEngine(respond: Self.noopRespond)
-        engine.draft = "hello"
-        engine.send()
-        XCTAssertEqual(engine.messages.first?.text, "hello")
-        XCTAssertEqual(engine.messages.first?.role, .user)
-        XCTAssertEqual(engine.draft, "")
+    func testBackendChoices() {
+        XCTAssertEqual(TttBackend.allCases, [.apple, .webapi])
     }
 
-    func testCanSendRequiresNonBlankDraftAndNotStreaming() {
-        let engine = TttEngine()
-        XCTAssertFalse(engine.canSend)
-        engine.draft = "   "
-        XCTAssertFalse(engine.canSend)
-        engine.draft = "hi"
-        XCTAssertTrue(engine.canSend)
+    func testAppleAdapterConvertsCumulativeSnapshotsToFragments() async throws {
+        let provider = TttApple(respond: Self.snapshotRespond)
+        var iterator = provider.streamChat(
+            messages: [TttMessage(role: .user, content: "hi")]
+        ).makeAsyncIterator()
+
+        let first = try await iterator.next()
+        let second = try await iterator.next()
+        let end = try await iterator.next()
+        XCTAssertEqual(first, "hello")
+        XCTAssertEqual(second, " world")
+        XCTAssertNil(end)
     }
 
-    func testNewChatResetsState() {
-        let engine = TttEngine(respond: Self.noopRespond)
-        engine.draft = "hello"
-        engine.send()
-        XCTAssertFalse(engine.messages.isEmpty)
-        engine.newChat()
-        XCTAssertTrue(engine.messages.isEmpty)
-        XCTAssertEqual(engine.draft, "")
-        XCTAssertFalse(engine.isSessionExhausted)
+    func testWebapiRejectsInvalidBaseURL() {
+        XCTAssertThrowsError(try TttWebapi(baseURL: "not a URL", apiKey: "", model: "test"))
     }
 
-    func testExceededContextWindowMapsToNonRetryableAndExhaustsSession() {
-        let engine = TttEngine()
-        let context = LanguageModelSession.GenerationError.Context(debugDescription: "too long")
-        let message = engine.errorMessage(for: .exceededContextWindowSize(context))
-        XCTAssertEqual(message.kind, .error(retryable: false))
-        XCTAssertTrue(engine.isSessionExhausted)
-    }
+    func testSttsEngineOwnsTheSelectedTttProvider() {
+        let provider = TttApple(respond: Self.noopRespond)
+        let engine = SttsEngine(tttEngine: provider)
 
-    func testGuardrailAndRefusalAreNotRetryable() {
-        let engine = TttEngine()
-        let context = LanguageModelSession.GenerationError.Context(debugDescription: "blocked")
-        let guardrail = engine.errorMessage(for: .guardrailViolation(context))
-        XCTAssertEqual(guardrail.kind, .error(retryable: false))
-
-        let refusal = LanguageModelSession.GenerationError.Refusal(transcriptEntries: [])
-        let refused = engine.errorMessage(for: .refusal(refusal, context))
-        XCTAssertEqual(refused.kind, .error(retryable: false))
-    }
-
-    func testRateLimitedAndConcurrentRequestsAreRetryable() {
-        let engine = TttEngine()
-        let context = LanguageModelSession.GenerationError.Context(debugDescription: "busy")
-        XCTAssertEqual(engine.errorMessage(for: .rateLimited(context)).kind, .error(retryable: true))
-        XCTAssertEqual(engine.errorMessage(for: .concurrentRequests(context)).kind, .error(retryable: true))
+        XCTAssertTrue(engine.tttEngine is TttApple)
     }
 }

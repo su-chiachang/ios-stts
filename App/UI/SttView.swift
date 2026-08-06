@@ -3,7 +3,7 @@ import SwiftUI
 /// The [stt] tab: import an mp3/wav (or any AVFoundation-readable file) and see
 /// its transcript with timestamps, switchable between sentence-level (default)
 /// and per-word granularity.
-struct SttFileView: View {
+struct SttView: View {
     var engine: SttsEngine
     @State private var granularity: Granularity = .sentence
 
@@ -122,5 +122,5 @@ struct SttFileView: View {
 }
 
 #Preview {
-    SttFileView(engine: SttsEngine())
+    SttView(engine: SttsEngine())
 }

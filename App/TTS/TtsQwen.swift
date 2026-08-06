@@ -74,7 +74,7 @@ enum QwenTtsQuantization: String, CaseIterable, Identifiable {
 
 /// qwentts.cpp owns the native context; this actor serializes access because
 /// the model contexts are not documented as safe for concurrent synthesis.
-actor QwenTts: TtsEngine {
+actor TtsQwen: TtsEngine {
     typealias Chunk = TtsAudioChunk
 
     private struct CachedVoiceReference {

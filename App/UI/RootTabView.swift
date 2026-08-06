@@ -10,7 +10,7 @@ struct RootTabView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            SttFileView(engine: engine)
+            SttView(engine: engine)
                 .tabItem { Label("stt", systemImage: "waveform") }
                 .tag(Tab.stt)
             TtsView(engine: engine)

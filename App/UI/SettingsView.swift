@@ -122,8 +122,25 @@ struct SettingsView: View {
             }
 
             Section("LLM") {
+                Picker("ttt backend", selection: Binding(get: { settings.tttBackend },
+                                                           set: {
+                                                               settings.tttBackend = $0
+                                                               engine.setTttBackend($0, settings: settings)
+                                                           })) {
+                    ForEach(TttBackend.allCases) { backend in
+                        Text(backend.displayName).tag(backend)
+                    }
+                }
+                Text(settings.tttBackend == .apple
+                     ? "Use Apple's on-device Foundation Models for ttt."
+                     : "Use the OpenAI-compatible Web API configured below for ttt.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
                 TextField("Base URL", text: Binding(get: { settings.llmBaseURL },
                                                      set: { settings.llmBaseURL = $0 }))
+                SecureField("API key", text: Binding(get: { settings.llmAPIKey },
+                                                       set: { settings.llmAPIKey = $0 }))
                 TextField("Model", text: Binding(get: { settings.llmModel },
                                                   set: { settings.llmModel = $0 }))
                 TextEditor(text: Binding(get: { settings.systemPrompt },

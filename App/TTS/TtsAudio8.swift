@@ -24,7 +24,7 @@ enum Audio8TtsError: Error, LocalizedError {
 
 /// Owns one Audio8 C-ABI runtime and serializes all mutable native access.
 /// The native runtime itself owns the generator/codec/tokenizer state.
-actor Audio8Tts: TtsEngine {
+actor TtsAudio8: TtsEngine {
     private var runtime: OpaquePointer?
 
     init(generatorURL: URL,

@@ -9,7 +9,7 @@ final class AppleTtsTests: XCTestCase {
     }
 
     func testAppleTtsExposesNoModelSpeakerCatalog() async throws {
-        let engine = AppleTts()
+        let engine = TtsApple()
 
         let speakers = await engine.availableSpeakers()
         XCTAssertEqual(speakers, [])

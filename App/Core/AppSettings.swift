@@ -17,6 +17,9 @@ final class AppSettings {
     var llmModel: String {
         didSet { UserDefaults.standard.set(llmModel, forKey: Keys.llmModel) }
     }
+    var tttBackend: TttBackend {
+        didSet { UserDefaults.standard.set(tttBackend.rawValue, forKey: Keys.tttBackend) }
+    }
     var systemPrompt: String {
         didSet { UserDefaults.standard.set(systemPrompt, forKey: Keys.systemPrompt) }
     }
@@ -72,6 +75,7 @@ final class AppSettings {
         static let llmBaseURL = "llmBaseURL"
         static let llmAPIKey = "llmAPIKey"
         static let llmModel = "llmModel"
+        static let tttBackend = "tttBackend"
         static let systemPrompt = "systemPrompt"
         static let sttLocale = "sttLocale"
         static let sttBackend = "sttBackend"
@@ -101,6 +105,7 @@ final class AppSettings {
         llmBaseURL = d.string(forKey: Keys.llmBaseURL) ?? "http://127.0.0.1:1234/v1"
         llmAPIKey = d.string(forKey: Keys.llmAPIKey) ?? ""
         llmModel = d.string(forKey: Keys.llmModel) ?? "gemma"
+        tttBackend = d.string(forKey: Keys.tttBackend).flatMap(TttBackend.init(rawValue:)) ?? .apple
         systemPrompt = d.string(forKey: Keys.systemPrompt) ?? Self.defaultSystemPrompt
         sttLocale = d.string(forKey: Keys.sttLocale) ?? "auto"
         sttBackend = d.string(forKey: Keys.sttBackend).flatMap(SttBackend.init(rawValue:)) ?? .appleSpeech

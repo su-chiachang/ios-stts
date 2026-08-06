@@ -83,6 +83,7 @@ final class SttsEngine {
 
     private var stt: (any SttEngine)?
     private var tts: (any TtsEngine)?
+    private(set) var tttEngine: any TttEngine
     private var turnTask: Task<Void, Never>?
     private var audioPlayer: AudioPlayer?
     private var speechPipeline: SpeechPipeline?
@@ -102,16 +103,43 @@ final class SttsEngine {
 
     init(
         sttLoader: @escaping SttModelLoader = SttsEngine.defaultSttModel,
-        ttsLoader: @escaping TtsModelLoader = SttsEngine.defaultTtsModel
+        ttsLoader: @escaping TtsModelLoader = SttsEngine.defaultTtsModel,
+        tttEngine: (any TttEngine)? = nil
     ) {
         self.sttLoader = sttLoader
         self.ttsLoader = ttsLoader
+        self.tttEngine = tttEngine ?? Self.makeTttEngine(
+            for: AppSettings.shared.tttBackend,
+            settings: AppSettings.shared
+        )
 
         #if os(iOS)
         audioInterruptionMonitor = AudioInterruptionMonitor { [weak self] in
             self?.cancelCurrentTurn()
         }
         #endif
+    }
+
+    private static func makeTttEngine(for backend: TttBackend,
+                                      settings: AppSettings) -> any TttEngine {
+        switch backend {
+        case .apple:
+            TttApple()
+        case .webapi:
+            TttWebapi(settings: settings)
+        }
+    }
+
+    /// Replaces the text-to-text provider after a Settings change. The
+    /// conversation bubbles stay visible, while the provider-specific
+    /// session is reset before the new adapter takes over.
+    func setTttBackend(_ backend: TttBackend, settings: AppSettings = .shared) {
+        cancelCurrentTurn()
+        tttEngine.reset()
+        tttEngine = Self.makeTttEngine(for: backend, settings: settings)
+        partialTranscript = ""
+        inputRMS = 0
+        state = .idle
     }
 
     /// Both native models loaded at once pushed resident memory past the OS
@@ -146,13 +174,13 @@ final class SttsEngine {
                 throw ConversationModelLoadError.stt(
                     "Parakeet STT is not ready. Pick a parakeet .gguf file in Settings or download a Parakeet asset.")
             }
-            return try ParakeetStt(modelPath: parakeetURL.path)
+            return try SttParakeet(modelPath: parakeetURL.path)
         case .appleSpeech:
             guard #available(iOS 26.0, macOS 26.0, *) else {
                 throw ConversationModelLoadError.stt(
                     "Apple Speech requires iOS 26 or macOS 26. Select Parakeet in Settings on this OS.")
             }
-            return try await AppleSpeechStt.make(localeIdentifier: settings.sttLocale)
+            return try await SttApple.make(localeIdentifier: settings.sttLocale)
         }
     }
 
@@ -163,7 +191,7 @@ final class SttsEngine {
                 throw ConversationModelLoadError.tts(
                     "Qwen TTS is not ready. Pick the qwen3-tts model folder in Settings or download a Qwen asset.")
             }
-            return try QwenTts(modelDir: qwenDirURL.path,
+            return try TtsQwen(modelDir: qwenDirURL.path,
                                variant: settings.qwenModelVariant,
                                quantization: settings.qwenModelQuantization)
         case .audio8:
@@ -173,12 +201,12 @@ final class SttsEngine {
             guard let resources = settings.audio8ModelResources() else {
                 throw ConversationModelLoadError.tts(settings.audio8ModelReadinessMessage())
             }
-            return try Audio8Tts(generatorURL: resources.generatorURL,
+            return try TtsAudio8(generatorURL: resources.generatorURL,
                                  codecURL: resources.codecURL,
                                  tokenizerURL: resources.tokenizerURL,
                                  expectedExportDtype: settings.audio8TtsVariant.exportDtype)
         case .appleSpeech:
-            return AppleTts()
+            return TtsApple()
         }
     }
 
@@ -563,6 +591,7 @@ final class SttsEngine {
 
     func resetConversation() {
         stop()
+        tttEngine.reset()
         bubbles.removeAll()
     }
 
@@ -571,13 +600,12 @@ final class SttsEngine {
             throw TtsEngineError.notLoaded
         }
         let settings = AppSettings.shared
-        let client = try OpenAIChatClient(baseURL: settings.llmBaseURL,
-                                          apiKey: settings.llmAPIKey,
-                                          model: settings.llmModel)
-        let messages = [OpenAIChatClient.Message(role: .system, content: settings.systemPrompt)]
-            + bubbles.map { bubble in
-                OpenAIChatClient.Message(role: bubble.role == .user ? .user : .assistant,
-                                         content: bubble.text)
+        let systemMessages = settings.systemPrompt
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .isEmpty ? [] : [TttMessage(role: .system, content: settings.systemPrompt)]
+        let messages = systemMessages + bubbles.map { bubble in
+                TttMessage(role: bubble.role == .user ? .user : .assistant,
+                           content: bubble.text)
             }
         let assistantID = UUID()
         bubbles.append(ChatBubble(id: assistantID, role: .assistant, text: ""))
@@ -597,7 +625,7 @@ final class SttsEngine {
         }
         var chunker = SentenceChunker()
 
-        for try await fragment in client.streamChat(messages: messages) {
+        for try await fragment in tttEngine.streamChat(messages: messages) {
             try Task.checkCancellation()
             guard isCurrentTurn(turnID) else { throw CancellationError() }
             guard let index = bubbles.firstIndex(where: { $0.id == assistantID }) else { continue }

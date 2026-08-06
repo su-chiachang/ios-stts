@@ -18,7 +18,7 @@ enum ParakeetError: Error, LocalizedError {
 /// Wraps the parakeet C streaming API. An `actor` because the underlying
 /// context is not safe to call from more than one thread at a time (mirrors
 /// whisper.swiftui's `actor WhisperContext` pattern).
-actor ParakeetStt: SttEngine {
+actor SttParakeet: SttEngine {
     private var ctx: OpaquePointer?
     private var stream: OpaquePointer?
 

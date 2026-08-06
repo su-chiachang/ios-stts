@@ -81,7 +81,7 @@ private final class AppleTtsDelegateProxy: NSObject, AVSpeechSynthesizerDelegate
 /// Bridges AVSpeechSynthesizer's generated PCM buffers into the app's shared
 /// TTS contract. The actor serializes the non-Sendable system synthesizer and
 /// drops callbacks that belong to a cancelled request.
-actor AppleTts: TtsEngine {
+actor TtsApple: TtsEngine {
     private struct BufferSnapshot: Sendable {
         let samples: [Float]
         let sampleRate: Double

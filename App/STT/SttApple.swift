@@ -38,7 +38,7 @@ enum AppleSpeechSttError: LocalizedError {
 /// time and exposes transcript snapshots because volatile Speech results can
 /// revise text already emitted by an earlier result.
 @available(macOS 26.0, iOS 26.0, *)
-actor AppleSpeechStt: SttEngine {
+actor SttApple: SttEngine {
     private let locale: Locale
     private let analyzerFormat: AVAudioFormat
     private let converter = AnalyzerInputConverter()
@@ -54,7 +54,7 @@ actor AppleSpeechStt: SttEngine {
 
     /// Asset installation and audio-format selection happen before the engine
     /// is returned, so a loaded Apple backend is ready for beginTurn.
-    static func make(localeIdentifier: String?) async throws -> AppleSpeechStt {
+    static func make(localeIdentifier: String?) async throws -> SttApple {
         guard SpeechTranscriber.isAvailable else {
             throw AppleSpeechSttError.unavailable
         }
@@ -92,11 +92,11 @@ actor AppleSpeechStt: SttEngine {
         return try await makeReady(locale: locale, transcriber: setupTranscriber)
     }
 
-    private static func makeReady(locale: Locale, transcriber: SpeechTranscriber) async throws -> AppleSpeechStt {
+    private static func makeReady(locale: Locale, transcriber: SpeechTranscriber) async throws -> SttApple {
         guard let format = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [transcriber]) else {
             throw AppleSpeechSttError.noCompatibleAudioFormat
         }
-        return AppleSpeechStt(locale: locale, analyzerFormat: format)
+        return SttApple(locale: locale, analyzerFormat: format)
     }
 
     private static func makeTranscriber(locale: Locale) -> SpeechTranscriber {
