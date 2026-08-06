@@ -103,10 +103,10 @@ final class AppSettings {
         llmModel = d.string(forKey: Keys.llmModel) ?? "gemma"
         systemPrompt = d.string(forKey: Keys.systemPrompt) ?? Self.defaultSystemPrompt
         sttLocale = d.string(forKey: Keys.sttLocale) ?? "auto"
-        sttBackend = d.string(forKey: Keys.sttBackend).flatMap(SttBackend.init(rawValue:)) ?? .parakeet
+        sttBackend = d.string(forKey: Keys.sttBackend).flatMap(SttBackend.init(rawValue:)) ?? .appleSpeech
         silenceHangMs = d.object(forKey: Keys.silenceHangMs) as? Double ?? 800
         rmsThreshold = d.object(forKey: Keys.rmsThreshold) as? Double ?? 0.015
-        ttsBackend = d.string(forKey: Keys.ttsBackend).flatMap(TtsBackend.init(rawValue:)) ?? .qwen
+        ttsBackend = d.string(forKey: Keys.ttsBackend).flatMap(TtsBackend.init(rawValue:)) ?? .appleSpeech
         qwenModelVariant = d.string(forKey: Keys.qwenModelVariant).flatMap(QwenTtsVariant.init(rawValue:)) ?? .base06b
         qwenModelQuantization = d.string(forKey: Keys.qwenModelQuantization).flatMap(QwenTtsQuantization.init(rawValue:)) ?? .q4_k_m
         audio8ReferenceTranscript = d.string(forKey: Keys.audio8ReferenceTranscript) ?? ""
