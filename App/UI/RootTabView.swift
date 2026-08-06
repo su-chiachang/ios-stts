@@ -3,10 +3,10 @@ import SwiftUI
 /// Top-level container splitting the app into three focused tabs, all sharing
 /// the single `ConversationEngine` (and its one-turn state machine).
 struct RootTabView: View {
-    var engine: SttsEngine
+    var engine: StsEngine
     @State private var selectedTab: Tab = .stt
 
-    private enum Tab { case stt, tts, stts, ttt, settings }
+    private enum Tab { case stt, tts, ttt, sts, settings }
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -16,12 +16,12 @@ struct RootTabView: View {
             TtsView(engine: engine)
                 .tabItem { Label("tts", systemImage: "speaker.wave.2") }
                 .tag(Tab.tts)
-            SttsView(engine: engine)
-                .tabItem { Label("stts", systemImage: "bubble.left.and.bubble.right") }
-                .tag(Tab.stts)
             TttView()
                 .tabItem { Label("ttt", systemImage: "bubble.left.and.text.bubble.right") }
                 .tag(Tab.ttt)
+            StsView(engine: engine)
+                .tabItem { Label("sts", systemImage: "bubble.left.and.bubble.right") }
+                .tag(Tab.sts)
             #if os(iOS)
             // macOS reaches SettingsView through the app's Settings scene
             // (Cmd-,); iOS has no such scene, so it needs its own tab.
@@ -41,7 +41,7 @@ struct RootTabView: View {
             switch selectedTab {
             case .stt: await engine.activate(.stt)
             case .tts: await engine.activate(.tts)
-            case .stts: await engine.activate(.both)
+            case .sts: await engine.activate(.both)
             case .ttt, .settings: break
             }
         }
@@ -49,5 +49,5 @@ struct RootTabView: View {
 }
 
 #Preview {
-    RootTabView(engine: SttsEngine())
+    RootTabView(engine: StsEngine())
 }

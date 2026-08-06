@@ -4,7 +4,7 @@ import UniformTypeIdentifiers
 /// The [tts] tab: type text, choose a voice, and hear it spoken. Voice modes are
 /// adapts its controls to the qwentts.cpp checkpoint selected in Settings.
 struct TtsView: View {
-    var engine: SttsEngine
+    var engine: StsEngine
     var settings = AppSettings.shared
     @State private var text = "Hello world"
     @State private var voice: VoiceChoice = .standard
@@ -252,5 +252,5 @@ struct TtsView: View {
 }
 
 #Preview {
-    TtsView(engine: SttsEngine())
+    TtsView(engine: StsEngine())
 }

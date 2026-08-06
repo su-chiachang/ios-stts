@@ -24,10 +24,7 @@ struct TttView: View {
 
     init(settings: AppSettings = .shared) {
         self.settings = settings
-        _provider = State(initialValue: Self.makeProvider(
-            backend: settings.tttBackend,
-            settings: settings
-        ))
+        _provider = State(initialValue: StsEngine.defaultTttModel(settings))
     }
 
     var body: some View {
@@ -57,8 +54,8 @@ struct TttView: View {
                 unavailableBanner(reason)
             }
         }
-        .onChange(of: settings.tttBackend) { _, backend in
-            switchProvider(to: backend)
+        .onChange(of: settings.tttBackend) { _, _ in
+            switchProvider()
         }
         .onDisappear {
             responseTask?.cancel()
@@ -82,16 +79,6 @@ struct TttView: View {
             self.role = role
             self.text = text
             self.kind = kind
-        }
-    }
-
-    private static func makeProvider(backend: TttBackend,
-                                     settings: AppSettings) -> any TttEngine {
-        switch backend {
-        case .apple:
-            TttApple()
-        case .webapi:
-            TttWebapi(settings: settings)
         }
     }
 
@@ -191,11 +178,11 @@ struct TttView: View {
         lastUserPrompt = nil
     }
 
-    private func switchProvider(to backend: TttBackend) {
+    private func switchProvider() {
         responseTask?.cancel()
         responseTask = nil
         provider.reset()
-        provider = Self.makeProvider(backend: backend, settings: settings)
+        provider = StsEngine.defaultTttModel(settings)
         messages.removeAll()
         draft = ""
         isStreaming = false

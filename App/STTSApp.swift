@@ -26,7 +26,7 @@ struct STTSApp: App {
     #if os(macOS)
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     #endif
-    @State private var engine = SttsEngine()
+    @State private var engine = StsEngine()
 
     var body: some Scene {
         #if os(macOS)

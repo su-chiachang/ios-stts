@@ -39,10 +39,30 @@ final class TttEngineTests: XCTestCase {
         XCTAssertThrowsError(try TttWebapi(baseURL: "not a URL", apiKey: "", model: "test"))
     }
 
-    func testSttsEngineOwnsTheSelectedTttProvider() {
+    func testSttsEngineOwnsTheLoadedTttProvider() {
         let provider = TttApple(respond: Self.noopRespond)
-        let engine = SttsEngine(tttEngine: provider)
+        let engine = StsEngine(tttLoader: { _ in provider })
 
         XCTAssertTrue(engine.tttEngine is TttApple)
+    }
+
+    func testTttLoaderRebuildsTheProviderWhenBackendChanges() {
+        let settings = AppSettings.shared
+        let previousBackend = settings.tttBackend
+        defer { settings.tttBackend = previousBackend }
+
+        var loadedBackends: [TttBackend] = []
+        settings.tttBackend = .apple
+        let engine = StsEngine(tttLoader: { settings in
+            loadedBackends.append(settings.tttBackend)
+            return settings.tttBackend == .apple
+                ? TttApple(respond: Self.noopRespond)
+                : TttWebapi(settings: settings)
+        })
+
+        engine.setTttBackend(.webapi, settings: settings)
+
+        XCTAssertEqual(loadedBackends, [.apple, .webapi])
+        XCTAssertTrue(engine.tttEngine is TttWebapi)
     }
 }

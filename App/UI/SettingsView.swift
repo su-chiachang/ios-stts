@@ -2,7 +2,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct SettingsView: View {
-    var engine: SttsEngine
+    var engine: StsEngine
     var settings = AppSettings.shared
 
     @State private var parakeetPath: String = ""
@@ -124,7 +124,6 @@ struct SettingsView: View {
             Section("LLM") {
                 Picker("ttt backend", selection: Binding(get: { settings.tttBackend },
                                                            set: {
-                                                               settings.tttBackend = $0
                                                                engine.setTttBackend($0, settings: settings)
                                                            })) {
                     ForEach(TttBackend.allCases) { backend in
@@ -381,5 +380,5 @@ struct SettingsView: View {
 }
 
 #Preview {
-    SettingsView(engine: SttsEngine())
+    SettingsView(engine: StsEngine())
 }

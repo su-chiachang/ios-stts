@@ -1,7 +1,7 @@
 import SwiftUI
 
-struct SttsView: View {
-    var engine: SttsEngine
+struct StsView: View {
+    var engine: StsEngine
     var settings = AppSettings.shared
     @State private var draft = ""
 
@@ -283,5 +283,5 @@ private struct TypingIndicator: View {
 }
 
 #Preview {
-    SttsView(engine: SttsEngine())
+    StsView(engine: StsEngine())
 }

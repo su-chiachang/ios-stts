@@ -64,9 +64,10 @@ struct ChatBubble: Identifiable, Equatable {
 /// follows the same STT/endpoint/LLM path that live mic input will use in M6.
 @MainActor
 @Observable
-final class SttsEngine {
+final class StsEngine {
     typealias SttModelLoader = @MainActor (AppSettings) async throws -> any SttEngine
     typealias TtsModelLoader = @MainActor (AppSettings) throws -> any TtsEngine
+    typealias TttModelLoader = @MainActor (AppSettings) -> any TttEngine
 
     private(set) var state: ConversationState = .loadingModels
     private(set) var bubbles: [ChatBubble] = []
@@ -100,18 +101,17 @@ final class SttsEngine {
 
     private let sttLoader: SttModelLoader
     private let ttsLoader: TtsModelLoader
+    private let tttLoader: TttModelLoader
 
     init(
-        sttLoader: @escaping SttModelLoader = SttsEngine.defaultSttModel,
-        ttsLoader: @escaping TtsModelLoader = SttsEngine.defaultTtsModel,
-        tttEngine: (any TttEngine)? = nil
+        sttLoader: @escaping SttModelLoader = StsEngine.defaultSttModel,
+        ttsLoader: @escaping TtsModelLoader = StsEngine.defaultTtsModel,
+        tttLoader: @escaping TttModelLoader = StsEngine.defaultTttModel
     ) {
         self.sttLoader = sttLoader
         self.ttsLoader = ttsLoader
-        self.tttEngine = tttEngine ?? Self.makeTttEngine(
-            for: AppSettings.shared.tttBackend,
-            settings: AppSettings.shared
-        )
+        self.tttLoader = tttLoader
+        self.tttEngine = tttLoader(AppSettings.shared)
 
         #if os(iOS)
         audioInterruptionMonitor = AudioInterruptionMonitor { [weak self] in
@@ -120,9 +120,8 @@ final class SttsEngine {
         #endif
     }
 
-    private static func makeTttEngine(for backend: TttBackend,
-                                      settings: AppSettings) -> any TttEngine {
-        switch backend {
+    static func defaultTttModel(_ settings: AppSettings) -> any TttEngine {
+        switch settings.tttBackend {
         case .apple:
             TttApple()
         case .webapi:
@@ -134,9 +133,12 @@ final class SttsEngine {
     /// conversation bubbles stay visible, while the provider-specific
     /// session is reset before the new adapter takes over.
     func setTttBackend(_ backend: TttBackend, settings: AppSettings = .shared) {
+        if settings.tttBackend != backend {
+            settings.tttBackend = backend
+        }
         cancelCurrentTurn()
         tttEngine.reset()
-        tttEngine = Self.makeTttEngine(for: backend, settings: settings)
+        tttEngine = tttLoader(settings)
         partialTranscript = ""
         inputRMS = 0
         state = .idle
