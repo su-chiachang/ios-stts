@@ -147,22 +147,9 @@ struct SettingsView: View {
                     .frame(height: 80)
             }
 
+            // STT locale lives in the [stt] tab next to Import, where the user
+            // picks the clip whose language it has to match.
             Section("Speech detection") {
-                Picker("STT locale", selection: Binding(get: { settings.sttLocale },
-                                                          set: {
-                                                              settings.sttLocale = $0
-                                                              if settings.sttBackend == .appleSpeech {
-                                                                  reloadModels()
-                                                              }
-                                                          })) {
-                    Text("Auto").tag("auto")
-                    // Apple Speech is locale-bound and never auto-detects, so
-                    // Simplified and Traditional are separate choices: picking
-                    // zh-CN for Traditional audio transcribes it as Simplified.
-                    Text("Chinese (Simplified)").tag("zh-CN")
-                    Text("Chinese (Traditional)").tag("zh-TW")
-                    Text("English").tag("en")
-                }
                 Slider(value: Binding(get: { settings.silenceHangMs },
                                        set: { settings.silenceHangMs = $0 }), in: 300...2000, step: 50) {
                     Text("Silence hang: \(Int(settings.silenceHangMs)) ms")

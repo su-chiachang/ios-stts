@@ -5,6 +5,7 @@ import SwiftUI
 /// and per-word granularity.
 struct SttView: View {
     var engine: StsEngine
+    var settings = AppSettings.shared
     @State private var granularity: Granularity = .sentence
 
     enum Granularity: String, CaseIterable, Identifiable {
@@ -37,12 +38,42 @@ struct SttView: View {
             .frame(width: 180)
             .disabled(engine.timestampedWords.isEmpty)
 
+            Spacer(minLength: 12)
+
+            // Only Apple Speech is locale-bound. Parakeet auto-detects the
+            // file's language and transcribeFileTimestamped passes it no
+            // locale at all, so the control would be inert there.
+            if settings.sttBackend == .appleSpeech {
+                localePicker
+            }
+
             MediaSourceMenu(onPick: engine.transcribeFileTimestamped, onError: engine.reportError) {
                 Text("Import…")
             }
             .disabled(!engine.isSTTReady || engine.isProcessing)
         }
         .padding()
+    }
+
+    /// Sits next to Import because it has to match the language of the clip
+    /// being imported: Apple Speech never auto-detects, and a mismatch
+    /// transcribes to nothing at all.
+    private var localePicker: some View {
+        Picker("Locale", selection: Binding(get: { settings.sttLocale },
+                                            set: { newValue in
+                                                settings.sttLocale = newValue
+                                                Task { await engine.loadModels() }
+                                            })) {
+            Text("Auto").tag("auto")
+            // Simplified and Traditional are separate choices: picking zh-CN
+            // for Traditional audio transcribes it as Simplified.
+            Text("English").tag("en")
+            Text("中文 (简体)").tag("zh-CN")
+            Text("中文 (繁體)").tag("zh-TW")
+        }
+        .pickerStyle(.menu)
+        .fixedSize()
+        .disabled(engine.isProcessing)
     }
 
     @ViewBuilder
