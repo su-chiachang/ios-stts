@@ -26,7 +26,7 @@
 		408D8C9053A1E2C507548F9F /* SpeechPipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53655B48CD7D4C4B131AF347 /* SpeechPipeline.swift */; };
 		4F4E357F8ABC3FD94063F888 /* Accelerate.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9283F0E6CE2A9A6E0303D629 /* Accelerate.framework */; };
 		5280B0E526F93018AF1DAAA2 /* ConversationEngineModelLoadingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CD9C9C26B3D6BB22835E98B /* ConversationEngineModelLoadingTests.swift */; };
-		547215BB690A45DBCF61F452 /* ConversationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA6B8448D19080817053D361 /* ConversationView.swift */; };
+		547215BB690A45DBCF61F452 /* SttsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA6B8448D19080817053D361 /* SttsView.swift */; };
 		5A7A35D75C029B7E41458A97 /* TranscriptSegmenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36BE7153E424B9F40D52C5F2 /* TranscriptSegmenter.swift */; };
 		5E08411ED74B235D07644B00 /* CQwenTTS in Frameworks */ = {isa = PBXBuildFile; productRef = 0E87EBA5A6684AB37D10EBA7 /* CQwenTTS */; };
 		5FD48DEFBC0365E1F9AB139B /* AudioFileInput.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7399E6E4410594811B61FE24 /* AudioFileInput.swift */; };
@@ -57,7 +57,7 @@
 		DFCB74B76DEDB0A6B1AACB0E /* SourceMediaPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AA57699541365E25920DDA8 /* SourceMediaPlayer.swift */; };
 		E454B8FBB66BD6C1F722FB77 /* SttBackendTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6ABE94709829D1DAFC23F68F /* SttBackendTests.swift */; };
 		EA70D656620C8BB22A3BC1AF /* EndpointDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE0B25B4B24E56038095D13D /* EndpointDetector.swift */; };
-		EB4B10340C9DF6072D8906E7 /* ConversationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4D2071A40A847AAC1412D33 /* ConversationEngine.swift */; };
+		EB4B10340C9DF6072D8906E7 /* SttsEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4D2071A40A847AAC1412D33 /* SttsEngine.swift */; };
 		F0723CF7C0D8E7D044BE3BE0 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFD52BD5D2BD91B97886D2FF /* AppSettings.swift */; };
 		F526299C6CE8371BF7373877 /* FoundationModels.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 60B596FDEE708E8291DDA051 /* FoundationModels.framework */; settings = {ATTRIBUTES = (Weak, ); }; };
 		F767CB8A8A03472B1A9F1052 /* CoreML.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7A73D66467B6DD9599F2411B /* CoreML.framework */; platformFilters = (macos, ); };
@@ -108,8 +108,8 @@
 		60B596FDEE708E8291DDA051 /* FoundationModels.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = FoundationModels.framework; path = System/Library/Frameworks/FoundationModels.framework; sourceTree = SDKROOT; };
 		60EF1F23059238736690A6B5 /* TtsBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TtsBackend.swift; sourceTree = "<group>"; };
 		6249E153C3FABA02244A4DFB /* ModelCatalogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelCatalogTests.swift; sourceTree = "<group>"; };
-		6AB33C348377EAE1822DCC6F /* AppleSpeechWriteLifecycleProbeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSpeechWriteLifecycleProbeTests.swift; sourceTree = "<group>"; };
 		66C6493E753AABF600F5CA2E /* TttEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TttEngineTests.swift; sourceTree = "<group>"; };
+		6AB33C348377EAE1822DCC6F /* AppleSpeechWriteLifecycleProbeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSpeechWriteLifecycleProbeTests.swift; sourceTree = "<group>"; };
 		6ABE94709829D1DAFC23F68F /* SttBackendTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SttBackendTests.swift; sourceTree = "<group>"; };
 		7399E6E4410594811B61FE24 /* AudioFileInput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioFileInput.swift; sourceTree = "<group>"; };
 		74134B85542325CA6ABDDB04 /* NativeShims */ = {isa = PBXFileReference; lastKnownFileType = folder; name = NativeShims; path = Packages/NativeShims; sourceTree = SOURCE_ROOT; };
@@ -127,7 +127,7 @@
 		A42B0D01C33A472025C17A0F /* STTSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = STTSApp.swift; sourceTree = "<group>"; };
 		A893796C0A5D3D725D60F065 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
 		AA0F353EE07A8A59C212494F /* ModelBundle */ = {isa = PBXFileReference; lastKnownFileType = folder; name = ModelBundle; path = Packages/ModelBundle; sourceTree = SOURCE_ROOT; };
-		AA6B8448D19080817053D361 /* ConversationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationView.swift; sourceTree = "<group>"; };
+		AA6B8448D19080817053D361 /* SttsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SttsView.swift; sourceTree = "<group>"; };
 		AE2D2D7657A98CD8BE6EF9BC /* OpenAIChatClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAIChatClient.swift; sourceTree = "<group>"; };
 		B84C057F42527C6C039326B5 /* QwenTts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QwenTts.swift; sourceTree = "<group>"; };
 		BFA341859255E8D66C9D5A9D /* Audio8Tts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Audio8Tts.swift; sourceTree = "<group>"; };
@@ -143,7 +143,7 @@
 		ED88F4C03FDD87E703A96190 /* Audio8ReleaseManifestTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Audio8ReleaseManifestTests.swift; sourceTree = "<group>"; };
 		EE0B25B4B24E56038095D13D /* EndpointDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EndpointDetector.swift; sourceTree = "<group>"; };
 		F184732A7DE3E3F2150DD692 /* AudioInputManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioInputManager.swift; sourceTree = "<group>"; };
-		F4D2071A40A847AAC1412D33 /* ConversationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationEngine.swift; sourceTree = "<group>"; };
+		F4D2071A40A847AAC1412D33 /* SttsEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SttsEngine.swift; sourceTree = "<group>"; };
 		F6C969839811F04A66D1AB31 /* ModelDownloadManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelDownloadManagerTests.swift; sourceTree = "<group>"; };
 		F8BDC2C3F57C33109A771E66 /* AppleSpeechLifecycleProbeIOSTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = AppleSpeechLifecycleProbeIOSTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		FC91B63BC6B01D4524AC3630 /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
@@ -216,7 +216,7 @@
 		3E824EA3F338AA8EAF87895D /* UI */ = {
 			isa = PBXGroup;
 			children = (
-				AA6B8448D19080817053D361 /* ConversationView.swift */,
+				AA6B8448D19080817053D361 /* SttsView.swift */,
 				ED552EF21385746C2D1045A1 /* DownloadModelsView.swift */,
 				8E420319ED13CC8B10D45B20 /* MediaSourceMenu.swift */,
 				D30A4BAC2E50F07D1620698A /* RootTabView.swift */,
@@ -233,7 +233,7 @@
 			children = (
 				CFD52BD5D2BD91B97886D2FF /* AppSettings.swift */,
 				7560AD8E50BF38B508F0FAA4 /* Audio8ReleaseManifest.swift */,
-				F4D2071A40A847AAC1412D33 /* ConversationEngine.swift */,
+				F4D2071A40A847AAC1412D33 /* SttsEngine.swift */,
 				45EB14C6E593D09487F38568 /* LanguageDetect.swift */,
 				0262B8F74259172FCD62E601 /* ModelCatalog.swift */,
 				07E13B98BA499EACD667C0EE /* ModelDownloadManager.swift */,
@@ -564,8 +564,8 @@
 				5FD48DEFBC0365E1F9AB139B /* AudioFileInput.swift in Sources */,
 				1441363D242C380FEF2A43BD /* AudioInputManager.swift in Sources */,
 				18FB71CBD5AACF8A6A28CCD3 /* AudioPlayer.swift in Sources */,
-				EB4B10340C9DF6072D8906E7 /* ConversationEngine.swift in Sources */,
-				547215BB690A45DBCF61F452 /* ConversationView.swift in Sources */,
+				EB4B10340C9DF6072D8906E7 /* SttsEngine.swift in Sources */,
+				547215BB690A45DBCF61F452 /* SttsView.swift in Sources */,
 				337718A8F502C4B51E723F95 /* DownloadModelsView.swift in Sources */,
 				EA70D656620C8BB22A3BC1AF /* EndpointDetector.swift in Sources */,
 				37D9FDFEF712C56359D45E2B /* LanguageDetect.swift in Sources */,
@@ -758,9 +758,7 @@
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "STTS needs microphone access to listen to your voice.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "STTS uses on-device Apple Speech to transcribe your voice.";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = (
-					"@executable_path/../Frameworks",
-				);
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 0.1.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
@@ -867,9 +865,7 @@
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "STTS needs microphone access to listen to your voice.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "STTS uses on-device Apple Speech to transcribe your voice.";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = (
-					"@executable_path/../Frameworks",
-				);
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 0.1.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;

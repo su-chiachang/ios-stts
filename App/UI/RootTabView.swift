@@ -3,7 +3,7 @@ import SwiftUI
 /// Top-level container splitting the app into three focused tabs, all sharing
 /// the single `ConversationEngine` (and its one-turn state machine).
 struct RootTabView: View {
-    var engine: ConversationEngine
+    var engine: SttsEngine
     @State private var selectedTab: Tab = .stt
 
     private enum Tab { case stt, tts, stts, ttt, settings }
@@ -16,7 +16,7 @@ struct RootTabView: View {
             TtsView(engine: engine)
                 .tabItem { Label("tts", systemImage: "speaker.wave.2") }
                 .tag(Tab.tts)
-            ConversationView(engine: engine)
+            SttsView(engine: engine)
                 .tabItem { Label("stts", systemImage: "bubble.left.and.bubble.right") }
                 .tag(Tab.stts)
             TttView()
@@ -49,5 +49,5 @@ struct RootTabView: View {
 }
 
 #Preview {
-    RootTabView(engine: ConversationEngine())
+    RootTabView(engine: SttsEngine())
 }

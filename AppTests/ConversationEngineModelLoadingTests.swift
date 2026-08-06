@@ -11,7 +11,7 @@ final class ConversationEngineModelLoadingTests: XCTestCase {
         var loadedBackends: [TtsBackend] = []
         var loadCount = 0
         weak var firstEngine: StubTtsEngine?
-        let engine = ConversationEngine(
+        let engine = SttsEngine(
             sttLoader: { _ in StubSttEngine() },
             ttsLoader: { settings in
                 loadedBackends.append(settings.ttsBackend)
@@ -45,7 +45,7 @@ final class ConversationEngineModelLoadingTests: XCTestCase {
         let previousBackend = settings.ttsBackend
         defer { settings.ttsBackend = previousBackend }
 
-        let engine = ConversationEngine(
+        let engine = SttsEngine(
             sttLoader: { _ in StubSttEngine() },
             ttsLoader: { _ in throw StubTtsError.loadFailed })
 

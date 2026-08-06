@@ -2,7 +2,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct SettingsView: View {
-    var engine: ConversationEngine
+    var engine: SttsEngine
     var settings = AppSettings.shared
 
     @State private var parakeetPath: String = ""
@@ -195,7 +195,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .font(.callout) // matches ConversationView's compact type scale
+        .font(.callout) // matches SttsView's compact type scale
         #if os(macOS)
         .frame(width: 480, height: 520)
         #endif
@@ -364,5 +364,5 @@ struct SettingsView: View {
 }
 
 #Preview {
-    SettingsView(engine: ConversationEngine())
+    SettingsView(engine: SttsEngine())
 }

@@ -64,7 +64,7 @@ struct ChatBubble: Identifiable, Equatable {
 /// follows the same STT/endpoint/LLM path that live mic input will use in M6.
 @MainActor
 @Observable
-final class ConversationEngine {
+final class SttsEngine {
     typealias SttModelLoader = @MainActor (AppSettings) async throws -> any SttEngine
     typealias TtsModelLoader = @MainActor (AppSettings) throws -> any TtsEngine
 
@@ -101,8 +101,8 @@ final class ConversationEngine {
     private let ttsLoader: TtsModelLoader
 
     init(
-        sttLoader: @escaping SttModelLoader = ConversationEngine.defaultSttModel,
-        ttsLoader: @escaping TtsModelLoader = ConversationEngine.defaultTtsModel
+        sttLoader: @escaping SttModelLoader = SttsEngine.defaultSttModel,
+        ttsLoader: @escaping TtsModelLoader = SttsEngine.defaultTtsModel
     ) {
         self.sttLoader = sttLoader
         self.ttsLoader = ttsLoader

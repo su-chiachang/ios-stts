@@ -4,7 +4,7 @@ import SwiftUI
 /// its transcript with timestamps, switchable between sentence-level (default)
 /// and per-word granularity.
 struct SttFileView: View {
-    var engine: ConversationEngine
+    var engine: SttsEngine
     @State private var granularity: Granularity = .sentence
 
     enum Granularity: String, CaseIterable, Identifiable {
@@ -122,5 +122,5 @@ struct SttFileView: View {
 }
 
 #Preview {
-    SttFileView(engine: ConversationEngine())
+    SttFileView(engine: SttsEngine())
 }
