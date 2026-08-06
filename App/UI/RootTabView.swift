@@ -30,9 +30,6 @@ struct RootTabView: View {
                 .tag(Tab.settings)
             #endif
         }
-        #if os(macOS)
-        .frame(minWidth: 460, minHeight: 560)
-        #endif
         // Each tab only keeps its own model(s) resident — loading STT and
         // TTS together pushed memory past the OS jetsam limit on-device.
         // Settings needs neither directly, so switching to it leaves
