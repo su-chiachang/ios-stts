@@ -305,7 +305,14 @@ final class StsEngine {
                 }
                 sourcePlayer.stop()
                 if sourceMediaPlayer === sourcePlayer { sourceMediaPlayer = nil }
-                try await finalizeSttTurn(stt, turnID: turnID)
+                // Two different empty outcomes here. The endpoint detector can
+                // cut the clip at its first pause, so an empty transcript then
+                // may just mean the opening was music or noise rather than a
+                // wrong locale — don't send the user to Settings for that.
+                try await finalizeSttTurn(stt, turnID: turnID,
+                                          emptyHint: endpoint.hasTriggered
+                                              ? "No speech was recognized before the first pause. Raise the silence hang in Settings, or use [stt] to transcribe the whole clip."
+                                              : emptyTranscriptHint)
             } catch is CancellationError {
                 finishTurn(turnID, with: .idle)
             } catch {
@@ -352,6 +359,14 @@ final class StsEngine {
                 let finalText = partialTranscript
                     .trimmingCharacters(in: .whitespacesAndNewlines)
                 partialTranscript = ""
+                // No endpoint cutoff on this path — the whole clip was fed, so
+                // an empty result really means nothing was recognized.
+                guard !finalText.isEmpty else {
+                    // Handing the composer an empty draft looks like the pick
+                    // never happened; say why instead.
+                    finishTurn(turnID, with: .error(emptyTranscriptHint))
+                    return
+                }
                 dictatedText = finalText
                 finishTurn(turnID, with: .idle)
             } catch is CancellationError {
@@ -369,6 +384,21 @@ final class StsEngine {
     /// uses, so it shows up in the usual status banner.
     func reportError(_ message: String) {
         state = .error(message)
+    }
+
+    /// Why a file yielded no text at all. The likely cause differs per backend:
+    /// Apple Speech is locale-bound and returns nothing when the clip's language
+    /// isn't the selected locale ("auto" is not a locale it understands — the
+    /// resolver silently turns it into the system locale, so report what
+    /// actually ran), while Parakeet auto-detects but can be the wrong model.
+    private var emptyTranscriptHint: String {
+        guard AppSettings.shared.sttBackend == .appleSpeech else {
+            return "No speech was recognized. Check the STT model in Settings — use nemotron-3.5-asr, not the EOU model."
+        }
+        let effective = AppleSpeechLocaleResolver
+            .requestedLocale(for: AppSettings.shared.sttLocale)
+            .identifier(.bcp47)
+        return "No speech was recognized. Apple Speech only transcribes the selected STT locale (\(effective)) — set it to the clip's language in Settings."
     }
 
     /// Transcribes a whole audio file to per-word timestamps for the [stt] tab
@@ -411,10 +441,8 @@ final class StsEngine {
                 timestampFrameSec = result.frameSec
                 if result.words.isEmpty {
                     // Don't fail silently — the [stt] tab would just revert to its
-                    // empty prompt, looking like nothing happened. The usual cause
-                    // is the wrong STT model (e.g. the EOU model, which can't
-                    // transcribe); point the user at Settings.
-                    finishTurn(turnID, with: .error("No speech was recognized. Check the STT model in Settings — use nemotron-3.5-asr, not the EOU model."))
+                    // empty prompt, looking like nothing happened.
+                    finishTurn(turnID, with: .error(emptyTranscriptHint))
                 } else {
                     finishTurn(turnID, with: .idle)
                 }
@@ -691,7 +719,12 @@ final class StsEngine {
         partialTranscript = update.applying(to: partialTranscript)
     }
 
-    private func finalizeSttTurn(_ stt: any SttEngine, turnID: UUID) async throws {
+    /// `emptyHint` nil keeps the old silent `.idle` for an empty turn, which is
+    /// what the microphone path wants — silence is not a failure there, and
+    /// `.idle` is what re-arms continuous listening.
+    private func finalizeSttTurn(_ stt: any SttEngine,
+                                 turnID: UUID,
+                                 emptyHint: String? = nil) async throws {
         let finalUpdate = try await stt.endTurn()
         guard isCurrentTurn(turnID) else { return }
         applySttUpdate(finalUpdate)
@@ -701,6 +734,8 @@ final class StsEngine {
         if !finalText.isEmpty {
             bubbles.append(ChatBubble(role: .user, text: finalText))
             try await requestAssistantReply(turnID: turnID)
+        } else if let emptyHint {
+            finishTurn(turnID, with: .error(emptyHint))
         } else {
             finishTurn(turnID, with: .idle)
         }

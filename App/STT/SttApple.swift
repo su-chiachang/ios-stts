@@ -92,7 +92,27 @@ actor SttApple: SttEngine {
         return try await makeReady(locale: locale, transcriber: setupTranscriber)
     }
 
+    /// SpeechAnalyzer refuses modules whose locale was never reserved
+    /// ("Cannot use modules with unallocated locales …"; today a warning,
+    /// an error in a later release). Reservations are process-wide and
+    /// capped, so free the ones this app is no longer using first.
+    private static func reserve(locale: Locale) async throws {
+        let reserved = await AssetInventory.reservedLocales
+        if reserved.contains(where: { AppleSpeechLocaleResolver.isEquivalent($0, to: locale) }) {
+            return
+        }
+        for stale in reserved.dropFirst(max(0, AssetInventory.maximumReservedLocales - 1)) {
+            await AssetInventory.release(reservedLocale: stale)
+        }
+        do {
+            try await AssetInventory.reserve(locale: locale)
+        } catch {
+            throw AppleSpeechSttError.modelInstallationFailed(error.localizedDescription)
+        }
+    }
+
     private static func makeReady(locale: Locale, transcriber: SpeechTranscriber) async throws -> SttApple {
+        try await reserve(locale: locale)
         guard let format = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [transcriber]) else {
             throw AppleSpeechSttError.noCompatibleAudioFormat
         }

@@ -156,7 +156,11 @@ struct SettingsView: View {
                                                               }
                                                           })) {
                     Text("Auto").tag("auto")
-                    Text("Chinese").tag("zh-CN")
+                    // Apple Speech is locale-bound and never auto-detects, so
+                    // Simplified and Traditional are separate choices: picking
+                    // zh-CN for Traditional audio transcribes it as Simplified.
+                    Text("Chinese (Simplified)").tag("zh-CN")
+                    Text("Chinese (Traditional)").tag("zh-TW")
                     Text("English").tag("en")
                 }
                 Slider(value: Binding(get: { settings.silenceHangMs },
