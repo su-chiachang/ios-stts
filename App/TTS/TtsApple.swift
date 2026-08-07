@@ -114,19 +114,8 @@ actor TtsApple: TtsEngine {
 
     func synthesize(
         _ text: String,
-        language: SpokenLanguage,
-        referenceWavPath: String?,
-        referenceTranscript: String?,
-        speaker: String?,
-        instruction: String?,
-        maxAudioTokens: Int32
+        language: SpokenLanguage
     ) async throws -> TtsAudioChunk {
-        _ = referenceWavPath
-        _ = referenceTranscript
-        _ = speaker
-        _ = instruction
-        _ = maxAudioTokens
-
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { throw AppleTtsError.noAudio }
         try Task.checkCancellation()
@@ -157,14 +146,6 @@ actor TtsApple: TtsEngine {
             Task { await self.cancel(requestID: requestID) }
         })
     }
-
-    /// Apple system voices do not expose reference-audio or speaker catalogs
-    /// through this app-internal backend.
-    func warmUpVoice(referenceWavPath: String) async throws {
-        _ = referenceWavPath
-    }
-
-    func availableSpeakers() async -> [String] { [] }
 
     private func receive(_ snapshot: BufferSnapshot, requestID: UUID) {
         guard activeRequestID == requestID else { return }

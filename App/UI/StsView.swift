@@ -2,8 +2,8 @@ import SwiftUI
 
 struct StsView: View {
     var engine: StsEngine
-    var settings = AppSettings.shared
     @State private var draft = ""
+    @State private var readAloudMode = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -59,8 +59,7 @@ struct StsView: View {
                 headerButton("stop.circle", help: "Stop", action: engine.stop)
             }
 
-            Toggle(isOn: Binding(get: { settings.readAloudMode },
-                                 set: { settings.readAloudMode = $0 })) {
+            Toggle(isOn: $readAloudMode) {
                 Image(systemName: "waveform")
             }
             .toggleStyle(.button)
@@ -167,7 +166,7 @@ struct StsView: View {
             .help(engine.state == .listening ? "Stop listening" : "Start voice input")
 
             Button(action: sendDraft) {
-                Image(systemName: settings.readAloudMode ? "speaker.wave.2.fill" : "arrow.up")
+                Image(systemName: readAloudMode ? "speaker.wave.2.fill" : "arrow.up")
                     .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(.white)
                     .frame(width: 28, height: 28)
@@ -175,10 +174,8 @@ struct StsView: View {
             }
             .buttonStyle(.plain)
             .disabled(!canSend)
-            .help(settings.readAloudMode
-                  ? (settings.ttsBackend == .apple
-                     ? "Read aloud with the Apple system voice"
-                     : "Read aloud in my voice")
+            .help(readAloudMode
+                  ? "Read aloud with the Apple system voice"
                   : "Send message")
         }
         .padding(.leading, 10)
@@ -196,11 +193,7 @@ struct StsView: View {
     }
 
     private var readAloudHelp: String {
-        if settings.ttsBackend == .apple {
-            return "Read-aloud mode: speak typed text with a language-matched Apple system voice instead of asking the assistant"
-        }
-        let voice = settings.customVoiceName.isEmpty ? "default voice" : settings.customVoiceName
-        return "Read-aloud mode: speak typed text verbatim in the custom voice (\(voice)) instead of asking the assistant"
+        "Read-aloud mode: speak typed text with a language-matched Apple system voice instead of asking the assistant"
     }
 
     private var canControlMicrophone: Bool {
@@ -208,7 +201,7 @@ struct StsView: View {
     }
 
     private func sendDraft() {
-        let handled = settings.readAloudMode ? engine.speakText(draft) : engine.sendText(draft)
+        let handled = readAloudMode ? engine.speakText(draft) : engine.sendText(draft)
         if handled { draft = "" }
     }
 

@@ -5,9 +5,7 @@ import SwiftUI
 /// and per-word granularity.
 struct SttView: View {
     var engine: StsEngine
-    var settings = AppSettings.shared
     @State private var granularity: Granularity = .sentence
-    @State private var supportedLocales: [String] = []
 
     enum Granularity: String, CaseIterable, Identifiable {
         case sentence = "Sentence"
@@ -42,13 +40,6 @@ struct SttView: View {
 
             Spacer(minLength: 8)
 
-            // Only Apple Speech is locale-bound. Parakeet auto-detects the
-            // file's language and transcribeFileTimestamped passes it no
-            // locale at all, so the control would be inert there.
-            if settings.sttBackend == .apple {
-                localePicker
-            }
-
             MediaSourceMenu(onPick: engine.transcribeFileTimestamped, onError: engine.reportError) {
                 Text("Import…")
             }
@@ -58,63 +49,6 @@ struct SttView: View {
         }
         .font(.callout)
         .padding()
-    }
-
-    /// Sits next to Import because it has to match the language of the clip
-    /// being imported: Apple Speech never auto-detects, and a mismatch
-    /// transcribes to nothing at all. Regional variants are separate entries
-    /// for the same reason — picking zh-CN for Traditional audio transcribes
-    /// it as Simplified.
-    private var localePicker: some View {
-        Menu {
-            Button("Auto") {
-                selectLocale(AppleSpeechLocaleResolver.autoTag)
-            }
-            ForEach(localeOptions, id: \.self) { tag in
-                Button(AppleSpeechLocaleResolver.displayName(for: Locale(identifier: tag))) {
-                    selectLocale(tag)
-                }
-            }
-        } label: {
-            HStack(spacing: 4) {
-                Text(selectedLocaleTitle)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.caption2.weight(.semibold))
-            }
-            .frame(minWidth: 64, idealWidth: 86, maxWidth: 120, alignment: .trailing)
-        }
-        .font(.callout)
-        .layoutPriority(1)
-        .disabled(engine.isProcessing || engine.state == .loadingModels)
-        .task {
-            guard supportedLocales.isEmpty else { return }
-            supportedLocales = await AppleSpeechLocaleResolver.supportedLocales()
-                .map { AppleSpeechLocaleResolver.tag(for: $0) }
-        }
-    }
-
-    private var selectedLocaleTitle: String {
-        let selected = AppleSpeechLocaleResolver.tag(for: settings.sttLocale)
-        guard selected != AppleSpeechLocaleResolver.autoTag else { return "Auto" }
-        return AppleSpeechLocaleResolver.displayName(for: Locale(identifier: selected))
-    }
-
-    private func selectLocale(_ newValue: String) {
-        settings.sttLocale = newValue
-        Task { await engine.loadModels() }
-    }
-
-    /// The saved locale is always one of the rows, even before the async
-    /// supported-locale load lands — a selection with no matching tag renders
-    /// the Picker blank.
-    private var localeOptions: [String] {
-        let selected = AppleSpeechLocaleResolver.tag(for: settings.sttLocale)
-        guard selected != AppleSpeechLocaleResolver.autoTag,
-              !supportedLocales.contains(where: { $0.caseInsensitiveCompare(selected) == .orderedSame })
-        else { return supportedLocales }
-        return [selected] + supportedLocales
     }
 
     @ViewBuilder

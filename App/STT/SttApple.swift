@@ -15,7 +15,7 @@ enum AppleSpeechSttError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .unavailable:
-            "Apple SpeechTranscriber is unavailable on this OS or device. Select Parakeet in Settings."
+            "Apple SpeechTranscriber is unavailable on this OS or device."
         case .localeNotSupported(let locale):
             "Apple SpeechTranscriber does not support the locale \(locale) on this device."
         case .localeChangedRequiresReload:
@@ -34,7 +34,7 @@ enum AppleSpeechSttError: LocalizedError {
     }
 }
 
-/// Apple SpeechTranscriber backend. The actor owns one analyzer session at a
+/// Apple SpeechTranscriber engine. The actor owns one analyzer session at a
 /// time and exposes transcript snapshots because volatile Speech results can
 /// revise text already emitted by an earlier result.
 @available(macOS 26.0, iOS 26.0, *)
@@ -53,7 +53,7 @@ actor SttApple: SttEngine {
     private var timestampedWords: [TranscriptWord] = []
 
     /// Asset installation and audio-format selection happen before the engine
-    /// is returned, so a loaded Apple backend is ready for beginTurn.
+    /// is returned, so the Apple engine is ready for beginTurn.
     static func make(localeIdentifier: String?) async throws -> SttApple {
         guard SpeechTranscriber.isAvailable else {
             throw AppleSpeechSttError.unavailable

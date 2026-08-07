@@ -1,7 +1,7 @@
 import Foundation
 
 enum LanguageDetect {
-    /// Qwen's Chinese voice is selected once Han characters make up more than
+    /// Selects the Apple voice language once Han characters make up more than
     /// 30% of the non-whitespace content; otherwise use English.
     static func spokenLanguage(for text: String) -> SpokenLanguage {
         let content = text.unicodeScalars.filter { !CharacterSet.whitespacesAndNewlines.contains($0) }

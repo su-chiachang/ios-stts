@@ -1,6 +1,20 @@
 # Progress
 
-Last updated: 2026-08-05
+Last updated: 2026-08-07
+
+## 2026-08-07 — Apple-only runtime cleanup
+
+- Removed the Audio8, Qwen TTS, Parakeet STT, and Web API implementations.
+- Removed the app Settings/model-download infrastructure, reference-voice
+  recording/import paths, backend enums, native SwiftPM packages, build
+  scripts, vendor libraries, and local model/build artifacts.
+- Simplified `StsEngine` and the UI to construct and use Apple's Speech,
+  AVSpeechSynthesizer, and Foundation Models services directly.
+- Regenerated the Xcode project with only system framework dependencies.
+- macOS XCTest passed: 6 tests, 0 failures. Generic iOS Simulator app build
+  passed.
+- Old Audio8/Qwen/Parakeet documents remain under `docs/` as historical
+  records only.
 
 ## 2026-08-05 — Audio8 STT (ARK-ASR) reverted; Audio8 is TTS-only
 

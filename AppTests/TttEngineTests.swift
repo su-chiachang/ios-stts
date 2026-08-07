@@ -17,10 +17,6 @@ final class TttEngineTests: XCTestCase {
         AsyncThrowingStream { $0.finish() }
     }
 
-    func testBackendChoices() {
-        XCTAssertEqual(TttBackend.allCases, [.apple, .webapi])
-    }
-
     func testAppleAdapterConvertsCumulativeSnapshotsToFragments() async throws {
         let provider = TttApple(respond: Self.snapshotRespond)
         var iterator = provider.streamChat(
@@ -35,34 +31,10 @@ final class TttEngineTests: XCTestCase {
         XCTAssertNil(end)
     }
 
-    func testWebapiRejectsInvalidBaseURL() {
-        XCTAssertThrowsError(try TttWebapi(baseURL: "not a URL", apiKey: "", model: "test"))
-    }
-
-    func testSttsEngineOwnsTheLoadedTttProvider() {
+    func testSttsEngineOwnsTheAppleTttProvider() {
         let provider = TttApple(respond: Self.noopRespond)
-        let engine = StsEngine(tttLoader: { _ in provider })
+        let engine = StsEngine(tttLoader: { provider })
 
         XCTAssertTrue(engine.tttEngine is TttApple)
-    }
-
-    func testTttLoaderRebuildsTheProviderWhenBackendChanges() {
-        let settings = AppSettings.shared
-        let previousBackend = settings.tttBackend
-        defer { settings.tttBackend = previousBackend }
-
-        var loadedBackends: [TttBackend] = []
-        settings.tttBackend = .apple
-        let engine = StsEngine(tttLoader: { settings in
-            loadedBackends.append(settings.tttBackend)
-            return settings.tttBackend == .apple
-                ? TttApple(respond: Self.noopRespond)
-                : TttWebapi(settings: settings)
-        })
-
-        engine.setTttBackend(.webapi, settings: settings)
-
-        XCTAssertEqual(loadedBackends, [.apple, .webapi])
-        XCTAssertTrue(engine.tttEngine is TttWebapi)
     }
 }

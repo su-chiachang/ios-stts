@@ -8,12 +8,9 @@ import UIKit
 import AppKit
 #endif
 
-/// The [ttt] tab: one chat surface backed by the provider selected in
-/// Settings. The view owns the presentation state; the provider owns only
-/// text generation.
+/// The [ttt] tab: one chat surface backed by Apple's on-device model.
 @MainActor
 struct TttView: View {
-    let settings: AppSettings
     @State private var provider: any TttEngine
     @State private var messages: [Message] = []
     @State private var draft = ""
@@ -22,9 +19,8 @@ struct TttView: View {
     @State private var lastUserPrompt: String?
     @State private var responseTask: Task<Void, Never>?
 
-    init(settings: AppSettings = .shared) {
-        self.settings = settings
-        _provider = State(initialValue: StsEngine.defaultTttModel(settings))
+    init() {
+        _provider = State(initialValue: TttApple())
     }
 
     var body: some View {
@@ -53,9 +49,6 @@ struct TttView: View {
             case .unavailable(let reason):
                 unavailableBanner(reason)
             }
-        }
-        .onChange(of: settings.tttBackend) { _, _ in
-            switchProvider()
         }
         .onDisappear {
             responseTask?.cancel()
@@ -178,18 +171,6 @@ struct TttView: View {
         lastUserPrompt = nil
     }
 
-    private func switchProvider() {
-        responseTask?.cancel()
-        responseTask = nil
-        provider.reset()
-        provider = StsEngine.defaultTttModel(settings)
-        messages.removeAll()
-        draft = ""
-        isStreaming = false
-        isSessionExhausted = false
-        lastUserPrompt = nil
-    }
-
     private func stream(prompt: String) {
         guard !isStreaming else { return }
         lastUserPrompt = prompt
@@ -229,17 +210,13 @@ struct TttView: View {
     }
 
     private func makeRequestMessages() -> [TttMessage] {
-        let systemMessages = settings.systemPrompt
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .isEmpty ? [] : [TttMessage(role: .system, content: settings.systemPrompt)]
-        let conversation = messages.compactMap { message -> TttMessage? in
+        messages.compactMap { message -> TttMessage? in
             guard case .normal = message.kind else { return nil }
             return TttMessage(
                 role: message.role == .user ? .user : .assistant,
                 content: message.text
             )
         }
-        return systemMessages + conversation
     }
 
     private func errorMessage(for error: LanguageModelSession.GenerationError) -> Message {

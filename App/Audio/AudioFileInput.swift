@@ -14,7 +14,7 @@ enum AudioFileError: Error, LocalizedError {
 /// Decodes the audio track of ANY AVFoundation-readable container (plain
 /// audio files like wav/mp3/m4a, or video files like mp4/mov — the audio
 /// track is extracted the same way either way) to 16 kHz mono Float32,
-/// chunked to match what ParakeetStt.feed expects.
+/// chunked to match the Apple SpeechTranscriber input format.
 ///
 /// Used as the M2 STT input source (deterministic, no mic/permissions
 /// needed) ahead of live mic capture (M6).

@@ -1,21 +1,6 @@
 import Foundation
 
-/// The text-to-text implementation selected for the ttt tab and STTS.
-enum TttBackend: String, CaseIterable, Identifiable, Sendable {
-    case apple
-    case webapi
-
-    var id: String { rawValue }
-
-    var displayName: String {
-        switch self {
-        case .apple: "Apple"
-        case .webapi: "Web API"
-        }
-    }
-}
-
-/// A provider-neutral chat message used by the two concrete adapters.
+/// A chat message passed to Apple's Foundation Models adapter.
 struct TttMessage: Codable, Equatable, Sendable {
     enum Role: String, Codable, Sendable {
         case system

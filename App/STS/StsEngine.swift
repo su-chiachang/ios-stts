@@ -10,15 +10,9 @@ enum ConversationState: Equatable {
     case error(String)
 }
 
-private enum ConversationModelLoadError: Error, LocalizedError {
-    case stt(String)
-    case tts(String)
-
-    var errorDescription: String? {
-        switch self {
-        case .stt(let message), .tts(let message): message
-        }
-    }
+private enum ConversationDefaults {
+    static let rmsThreshold = 0.015
+    static let silenceHangMs = 800.0
 }
 
 #if os(iOS)
@@ -65,9 +59,9 @@ struct ChatBubble: Identifiable, Equatable {
 @MainActor
 @Observable
 final class StsEngine {
-    typealias SttModelLoader = @MainActor (AppSettings) async throws -> any SttEngine
-    typealias TtsModelLoader = @MainActor (AppSettings) throws -> any TtsEngine
-    typealias TttModelLoader = @MainActor (AppSettings) -> any TttEngine
+    typealias SttModelLoader = @MainActor () async throws -> any SttEngine
+    typealias TtsModelLoader = @MainActor () throws -> any TtsEngine
+    typealias TttModelLoader = @MainActor () -> any TttEngine
 
     private(set) var state: ConversationState = .loadingModels
     private(set) var bubbles: [ChatBubble] = []
@@ -111,7 +105,7 @@ final class StsEngine {
         self.sttLoader = sttLoader
         self.ttsLoader = ttsLoader
         self.tttLoader = tttLoader
-        self.tttEngine = tttLoader(AppSettings.shared)
+        self.tttEngine = tttLoader()
 
         #if os(iOS)
         audioInterruptionMonitor = AudioInterruptionMonitor { [weak self] in
@@ -120,47 +114,20 @@ final class StsEngine {
         #endif
     }
 
-    static func defaultTttModel(_ settings: AppSettings) -> any TttEngine {
-        switch settings.tttBackend {
-        case .apple:
-            TttApple()
-        case .webapi:
-            TttWebapi(settings: settings)
-        }
-    }
-
-    /// Replaces the text-to-text provider after a Settings change. The
-    /// conversation bubbles stay visible, while the provider-specific
-    /// session is reset before the new adapter takes over.
-    func setTttBackend(_ backend: TttBackend, settings: AppSettings = .shared) {
-        if settings.tttBackend != backend {
-            settings.tttBackend = backend
-        }
-        cancelCurrentTurn()
-        tttEngine.reset()
-        tttEngine = tttLoader(settings)
-        partialTranscript = ""
-        inputRMS = 0
-        state = .idle
-    }
+    static func defaultTttModel() -> any TttEngine { TttApple() }
 
     /// Both native models loaded at once pushed resident memory past the OS
     /// jetsam limit on-device (fine on macOS, which has no equivalent
-    /// ceiling). Full validation from Settings still needs both; routine tab
-    /// navigation should only ever pay for what that tab actually uses.
+    /// ceiling). Routine tab navigation only loads what that tab actually
+    /// uses.
     func loadModels() async {
         await cancelCurrentTurnAndWait()
         state = .loadingModels
         stt = nil
         tts = nil
-        let settings = AppSettings.shared
         do {
-            // Construct both selected engines off to the side. Publishing the
-            // pair only after both loaders succeed prevents a failed TTS
-            // switch from leaving a newly loaded STT engine visible as a
-            // partially ready model set.
-            let loadedStt = try await sttLoader(settings)
-            let loadedTts = try ttsLoader(settings)
+            let loadedStt = try await sttLoader()
+            let loadedTts = try ttsLoader()
             stt = loadedStt
             tts = loadedTts
             state = .idle
@@ -169,48 +136,30 @@ final class StsEngine {
         }
     }
 
-    static func defaultSttModel(_ settings: AppSettings) async throws -> any SttEngine {
-        switch settings.sttBackend {
-        case .parakeet:
-            guard let parakeetURL = settings.parakeetModelURL() else {
-                throw ConversationModelLoadError.stt(
-                    "Parakeet STT is not ready. Pick a parakeet .gguf file in Settings or download a Parakeet asset.")
-            }
-            return try SttParakeet(modelPath: parakeetURL.path)
-        case .apple:
-            guard #available(iOS 26.0, macOS 26.0, *) else {
-                throw ConversationModelLoadError.stt(
-                    "Apple Speech requires iOS 26 or macOS 26. Select Parakeet in Settings on this OS.")
-            }
-            return try await SttApple.make(localeIdentifier: settings.sttLocale)
+    /// Recreates only the loaded STT engine after its persisted locale changes.
+    /// If STT is not resident, the new locale is picked up on the next tab
+    /// activation without loading an otherwise unused engine here.
+    func reloadSttModelIfLoaded() async {
+        guard stt != nil else { return }
+        await cancelCurrentTurnAndWait()
+        stt = nil
+        state = .loadingModels
+        do {
+            stt = try await sttLoader()
+            state = .idle
+        } catch {
+            state = .error(error.localizedDescription)
         }
     }
 
-    static func defaultTtsModel(_ settings: AppSettings) throws -> any TtsEngine {
-        switch settings.ttsBackend {
-        case .qwen:
-            guard let qwenDirURL = settings.qwenModelDirURL() else {
-                throw ConversationModelLoadError.tts(
-                    "Qwen TTS is not ready. Pick the qwen3-tts model folder in Settings or download a Qwen asset.")
-            }
-            return try TtsQwen(modelDir: qwenDirURL.path,
-                               variant: settings.qwenModelVariant,
-                               quantization: settings.qwenModelQuantization)
-        case .audio8:
-            if let memoryMessage = settings.audio8MemoryCompatibilityMessage() {
-                throw ConversationModelLoadError.tts(memoryMessage)
-            }
-            guard let resources = settings.audio8ModelResources() else {
-                throw ConversationModelLoadError.tts(settings.audio8ModelReadinessMessage())
-            }
-            return try TtsAudio8(generatorURL: resources.generatorURL,
-                                 codecURL: resources.codecURL,
-                                 tokenizerURL: resources.tokenizerURL,
-                                 expectedExportDtype: settings.audio8TtsVariant.exportDtype)
-        case .apple:
-            return TtsApple()
+    static func defaultSttModel() async throws -> any SttEngine {
+        guard #available(iOS 26.0, macOS 26.0, *) else {
+            throw AppleSpeechSttError.unavailable
         }
+        return try await SttApple.make(localeIdentifier: SttLocalePreferences.identifier)
     }
+
+    static func defaultTtsModel() throws -> any TtsEngine { TtsApple() }
 
     enum ModelScope { case stt, tts, both }
 
@@ -233,15 +182,14 @@ final class StsEngine {
         // the previous tab was doing.
         let needsLoad = (needsSTT && stt == nil) || (needsTTS && tts == nil)
         state = needsLoad ? .loadingModels : .idle
-        let settings = AppSettings.shared
         var loadedStt = stt
         var loadedTts = tts
         do {
             if needsSTT && loadedStt == nil {
-                loadedStt = try await sttLoader(settings)
+                loadedStt = try await sttLoader()
             }
             if needsTTS && loadedTts == nil {
-                loadedTts = try ttsLoader(settings)
+                loadedTts = try ttsLoader()
             }
             stt = loadedStt
             tts = loadedTts
@@ -267,7 +215,7 @@ final class StsEngine {
     /// incrementally finalized text to `partialTranscript` as it arrives.
     func transcribeFile(_ url: URL) {
         guard let stt, isReady else {
-            state = .error("Models are not loaded. Choose both model locations in Settings, then reload.")
+            state = .error("Apple speech services are not ready. Try again in a moment.")
             return
         }
         cancelCurrentTurn()
@@ -284,14 +232,14 @@ final class StsEngine {
                 await waitForPendingCancellation()
                 try Task.checkCancellation()
                 guard isCurrentTurn(turnID) else { throw CancellationError() }
-                try await stt.beginTurn(lang: AppSettings.shared.sttLocale)
+                try await stt.beginTurn(lang: nil)
                 let canEndTurnWithoutTranscript = await stt.canEndTurnWithoutTranscript
                 let sourcePlayer = SourceMediaPlayer()
                 sourceMediaPlayer = sourcePlayer
                 sourcePlayer.play(url)
                 let source = AudioFileInput(url: url)
-                var endpoint = EndpointDetector(rmsThreshold: AppSettings.shared.rmsThreshold,
-                                                silenceHangMs: AppSettings.shared.silenceHangMs)
+                var endpoint = EndpointDetector(rmsThreshold: ConversationDefaults.rmsThreshold,
+                                                silenceHangMs: ConversationDefaults.silenceHangMs)
                 for try await chunk in source.stream() {
                     try Task.checkCancellation()
                     let result = try await stt.feed(chunk)
@@ -308,10 +256,10 @@ final class StsEngine {
                 // Two different empty outcomes here. The endpoint detector can
                 // cut the clip at its first pause, so an empty transcript then
                 // may just mean the opening was music or noise rather than a
-                // wrong locale — don't send the user to Settings for that.
+                // wrong locale — don't fail silently.
                 try await finalizeSttTurn(stt, turnID: turnID,
                                           emptyHint: endpoint.hasTriggered
-                                              ? "No speech was recognized before the first pause. Raise the silence hang in Settings, or use [stt] to transcribe the whole clip."
+                                              ? "No speech was recognized before the first pause. Use [stt] to transcribe the whole clip."
                                               : emptyTranscriptHint)
             } catch is CancellationError {
                 finishTurn(turnID, with: .idle)
@@ -328,7 +276,7 @@ final class StsEngine {
     /// whole clip (no endpoint cutoff) and never plays it back.
     func dictateFile(_ url: URL) {
         guard let stt else {
-            state = .error("STT model is not loaded. Pick a parakeet .gguf file in Settings.")
+            state = .error("Apple Speech is not ready. Try again after the system speech model finishes preparing.")
             return
         }
         cancelCurrentTurn()
@@ -345,7 +293,7 @@ final class StsEngine {
                 await waitForPendingCancellation()
                 try Task.checkCancellation()
                 guard isCurrentTurn(turnID) else { throw CancellationError() }
-                try await stt.beginTurn(lang: AppSettings.shared.sttLocale)
+                try await stt.beginTurn(lang: nil)
                 let source = AudioFileInput(url: url)
                 for try await chunk in source.stream() {
                     try Task.checkCancellation()
@@ -386,19 +334,9 @@ final class StsEngine {
         state = .error(message)
     }
 
-    /// Why a file yielded no text at all. The likely cause differs per backend:
-    /// Apple Speech is locale-bound and returns nothing when the clip's language
-    /// isn't the selected locale ("auto" is not a locale it understands — the
-    /// resolver silently turns it into the system locale, so report what
-    /// actually ran), while Parakeet auto-detects but can be the wrong model.
     private var emptyTranscriptHint: String {
-        guard AppSettings.shared.sttBackend == .apple else {
-            return "No speech was recognized. Check the STT model in Settings — use nemotron-3.5-asr, not the EOU model."
-        }
-        let effective = AppleSpeechLocaleResolver
-            .requestedLocale(for: AppSettings.shared.sttLocale)
-            .identifier(.bcp47)
-        return "No speech was recognized. Apple Speech only transcribes the selected STT locale (\(effective)) — set it to the clip's language in Settings."
+        let locale = Locale.current.identifier(.bcp47)
+        return "No speech was recognized. Apple Speech is using the current system locale (\(locale))."
     }
 
     /// Transcribes a whole audio file to per-word timestamps for the [stt] tab
@@ -407,7 +345,7 @@ final class StsEngine {
     /// `timestampedWords` / `timestampFrameSec`.
     func transcribeFileTimestamped(_ url: URL) {
         guard let stt else {
-            state = .error("STT model is not loaded. Pick a parakeet .gguf file in Settings.")
+            state = .error("Apple Speech is not ready. Try again after the system speech model finishes preparing.")
             return
         }
         cancelCurrentTurn()
@@ -430,12 +368,7 @@ final class StsEngine {
                     try Task.checkCancellation()
                     samples.append(contentsOf: chunk)
                 }
-                // Parakeet can auto-detect a file language. Apple Speech is
-                // locale-bound, so pass the loaded locale explicitly there.
-                let fileLanguage = AppSettings.shared.sttBackend == .apple
-                    ? AppSettings.shared.sttLocale
-                    : nil
-                let result = try await stt.transcribeFileWords(pcm: samples, lang: fileLanguage)
+                let result = try await stt.transcribeFileWords(pcm: samples, lang: nil)
                 guard isCurrentTurn(turnID) else { return }
                 timestampedWords = result.words
                 timestampFrameSec = result.frameSec
@@ -475,13 +408,13 @@ final class StsEngine {
             }
             guard let stt, isCurrentTurn(turnID) else { return }
             do {
-                try await stt.beginTurn(lang: AppSettings.shared.sttLocale)
+                try await stt.beginTurn(lang: nil)
                 let canEndTurnWithoutTranscript = await stt.canEndTurnWithoutTranscript
                 let input = AudioInputManager()
                 audioInput = input
                 let stream = try input.stream()
-                var endpoint = EndpointDetector(rmsThreshold: AppSettings.shared.rmsThreshold,
-                                                silenceHangMs: AppSettings.shared.silenceHangMs)
+                var endpoint = EndpointDetector(rmsThreshold: ConversationDefaults.rmsThreshold,
+                                                silenceHangMs: ConversationDefaults.silenceHangMs)
                 for try await chunk in stream {
                     try Task.checkCancellation()
                     guard isCurrentTurn(turnID) else { return }
@@ -534,9 +467,8 @@ final class StsEngine {
         return true
     }
 
-    /// Reads typed text aloud verbatim in the custom voice, bypassing the LLM —
-    /// the "speak as me" path. Falls back to the model's default voice when no
-    /// custom voice is imported.
+    /// Reads typed text aloud verbatim with Apple's system voice, bypassing the
+    /// LLM.
     @discardableResult
     func speakText(_ text: String) -> Bool {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -548,17 +480,12 @@ final class StsEngine {
         activeInput = .text
         bubbles.append(ChatBubble(role: .user, text: text))
         state = .speaking
-        let settings = AppSettings.shared
         turnTask = Task {
             do {
                 await waitForPendingCancellation()
                 try Task.checkCancellation()
                 guard isCurrentTurn(turnID) else { throw CancellationError() }
-                try await readAloud(text, turnID: turnID,
-                                    referenceWavPath: settings.customVoiceReferenceURL()?.path,
-                                    referenceTranscript: settings.ttsBackend == .audio8
-                                        ? settings.audio8ReferenceTranscript
-                                        : nil)
+                try await readAloud(text, turnID: turnID)
             } catch is CancellationError {
                 finishTurn(turnID, with: .idle)
             } catch {
@@ -569,11 +496,9 @@ final class StsEngine {
     }
 
     /// Synthesizes `text` verbatim for the [tts] tab, without adding a chat
-    /// bubble. `referenceWavPath == nil` uses the model's default voice; a path
-    /// clones that reference voice.
+    /// bubble.
     @discardableResult
-    func speak(_ text: String, referenceWavPath: String?, referenceTranscript: String? = nil,
-               speaker: String? = nil, instruction: String? = nil) -> Bool {
+    func speak(_ text: String) -> Bool {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, isTTSReady, !isProcessing else { return false }
 
@@ -587,9 +512,7 @@ final class StsEngine {
                 await waitForPendingCancellation()
                 try Task.checkCancellation()
                 guard isCurrentTurn(turnID) else { throw CancellationError() }
-                try await readAloud(text, turnID: turnID, referenceWavPath: referenceWavPath,
-                                    referenceTranscript: referenceTranscript,
-                                    speaker: speaker, instruction: instruction)
+                try await readAloud(text, turnID: turnID)
             } catch is CancellationError {
                 finishTurn(turnID, with: .idle)
             } catch {
@@ -597,19 +520,6 @@ final class StsEngine {
             }
         }
         return true
-    }
-
-    /// Pre-extracts the current custom voice's speaker embedding so the first
-    /// spoken sentence isn't delayed and import errors surface right away.
-    /// No-op when no voice is set or the model isn't loaded yet.
-    func warmCustomVoice() async throws {
-        guard let tts, let path = AppSettings.shared.customVoiceReferenceURL()?.path else { return }
-        try await tts.warmUpVoice(referenceWavPath: path)
-    }
-
-    func availablePresetSpeakers() async -> [String] {
-        guard let tts else { return [] }
-        return await tts.availableSpeakers()
     }
 
     func stop() {
@@ -629,11 +539,7 @@ final class StsEngine {
         guard let tts else {
             throw TtsEngineError.notLoaded
         }
-        let settings = AppSettings.shared
-        let systemMessages = settings.systemPrompt
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .isEmpty ? [] : [TttMessage(role: .system, content: settings.systemPrompt)]
-        let messages = systemMessages + bubbles.map { bubble in
+        let messages = bubbles.map { bubble in
                 TttMessage(role: bubble.role == .user ? .user : .assistant,
                            content: bubble.text)
             }
@@ -677,9 +583,7 @@ final class StsEngine {
         finishTurn(turnID, with: .idle)
     }
 
-    private func readAloud(_ text: String, turnID: UUID, referenceWavPath: String?,
-                           referenceTranscript: String? = nil,
-                           speaker: String? = nil, instruction: String? = nil) async throws {
+    private func readAloud(_ text: String, turnID: UUID) async throws {
         guard let tts else {
             throw TtsEngineError.notLoaded
         }
@@ -691,9 +595,7 @@ final class StsEngine {
             audioPlayer = newPlayer
             player = newPlayer
         }
-        let pipeline = SpeechPipeline(tts: tts, player: player, referenceWavPath: referenceWavPath,
-                                      referenceTranscript: referenceTranscript,
-                                      speaker: speaker, instruction: instruction)
+        let pipeline = SpeechPipeline(tts: tts, player: player)
         speechPipeline = pipeline
         defer {
             if speechPipeline === pipeline { speechPipeline = nil }
@@ -779,8 +681,8 @@ final class StsEngine {
     }
 
     /// Cancellation is normally fire-and-forget so UI actions remain
-    /// synchronous. Model reload is different: the old pipeline and native
-    /// runtime must be quiescent before the selected backend is replaced.
+    /// synchronous. Model reload is different: the old pipeline must be
+    /// quiescent before the Apple engines are recreated.
     private func cancelCurrentTurnAndWait() async {
         let task = turnTask
         task?.cancel()

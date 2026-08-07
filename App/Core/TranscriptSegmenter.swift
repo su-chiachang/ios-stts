@@ -1,8 +1,7 @@
 import Foundation
 
 /// One recognized word with its start/end time (seconds) and confidence in
-/// (0,1]. Produced by `ParakeetStt.transcribeFileWords` from the native
-/// per-word timestamp JSON.
+/// (0,1]. Produced by the speech engine's per-word timestamp data.
 struct TranscriptWord: Equatable, Sendable {
     let text: String
     let start: Double
@@ -20,7 +19,7 @@ struct TranscriptSentence: Identifiable, Equatable {
     let words: [TranscriptWord]
 }
 
-/// Groups a flat `[TranscriptWord]` list into sentences. The native STT layer
+/// Groups a flat `[TranscriptWord]` list into sentences. The speech engine
 /// only gives per-word timing, so sentence boundaries are derived here from
 /// sentence-terminating punctuation and large inter-word silences.
 enum TranscriptSegmenter {

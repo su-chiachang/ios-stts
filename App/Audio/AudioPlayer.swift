@@ -17,8 +17,8 @@ enum AudioPlayerError: LocalizedError {
 final class AudioPlayer {
     private let engine = AVAudioEngine()
     private let player = AVAudioPlayerNode()
-    /// Keep one stable player-node format while allowing Qwen (24 kHz) and
-    /// Audio8 (44.1 kHz) chunks to share the same queue across backend reloads.
+    /// Keep one stable player-node format while allowing synthesized chunks
+    /// with different sample rates to share the same queue across reloads.
     /// The mixer still adapts this mono stream to the hardware output format.
     private let playbackFormat = AVAudioFormat(standardFormatWithSampleRate: 44_100, channels: 1)!
     private var pendingBuffers = 0

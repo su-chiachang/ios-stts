@@ -1,7 +1,6 @@
 #if os(macOS)
 import AppKit
 #endif
-import Darwin
 import SwiftUI
 
 #if os(macOS)
@@ -10,14 +9,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         true
     }
 
-    func applicationWillTerminate(_ notification: Notification) {
-        // parakeet, qwen3-tts, and Audio8 each own distinct ggml Metal
-        // runtimes. Skip their conflicting static destructors; macOS reclaims
-        // process-owned GPU resources after _exit just as it does after normal
-        // termination.
-        fflush(nil)
-        _exit(0)
-    }
 }
 #endif
 
@@ -38,6 +29,7 @@ struct STTSApp: App {
         Settings {
             SettingsView(engine: engine)
         }
+
         #else
         WindowGroup {
             RootTabView(engine: engine)
