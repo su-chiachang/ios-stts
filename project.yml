@@ -16,6 +16,7 @@ settings:
     INFOPLIST_KEY_NSMicrophoneUsageDescription: "STTS needs microphone access to listen to your voice."
     INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: "STTS uses on-device Apple Speech to transcribe your voice."
     GENERATE_INFOPLIST_FILE: YES
+    INFOPLIST_KEY_UILaunchScreen_Generation: YES
     DEVELOPMENT_TEAM: FPY8L862BK
     CODE_SIGN_STYLE: Automatic
     CODE_SIGN_IDENTITY: "Apple Development"

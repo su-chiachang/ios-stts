@@ -177,7 +177,7 @@ final class StsEngine {
                     "Parakeet STT is not ready. Pick a parakeet .gguf file in Settings or download a Parakeet asset.")
             }
             return try SttParakeet(modelPath: parakeetURL.path)
-        case .appleSpeech:
+        case .apple:
             guard #available(iOS 26.0, macOS 26.0, *) else {
                 throw ConversationModelLoadError.stt(
                     "Apple Speech requires iOS 26 or macOS 26. Select Parakeet in Settings on this OS.")
@@ -207,7 +207,7 @@ final class StsEngine {
                                  codecURL: resources.codecURL,
                                  tokenizerURL: resources.tokenizerURL,
                                  expectedExportDtype: settings.audio8TtsVariant.exportDtype)
-        case .appleSpeech:
+        case .apple:
             return TtsApple()
         }
     }
@@ -392,7 +392,7 @@ final class StsEngine {
     /// resolver silently turns it into the system locale, so report what
     /// actually ran), while Parakeet auto-detects but can be the wrong model.
     private var emptyTranscriptHint: String {
-        guard AppSettings.shared.sttBackend == .appleSpeech else {
+        guard AppSettings.shared.sttBackend == .apple else {
             return "No speech was recognized. Check the STT model in Settings — use nemotron-3.5-asr, not the EOU model."
         }
         let effective = AppleSpeechLocaleResolver
@@ -432,7 +432,7 @@ final class StsEngine {
                 }
                 // Parakeet can auto-detect a file language. Apple Speech is
                 // locale-bound, so pass the loaded locale explicitly there.
-                let fileLanguage = AppSettings.shared.sttBackend == .appleSpeech
+                let fileLanguage = AppSettings.shared.sttBackend == .apple
                     ? AppSettings.shared.sttLocale
                     : nil
                 let result = try await stt.transcribeFileWords(pcm: samples, lang: fileLanguage)

@@ -22,21 +22,23 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section("Models") {
-                Picker("STT backend", selection: Binding(get: { settings.sttBackend },
-                                                          set: {
-                                                              settings.sttBackend = $0
-                                                              reloadModels()
-                                                          })) {
+                Picker("STT backend", selection: Binding(
+                    get: { settings.sttBackend },
+                    set: {
+                        settings.sttBackend = $0
+                        reloadModels()
+                    })) {
                     ForEach(SttBackend.allCases) { backend in
                         Text(backend.displayName).tag(backend)
                     }
                 }
 
-                Picker("TTS backend", selection: Binding(get: { settings.ttsBackend },
-                                                          set: {
-                                                              settings.ttsBackend = $0
-                                                              reloadModels()
-                                                          })) {
+                Picker("TTS backend", selection: Binding(
+                    get: { settings.ttsBackend },
+                    set: {
+                        settings.ttsBackend = $0
+                        reloadModels()
+                    })) {
                     ForEach(TtsBackend.allCases) { backend in
                         Text(backend.displayName).tag(backend)
                     }
@@ -122,11 +124,12 @@ struct SettingsView: View {
             }
 
             Section("LLM") {
-                Picker("ttt backend", selection: Binding(get: { settings.tttBackend },
-                                                           set: {
-                                                               engine.setTttBackend($0, settings: settings)
-                                                           })) {
-                    ForEach(TttBackend.allCases) { backend in
+                Picker("ttt backend", selection: Binding(
+                    get: { settings.tttBackend },
+                    set: {
+                        engine.setTttBackend($0, settings: settings)
+                    })) {
+                        ForEach(TttBackend.allCases) { backend in
                         Text(backend.displayName).tag(backend)
                     }
                 }
@@ -168,21 +171,21 @@ struct SettingsView: View {
                             .truncationMode(.middle)
                             .foregroundStyle(settings.customVoiceName.isEmpty ? .secondary : .primary)
                         Button("Import…") { importCustomVoice() }
-                            .disabled(settings.ttsBackend == .appleSpeech)
+                            .disabled(settings.ttsBackend == .apple)
                         if !settings.customVoiceName.isEmpty {
                             Button("Remove") {
                                 settings.clearCustomVoice()
                                 voiceMessage = nil
                             }
-                            .disabled(settings.ttsBackend == .appleSpeech)
+                            .disabled(settings.ttsBackend == .apple)
                         }
                     }
                 }
                 Toggle("Read typed text aloud in this voice", isOn: Binding(
                     get: { settings.readAloudMode },
                     set: { settings.readAloudMode = $0 }))
-                    .disabled(settings.ttsBackend == .appleSpeech)
-                Text(settings.ttsBackend == .appleSpeech
+                    .disabled(settings.ttsBackend == .apple)
+                Text(settings.ttsBackend == .apple
                      ? "Apple TTS uses the system voice for read-aloud mode. Switch to Qwen or Audio8 to manage a custom reference voice."
                      : settings.ttsBackend == .audio8
                      ? "When on, Send (or Return) speaks your exact text with Audio8 reference conditioning. A 5–15 s clip works best; enter its transcript in the TTS tab."

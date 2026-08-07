@@ -176,7 +176,7 @@ struct StsView: View {
             .buttonStyle(.plain)
             .disabled(!canSend)
             .help(settings.readAloudMode
-                  ? (settings.ttsBackend == .appleSpeech
+                  ? (settings.ttsBackend == .apple
                      ? "Read aloud with the Apple system voice"
                      : "Read aloud in my voice")
                   : "Send message")
@@ -196,7 +196,7 @@ struct StsView: View {
     }
 
     private var readAloudHelp: String {
-        if settings.ttsBackend == .appleSpeech {
+        if settings.ttsBackend == .apple {
             return "Read-aloud mode: speak typed text with a language-matched Apple system voice instead of asking the assistant"
         }
         let voice = settings.customVoiceName.isEmpty ? "default voice" : settings.customVoiceName

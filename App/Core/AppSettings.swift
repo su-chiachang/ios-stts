@@ -104,14 +104,14 @@ final class AppSettings {
         let d = UserDefaults.standard
         llmBaseURL = d.string(forKey: Keys.llmBaseURL) ?? "http://127.0.0.1:1234/v1"
         llmAPIKey = d.string(forKey: Keys.llmAPIKey) ?? ""
-        llmModel = d.string(forKey: Keys.llmModel) ?? "gemma"
+        llmModel = d.string(forKey: Keys.llmModel) ?? "gemma4"
         tttBackend = d.string(forKey: Keys.tttBackend).flatMap(TttBackend.init(rawValue:)) ?? .apple
         systemPrompt = d.string(forKey: Keys.systemPrompt) ?? Self.defaultSystemPrompt
         sttLocale = d.string(forKey: Keys.sttLocale) ?? "auto"
-        sttBackend = d.string(forKey: Keys.sttBackend).flatMap(SttBackend.init(rawValue:)) ?? .appleSpeech
+        sttBackend = d.string(forKey: Keys.sttBackend).flatMap(SttBackend.init(rawValue:)) ?? .apple
         silenceHangMs = d.object(forKey: Keys.silenceHangMs) as? Double ?? 800
         rmsThreshold = d.object(forKey: Keys.rmsThreshold) as? Double ?? 0.015
-        ttsBackend = d.string(forKey: Keys.ttsBackend).flatMap(TtsBackend.init(rawValue:)) ?? .appleSpeech
+        ttsBackend = d.string(forKey: Keys.ttsBackend).flatMap(TtsBackend.init(rawValue:)) ?? .apple
         qwenModelVariant = d.string(forKey: Keys.qwenModelVariant).flatMap(QwenTtsVariant.init(rawValue:)) ?? .base06b
         qwenModelQuantization = d.string(forKey: Keys.qwenModelQuantization).flatMap(QwenTtsQuantization.init(rawValue:)) ?? .q4_k_m
         audio8ReferenceTranscript = d.string(forKey: Keys.audio8ReferenceTranscript) ?? ""

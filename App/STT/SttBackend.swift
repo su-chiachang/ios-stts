@@ -2,15 +2,15 @@ import Foundation
 import Speech
 
 enum SttBackend: String, CaseIterable, Identifiable, Sendable {
+    case apple
     case parakeet
-    case appleSpeech
 
     var id: String { rawValue }
 
     var displayName: String {
         switch self {
+        case .apple: "Apple"
         case .parakeet: "Parakeet"
-        case .appleSpeech: "Apple Speech"
         }
     }
 }

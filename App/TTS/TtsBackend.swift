@@ -1,9 +1,9 @@
 import Foundation
 
 enum TtsBackend: String, CaseIterable, Identifiable, Sendable {
+    case apple
     case qwen
     case audio8
-    case appleSpeech
 
     var id: String { rawValue }
 
@@ -11,7 +11,7 @@ enum TtsBackend: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .qwen: "Qwen"
         case .audio8: "Audio8"
-        case .appleSpeech: "Apple Speech"
+        case .apple: "Apple Speech"
         }
     }
 }

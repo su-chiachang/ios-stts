@@ -41,7 +41,7 @@ struct TtsView: View {
             if wasRecording && !nowRecording { saveRecordedClip() }
         }
         .onChange(of: settings.ttsBackend) { _, backend in
-            if backend == .appleSpeech { voice = .standard }
+            if backend == .apple { voice = .standard }
         }
         #if os(iOS)
         .fileImporter(isPresented: $showImportPicker,
@@ -54,7 +54,7 @@ struct TtsView: View {
 
     private var voiceSection: some View {
         GroupBox("Voice") {
-            if settings.ttsBackend == .appleSpeech {
+            if settings.ttsBackend == .apple {
                 VStack(alignment: .leading, spacing: 6) {
                     Label("Apple: language-matched system voice", systemImage: "waveform")
                     Text("Apple TTS selects a system voice from the sentence language and falls back to the system default. Reference voice controls belong to Qwen and Audio8.")
@@ -137,7 +137,7 @@ struct TtsView: View {
     private var capabilitySection: some View {
         GroupBox("Model capabilities") {
             VStack(alignment: .leading, spacing: 6) {
-                if settings.ttsBackend == .appleSpeech {
+                if settings.ttsBackend == .apple {
                     Label("Apple: system-managed language-matched voices", systemImage: "waveform")
                     Text("No downloaded model or reference clip is required. The system default voice is used when a language-specific voice is unavailable.")
                         .font(.caption)
@@ -162,7 +162,7 @@ struct TtsView: View {
               !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return false
         }
-        if settings.ttsBackend == .appleSpeech { return true }
+        if settings.ttsBackend == .apple { return true }
         return voice == .standard
             || (voice == .cloned
                 && hasClonedVoice
@@ -172,7 +172,7 @@ struct TtsView: View {
 
     private func speak() {
         message = nil
-        let usesCustomVoice = settings.ttsBackend != .appleSpeech && voice == .cloned
+        let usesCustomVoice = settings.ttsBackend != .apple && voice == .cloned
         let reference = usesCustomVoice ? settings.customVoiceReferenceURL()?.path : nil
         let transcript = usesCustomVoice && settings.ttsBackend == .audio8
             ? settings.audio8ReferenceTranscript

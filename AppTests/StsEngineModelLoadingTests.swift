@@ -2,7 +2,7 @@ import XCTest
 @testable import STTS
 
 @MainActor
-final class ConversationEngineModelLoadingTests: XCTestCase {
+final class StsEngineModelLoadingTests: XCTestCase {
     func testLoadModelsUsesPersistedTtsBackendAndReleasesPreviousEngine() async {
         let settings = AppSettings.shared
         let previousBackend = settings.ttsBackend
@@ -33,10 +33,10 @@ final class ConversationEngineModelLoadingTests: XCTestCase {
         XCTAssertTrue(engine.isReady)
         XCTAssertNil(firstEngine, "reload must release the previous TTS runtime")
 
-        settings.ttsBackend = .appleSpeech
+        settings.ttsBackend = .apple
         await engine.loadModels()
 
-        XCTAssertEqual(loadedBackends, [.qwen, .audio8, .appleSpeech])
+        XCTAssertEqual(loadedBackends, [.qwen, .audio8, .apple])
         XCTAssertTrue(engine.isReady)
     }
 
