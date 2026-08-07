@@ -7,6 +7,7 @@ struct SttView: View {
     var engine: StsEngine
     var settings = AppSettings.shared
     @State private var granularity: Granularity = .sentence
+    @State private var supportedLocales: [String] = []
 
     enum Granularity: String, CaseIterable, Identifiable {
         case sentence = "Sentence"
@@ -57,23 +58,39 @@ struct SttView: View {
 
     /// Sits next to Import because it has to match the language of the clip
     /// being imported: Apple Speech never auto-detects, and a mismatch
-    /// transcribes to nothing at all.
+    /// transcribes to nothing at all. Regional variants are separate entries
+    /// for the same reason — picking zh-CN for Traditional audio transcribes
+    /// it as Simplified.
     private var localePicker: some View {
-        Picker("Locale", selection: Binding(get: { settings.sttLocale },
+        Picker("Locale", selection: Binding(get: { AppleSpeechLocaleResolver.tag(for: settings.sttLocale) },
                                             set: { newValue in
                                                 settings.sttLocale = newValue
                                                 Task { await engine.loadModels() }
                                             })) {
-            Text("Auto").tag("auto")
-            // Simplified and Traditional are separate choices: picking zh-CN
-            // for Traditional audio transcribes it as Simplified.
-            Text("English").tag("en")
-            Text("中文 (简体)").tag("zh-CN")
-            Text("中文 (繁體)").tag("zh-TW")
+            Text("Auto").tag(AppleSpeechLocaleResolver.autoTag)
+            ForEach(localeOptions, id: \.self) { tag in
+                Text(AppleSpeechLocaleResolver.displayName(for: Locale(identifier: tag))).tag(tag)
+            }
         }
         .pickerStyle(.menu)
         .fixedSize()
-        .disabled(engine.isProcessing)
+        .disabled(engine.isProcessing || engine.state == .loadingModels)
+        .task {
+            guard supportedLocales.isEmpty else { return }
+            supportedLocales = await AppleSpeechLocaleResolver.supportedLocales()
+                .map { AppleSpeechLocaleResolver.tag(for: $0) }
+        }
+    }
+
+    /// The saved locale is always one of the rows, even before the async
+    /// supported-locale load lands — a selection with no matching tag renders
+    /// the Picker blank.
+    private var localeOptions: [String] {
+        let selected = AppleSpeechLocaleResolver.tag(for: settings.sttLocale)
+        guard selected != AppleSpeechLocaleResolver.autoTag,
+              !supportedLocales.contains(where: { $0.caseInsensitiveCompare(selected) == .orderedSame })
+        else { return supportedLocales }
+        return [selected] + supportedLocales
     }
 
     @ViewBuilder
@@ -82,6 +99,15 @@ struct SttView: View {
             VStack(spacing: 12) {
                 ProgressView()
                 Text("Transcribing…").foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if engine.state == .loadingModels {
+            // Switching to a locale whose assets aren't installed makes
+            // SttApple.make download them, which is slow and silent; without
+            // this the tab looks idle while the download runs.
+            VStack(spacing: 12) {
+                ProgressView()
+                Text("Preparing speech models…").foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if case .error(let msg) = engine.state {

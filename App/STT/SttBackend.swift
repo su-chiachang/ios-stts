@@ -1,4 +1,5 @@
 import Foundation
+import Speech
 
 enum SttBackend: String, CaseIterable, Identifiable, Sendable {
     case parakeet
@@ -80,12 +81,53 @@ enum AppleSpeechLocaleResolver {
         switch value.lowercased() {
         case "en": return Locale(identifier: "en-US")
         case "zh", "zh-cn", "zh-hans": return Locale(identifier: "zh-CN")
-        case "zh-tw", "zh-hk", "zh-hant": return Locale(identifier: "zh-TW")
+        // Only aliases that aren't themselves supported locales belong here.
+        // zh-HK is one SpeechTranscriber supports on its own, so folding it
+        // into zh-TW would make the 中文（香港）row impossible to select.
+        case "zh-tw", "zh-hant": return Locale(identifier: "zh-TW")
         default: return Locale(identifier: value)
         }
     }
 
     static func isEquivalent(_ lhs: Locale, to rhs: Locale) -> Bool {
         lhs.identifier(.bcp47).caseInsensitiveCompare(rhs.identifier(.bcp47)) == .orderedSame
+    }
+
+    /// The identifier form used for persistence and for picker tags. Stored
+    /// settings predate the full locale list ("en", "zh-CN"), so every value
+    /// goes through `requestedLocale` first; otherwise an old "en" would match
+    /// no row and the picker would render blank.
+    static let autoTag = "auto"
+
+    static func tag(for identifier: String?) -> String {
+        let value = identifier?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !value.isEmpty, value.lowercased() != autoTag else { return autoTag }
+        return tag(for: requestedLocale(for: value))
+    }
+
+    static func tag(for locale: Locale) -> String {
+        locale.identifier(.bcp47)
+    }
+
+    /// Every locale SpeechTranscriber can transcribe, sorted by the name shown
+    /// in the picker. Installation state is deliberately ignored: selecting an
+    /// uninstalled locale is what triggers its asset download in `SttApple`.
+    static func supportedLocales() async -> [Locale] {
+        let supported = await SpeechTranscriber.supportedLocales
+        return sortedForDisplay(supported)
+    }
+
+    static func sortedForDisplay(_ locales: [Locale]) -> [Locale] {
+        var seen = Set<String>()
+        let unique = locales.filter { seen.insert(tag(for: $0).lowercased()).inserted }
+        return unique.sorted {
+            displayName(for: $0).localizedCaseInsensitiveCompare(displayName(for: $1)) == .orderedAscending
+        }
+    }
+
+    /// Named in the locale's own language ("中文（台灣）"), which is what the
+    /// person picking it reads, with the BCP-47 tag as the fallback.
+    static func displayName(for locale: Locale) -> String {
+        locale.localizedString(forIdentifier: locale.identifier) ?? tag(for: locale)
     }
 }
