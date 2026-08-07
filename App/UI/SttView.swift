@@ -31,28 +31,32 @@ struct SttView: View {
     }
 
     private var header: some View {
-        HStack {
+        HStack(spacing: 8) {
             Picker("", selection: $granularity) {
                 ForEach(Granularity.allCases) { Text($0.rawValue).tag($0) }
             }
             .pickerStyle(.segmented)
-            .frame(width: 180)
+            .frame(minWidth: 132, idealWidth: 150, maxWidth: 150)
+            .layoutPriority(1)
             .disabled(engine.timestampedWords.isEmpty)
 
-            Spacer(minLength: 12)
+            Spacer(minLength: 8)
 
             // Only Apple Speech is locale-bound. Parakeet auto-detects the
             // file's language and transcribeFileTimestamped passes it no
             // locale at all, so the control would be inert there.
-            if settings.sttBackend == .appleSpeech {
+            if settings.sttBackend == .apple {
                 localePicker
             }
 
             MediaSourceMenu(onPick: engine.transcribeFileTimestamped, onError: engine.reportError) {
                 Text("Import…")
             }
+            .fixedSize(horizontal: true, vertical: false)
+            .layoutPriority(1)
             .disabled(!engine.isSTTReady || engine.isProcessing)
         }
+        .font(.callout)
         .padding()
     }
 
@@ -62,24 +66,44 @@ struct SttView: View {
     /// for the same reason — picking zh-CN for Traditional audio transcribes
     /// it as Simplified.
     private var localePicker: some View {
-        Picker("Locale", selection: Binding(get: { AppleSpeechLocaleResolver.tag(for: settings.sttLocale) },
-                                            set: { newValue in
-                                                settings.sttLocale = newValue
-                                                Task { await engine.loadModels() }
-                                            })) {
-            Text("Auto").tag(AppleSpeechLocaleResolver.autoTag)
-            ForEach(localeOptions, id: \.self) { tag in
-                Text(AppleSpeechLocaleResolver.displayName(for: Locale(identifier: tag))).tag(tag)
+        Menu {
+            Button("Auto") {
+                selectLocale(AppleSpeechLocaleResolver.autoTag)
             }
+            ForEach(localeOptions, id: \.self) { tag in
+                Button(AppleSpeechLocaleResolver.displayName(for: Locale(identifier: tag))) {
+                    selectLocale(tag)
+                }
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Text(selectedLocaleTitle)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption2.weight(.semibold))
+            }
+            .frame(minWidth: 64, idealWidth: 86, maxWidth: 120, alignment: .trailing)
         }
-        .pickerStyle(.menu)
-        .fixedSize()
+        .font(.callout)
+        .layoutPriority(1)
         .disabled(engine.isProcessing || engine.state == .loadingModels)
         .task {
             guard supportedLocales.isEmpty else { return }
             supportedLocales = await AppleSpeechLocaleResolver.supportedLocales()
                 .map { AppleSpeechLocaleResolver.tag(for: $0) }
         }
+    }
+
+    private var selectedLocaleTitle: String {
+        let selected = AppleSpeechLocaleResolver.tag(for: settings.sttLocale)
+        guard selected != AppleSpeechLocaleResolver.autoTag else { return "Auto" }
+        return AppleSpeechLocaleResolver.displayName(for: Locale(identifier: selected))
+    }
+
+    private func selectLocale(_ newValue: String) {
+        settings.sttLocale = newValue
+        Task { await engine.loadModels() }
     }
 
     /// The saved locale is always one of the rows, even before the async
