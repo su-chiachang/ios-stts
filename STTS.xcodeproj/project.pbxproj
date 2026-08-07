@@ -41,6 +41,7 @@
 		905A56AC96F6DA92829330AC /* AppleTtsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 973FB162B50E918C1B6A7EB3 /* AppleTtsTests.swift */; };
 		A230FE0298E2DE2E31653B15 /* ModelCatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6249E153C3FABA02244A4DFB /* ModelCatalogTests.swift */; };
 		A666F2CFE775D83AF3E32BFF /* SentenceChunker.swift in Sources */ = {isa = PBXBuildFile; fileRef = C23DE73B788924DF1EC67A9C /* SentenceChunker.swift */; };
+		B11CE004B11CE004B11CE004 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A11CE004A11CE004A11CE004 /* Assets.xcassets */; };
 		B11CE001B11CE001B11CE001 /* TttApple.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11CE001A11CE001A11CE001 /* TttApple.swift */; };
 		B11CE002B11CE002B11CE002 /* TttWebapi.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11CE002A11CE002A11CE002 /* TttWebapi.swift */; };
 		B2E1BC25141534FFDC405891 /* TtsApple.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00265DB1D4F782270007624 /* TtsApple.swift */; };
@@ -127,6 +128,7 @@
 		973FB162B50E918C1B6A7EB3 /* AppleTtsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleTtsTests.swift; sourceTree = "<group>"; };
 		A11CE001A11CE001A11CE001 /* TttApple.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TttApple.swift; sourceTree = "<group>"; };
 		A11CE002A11CE002A11CE002 /* TttWebapi.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TttWebapi.swift; sourceTree = "<group>"; };
+		A11CE004A11CE004A11CE004 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A42B0D01C33A472025C17A0F /* STTSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = STTSApp.swift; sourceTree = "<group>"; };
 		A893796C0A5D3D725D60F065 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
 		AA0F353EE07A8A59C212494F /* ModelBundle */ = {isa = PBXFileReference; lastKnownFileType = folder; name = ModelBundle; path = Packages/ModelBundle; sourceTree = SOURCE_ROOT; };
@@ -204,6 +206,7 @@
 			isa = PBXGroup;
 			children = (
 				A42B0D01C33A472025C17A0F /* STTSApp.swift */,
+				A11CE004A11CE004A11CE004 /* Assets.xcassets */,
 				F0796BD4EC2BAD0CCF598495 /* Resources */,
 				71CA56CC739FBF162F191590 /* Audio */,
 				444FA2D62E5AD8324E9BE44E /* Core */,
@@ -491,6 +494,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B11CE004B11CE004B11CE004 /* Assets.xcassets in Resources */,
 				6C4CC26454EB7C4461CF97D4 /* audio8-release-manifest.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

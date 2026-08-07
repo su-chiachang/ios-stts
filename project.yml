@@ -102,6 +102,7 @@ targets:
         excludes:
           - Resources/STTS.entitlements
     resources:
+      - path: App/Assets.xcassets
       - path: App/Resources/audio8-release-manifest.json
     dependencies:
       - package: NativeShims
