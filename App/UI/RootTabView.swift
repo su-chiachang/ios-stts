@@ -44,7 +44,20 @@ struct RootTabView: View {
             }
         }
         .sheet(isPresented: $showingSettings) {
-            SettingsView(engine: engine)
+            // The macOS Settings scene hosts SettingsView bare, so the dismiss
+            // control lives here at the sheet call site instead.
+            NavigationStack {
+                SettingsView(engine: engine)
+                    .navigationTitle("Settings")
+                    #if os(iOS)
+                    .navigationBarTitleDisplayMode(.inline)
+                    #endif
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Done") { showingSettings = false }
+                        }
+                    }
+            }
         }
     }
 }

@@ -6,3 +6,9 @@ xcuserdata/
 .codebase-memory/
 .vscode/
 STTS.xcodeproj/
+.build
+build
+models
+third_party
+vendor
+Packages
