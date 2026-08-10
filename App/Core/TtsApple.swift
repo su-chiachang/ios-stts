@@ -1,6 +1,17 @@
 @preconcurrency import AVFAudio
 import Foundation
 
+enum SpokenLanguage: String, Sendable {
+    case en = "English"
+    case zh = "Chinese"
+    case ja = "Japanese"
+}
+
+struct TtsAudioChunk: Sendable {
+    let samples: [Float]
+    let sampleRate: Double
+}
+
 enum AppleTtsError: Error, LocalizedError {
     case busy
     case invalidAudioBuffer
@@ -81,7 +92,7 @@ private final class AppleTtsDelegateProxy: NSObject, AVSpeechSynthesizerDelegate
 /// Bridges AVSpeechSynthesizer's generated PCM buffers into the app's shared
 /// TTS contract. The actor serializes the non-Sendable system synthesizer and
 /// drops callbacks that belong to a cancelled request.
-actor TtsApple: TtsEngine {
+actor TtsApple {
     private struct BufferSnapshot: Sendable {
         let samples: [Float]
         let sampleRate: Double

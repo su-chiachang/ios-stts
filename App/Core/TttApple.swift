@@ -1,9 +1,33 @@
 import Foundation
 import FoundationModels
 
+/// A chat message passed to Apple's Foundation Models adapter.
+struct TttMessage: Codable, Equatable, Sendable {
+    enum Role: String, Codable, Sendable {
+        case system
+        case user
+        case assistant
+    }
+
+    let role: Role
+    let content: String
+}
+
+enum TttAvailability: Equatable {
+    case available
+    case unavailable(TttUnavailableReason)
+}
+
+enum TttUnavailableReason: Equatable {
+    case modelNotReady
+    case appleIntelligenceNotEnabled
+    case deviceNotEligible
+    case other
+}
+
 /// Foundation Models adapter for ttt.
 @MainActor
-final class TttApple: TttEngine {
+final class TttApple {
     nonisolated static let defaultInstructions = "You are a helpful assistant. Be concise."
 
     let model = SystemLanguageModel.default

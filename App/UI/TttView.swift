@@ -11,7 +11,7 @@ import AppKit
 /// The [ttt] tab: one chat surface backed by Apple's on-device model.
 @MainActor
 struct TttView: View {
-    @State private var provider: any TttEngine
+    @State private var provider: TttApple
     @State private var messages: [Message] = []
     @State private var draft = ""
     @State private var isStreaming = false

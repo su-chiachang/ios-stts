@@ -4,17 +4,13 @@ import XCTest
 @testable import STTS
 
 @MainActor
-final class TttEngineTests: XCTestCase {
+final class TttAppleTests: XCTestCase {
     private static func snapshotRespond(_: LanguageModelSession, _: String) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
             continuation.yield("hello")
             continuation.yield("hello world")
             continuation.finish()
         }
-    }
-
-    private static func noopRespond(_: LanguageModelSession, _: String) -> AsyncThrowingStream<String, Error> {
-        AsyncThrowingStream { $0.finish() }
     }
 
     func testAppleAdapterConvertsCumulativeSnapshotsToFragments() async throws {
@@ -29,12 +25,5 @@ final class TttEngineTests: XCTestCase {
         XCTAssertEqual(first, "hello")
         XCTAssertEqual(second, " world")
         XCTAssertNil(end)
-    }
-
-    func testSttsEngineOwnsTheAppleTttProvider() {
-        let provider = TttApple(respond: Self.noopRespond)
-        let engine = StsEngine(tttLoader: { provider })
-
-        XCTAssertTrue(engine.tttEngine is TttApple)
     }
 }

@@ -1,21 +1,24 @@
 import SwiftUI
 
-/// The [stt] tab: import an mp3/wav (or any AVFoundation-readable file) and see
-/// its transcript with timestamps, switchable between sentence-level (default)
-/// and per-word granularity.
+/// The [stt] tab: import a file and transcribe the complete audio using the
+/// complete-file SpeechAnalyzer flow.
+@available(macOS 26.0, iOS 26.0, *)
+@MainActor
 struct SttView: View {
-    var engine: StsEngine
-    @State private var granularity: Granularity = .sentence
-
-    enum Granularity: String, CaseIterable, Identifiable {
-        case sentence = "Sentence"
-        case word = "Word"
-        var id: String { rawValue }
+    private enum ViewState: Equatable {
+        case loading
+        case idle
+        case transcribing
+        case error(String)
     }
 
-    private var sentences: [TranscriptSentence] {
-        TranscriptSegmenter.sentences(from: engine.timestampedWords, frameSec: engine.timestampFrameSec)
-    }
+    @AppStorage(SttLocalePreferences.key)
+    private var localeIdentifier = SttLocalePreferences.defaultIdentifier
+    @State private var stt: SttApple?
+    @State private var state: ViewState = .loading
+    @State private var transcript = ""
+    @State private var transcriptionTask: Task<Void, Never>?
+    @State private var activeRequestID: UUID?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -26,26 +29,26 @@ struct SttView: View {
         #if os(macOS)
         .frame(minWidth: 420, minHeight: 500)
         #endif
+        .task(id: localeIdentifier) { await load() }
+        .onDisappear { cancel() }
     }
 
     private var header: some View {
         HStack(spacing: 8) {
-            Picker("", selection: $granularity) {
-                ForEach(Granularity.allCases) { Text($0.rawValue).tag($0) }
-            }
-            .pickerStyle(.segmented)
-            .frame(minWidth: 132, idealWidth: 150, maxWidth: 150)
-            .layoutPriority(1)
-            .disabled(engine.timestampedWords.isEmpty)
-
+            Text("stt").font(.headline)
             Spacer(minLength: 8)
 
-            MediaSourceMenu(onPick: engine.transcribeFileTimestamped, onError: engine.reportError) {
+            if state == .transcribing {
+                Button("Stop") { cancel() }
+                    .buttonStyle(.plain)
+            }
+
+            MediaSourceMenu(onPick: transcribeFile, onError: reportError) {
                 Text("Import…")
             }
             .fixedSize(horizontal: true, vertical: false)
             .layoutPriority(1)
-            .disabled(!engine.isSTTReady || engine.isProcessing)
+            .disabled(stt == nil || state == .loading || state == .transcribing)
         }
         .font(.callout)
         .padding()
@@ -53,69 +56,101 @@ struct SttView: View {
 
     @ViewBuilder
     private var content: some View {
-        if engine.state == .listening {
+        switch state {
+        case .transcribing:
             VStack(spacing: 12) {
                 ProgressView()
                 Text("Transcribing…").foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if engine.state == .loadingModels {
-            // Switching to a locale whose assets aren't installed makes
-            // SttApple.make download them, which is slow and silent; without
-            // this the tab looks idle while the download runs.
+        case .loading:
             VStack(spacing: 12) {
                 ProgressView()
                 Text("Preparing speech models…").foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if case .error(let msg) = engine.state {
-            message(msg, isError: true)
-        } else if engine.timestampedWords.isEmpty {
-            message("Choose an mp3 or wav file to transcribe.", isError: false)
-        } else {
+        case .error(let message):
+            self.message(message, isError: true)
+        case .idle where transcript.isEmpty:
+            message("Choose an audio file to transcribe.", isError: false)
+        case .idle:
             ScrollView {
-                switch granularity {
-                case .sentence: sentenceList
-                case .word: wordList
-                }
+                Text(transcript)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .textSelection(.enabled)
+            }
+            .padding()
+        }
+    }
+
+    private func load() async {
+        cancel()
+        stt = nil
+        transcript = ""
+        state = .loading
+
+        do {
+            try Task.checkCancellation()
+            let loaded = try await SttApple.make(localeIdentifier: localeIdentifier)
+            try Task.checkCancellation()
+            stt = loaded
+            state = .idle
+        } catch is CancellationError {
+            // A locale change or view disappearance cancels model loading.
+        } catch {
+            state = .error(error.localizedDescription)
+        }
+    }
+
+    private func transcribeFile(_ url: URL) {
+        guard let stt else {
+            state = .error("Apple Speech is not ready. Try again in a moment.")
+            return
+        }
+
+        cancel()
+        transcript = ""
+        state = .transcribing
+        let requestID = UUID()
+        activeRequestID = requestID
+        let accessingScope = url.startAccessingSecurityScopedResource()
+
+        transcriptionTask = Task { @MainActor [stt] in
+            defer {
+                if accessingScope { url.stopAccessingSecurityScopedResource() }
+            }
+
+            do {
+                let text = try await stt.transcribeFile(url)
+                try Task.checkCancellation()
+                guard activeRequestID == requestID else { return }
+                transcript = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                state = .idle
+                activeRequestID = nil
+                transcriptionTask = nil
+            } catch is CancellationError {
+                guard activeRequestID == requestID else { return }
+                activeRequestID = nil
+                transcriptionTask = nil
+                state = .idle
+            } catch {
+                guard activeRequestID == requestID else { return }
+                activeRequestID = nil
+                transcriptionTask = nil
+                state = .error(error.localizedDescription)
             }
         }
     }
 
-    private var sentenceList: some View {
-        LazyVStack(alignment: .leading, spacing: 10) {
-            ForEach(sentences) { sentence in
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("\(timecode(sentence.start)) – \(timecode(sentence.end))")
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                    Text(sentence.text)
-                        .textSelection(.enabled)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }
-        .padding()
+    private func cancel() {
+        transcriptionTask?.cancel()
+        transcriptionTask = nil
+        activeRequestID = nil
+        if state == .transcribing { state = .idle }
     }
 
-    private var wordList: some View {
-        LazyVStack(alignment: .leading, spacing: 4) {
-            ForEach(Array(engine.timestampedWords.enumerated()), id: \.offset) { _, word in
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text("\(secs(word.start)) – \(secs(word.end))")
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                        .frame(width: 130, alignment: .leading)
-                    Text(word.text)
-                        .textSelection(.enabled)
-                    Spacer()
-                    Text(String(format: "%.0f%%", word.confidence * 100))
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.tertiary)
-                }
-            }
-        }
-        .padding()
+    private func reportError(_ message: String) {
+        state = .error(message)
     }
 
     private func message(_ text: String, isError: Bool) -> some View {
@@ -124,18 +159,10 @@ struct SttView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding()
     }
-
-    /// mm:ss for sentence bounds.
-    private func timecode(_ t: Double) -> String {
-        String(format: "%d:%02d", Int(t) / 60, Int(t) % 60)
-    }
-
-    /// Seconds with 2 decimals for per-word bounds.
-    private func secs(_ t: Double) -> String {
-        String(format: "%.2fs", t)
-    }
 }
 
 #Preview {
-    SttView(engine: StsEngine())
+    if #available(macOS 26.0, iOS 26.0, *) {
+        SttView()
+    }
 }

@@ -1,11 +1,20 @@
 import SwiftUI
 
 /// The [tts] tab: type text and hear it spoken with Apple's system voice.
+@MainActor
 struct TtsView: View {
-    var engine: StsEngine
+    @State private var tts: TtsApple
+    @State private var player: AudioPlayer?
+    @State private var speechTask: Task<Void, Never>?
     @State private var text = "Hello world"
     @State private var message: String?
     @State private var isError = false
+    @State private var isSpeaking = false
+    @State private var activeRequestID: UUID?
+
+    init(tts: TtsApple = TtsApple()) {
+        _tts = State(initialValue: tts)
+    }
 
     var body: some View {
         ScrollView {
@@ -13,7 +22,7 @@ struct TtsView: View {
                 GroupBox("Voice") {
                     Label("Apple: language-matched system voice", systemImage: "waveform")
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    Text("Apple TTS uses the system voice for each sentence's language and needs no downloaded model.")
+                    Text("Apple TTS uses the system voice for the detected language and needs no downloaded model.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -29,8 +38,8 @@ struct TtsView: View {
                             .background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
                         HStack {
                             Spacer()
-                            Button("Stop") { engine.stop() }
-                                .disabled(!engine.isProcessing)
+                            Button("Stop") { stop() }
+                                .disabled(!isSpeaking)
                             Button {
                                 speak()
                             } label: {
@@ -51,27 +60,76 @@ struct TtsView: View {
             }
             .padding()
         }
+        .onDisappear { stop() }
         #if os(macOS)
         .frame(minWidth: 420, minHeight: 500)
         #endif
     }
 
     private var canSpeak: Bool {
-        engine.isTTSReady
-            && !engine.isProcessing
+        !isSpeaking
             && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private func speak() {
+        let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedText.isEmpty, !isSpeaking else { return }
         message = nil
         isError = false
-        if !engine.speak(text) {
-            message = "Apple TTS is not ready."
+        do {
+            let player = try AudioPlayer()
+            self.player = player
+            isSpeaking = true
+            let requestID = UUID()
+            activeRequestID = requestID
+
+            speechTask = Task { @MainActor in
+                do {
+                    let audio = try await tts.synthesize(
+                        trimmedText,
+                        language: LanguageDetect.spokenLanguage(for: trimmedText))
+                    try Task.checkCancellation()
+                    try player.enqueue(audio)
+                    await player.waitUntilFinished()
+                    guard activeRequestID == requestID else { return }
+                    isSpeaking = false
+                    self.player = nil
+                    activeRequestID = nil
+                    speechTask = nil
+                } catch is CancellationError {
+                    player.stopAndFlush()
+                    guard activeRequestID == requestID else { return }
+                    isSpeaking = false
+                    self.player = nil
+                    activeRequestID = nil
+                    speechTask = nil
+                } catch {
+                    player.stopAndFlush()
+                    guard activeRequestID == requestID else { return }
+                    isSpeaking = false
+                    self.player = nil
+                    activeRequestID = nil
+                    speechTask = nil
+                    message = error.localizedDescription
+                    isError = true
+                }
+            }
+        } catch {
+            message = error.localizedDescription
             isError = true
         }
+    }
+
+    private func stop() {
+        speechTask?.cancel()
+        speechTask = nil
+        player?.stopAndFlush()
+        player = nil
+        activeRequestID = nil
+        isSpeaking = false
     }
 }
 
 #Preview {
-    TtsView(engine: StsEngine())
+    TtsView()
 }

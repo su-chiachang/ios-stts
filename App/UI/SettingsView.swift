@@ -1,14 +1,12 @@
 import SwiftUI
 
 /// The small amount of user configuration that remains: Apple's STT locale.
-/// Model, backend, download, and custom-voice settings are intentionally gone.
+@available(macOS 26.0, iOS 26.0, *)
+@MainActor
 struct SettingsView: View {
-    var engine: StsEngine
-
     @AppStorage(SttLocalePreferences.key)
     private var sttLocale = SttLocalePreferences.defaultIdentifier
     @State private var supportedLocaleTags: [String] = []
-    @State private var isReloading = false
 
     var body: some View {
         Form {
@@ -21,21 +19,10 @@ struct SettingsView: View {
                         Text(localeTitle(for: tag)).tag(tag)
                     }
                 }
-                .disabled(isReloading || engine.state == .loadingModels)
-
-                if isReloading {
-                    HStack(spacing: 8) {
-                        ProgressView()
-                        Text("Preparing the selected Apple Speech locale…")
-                    }
+                Text("Auto uses the current system locale. Changing this value reloads Apple Speech when STT is active.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                } else {
-                    Text("Auto uses the current system locale. Changing this value reloads Apple Speech when STT is active.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .formStyle(.grouped)
@@ -58,11 +45,6 @@ struct SettingsView: View {
                 guard canonical != AppleSpeechLocaleResolver.tag(for: sttLocale) else { return }
                 sttLocale = canonical
                 SttLocalePreferences.save(canonical)
-                isReloading = true
-                Task { @MainActor in
-                    await engine.reloadSttModelIfLoaded()
-                    isReloading = false
-                }
             })
     }
 
@@ -81,5 +63,7 @@ struct SettingsView: View {
 }
 
 #Preview {
-    SettingsView(engine: StsEngine())
+    if #available(macOS 26.0, iOS 26.0, *) {
+        SettingsView()
+    }
 }

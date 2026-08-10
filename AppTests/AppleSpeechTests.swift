@@ -1,3 +1,4 @@
+import Foundation
 import XCTest
 @testable import STTS
 
@@ -20,13 +21,6 @@ final class AppleSpeechTests: XCTestCase {
         XCTAssertEqual(resolved.identifier(.bcp47), "ja-JP")
     }
 
-    func testSpeechTextUpdatesPreserveAppendAndReplaceSemantics() {
-        let appended = SttTextUpdate.append(" world").applying(to: "hello")
-        let replaced = SttTextUpdate.replace("hello, revised").applying(to: appended)
-        XCTAssertEqual(appended, "hello world")
-        XCTAssertEqual(replaced, "hello, revised")
-    }
-
     func testSttLocalePreferencePersistsCanonicalIdentifier() {
         let defaults = UserDefaults.standard
         let previous = defaults.object(forKey: SttLocalePreferences.key)
@@ -42,4 +36,5 @@ final class AppleSpeechTests: XCTestCase {
 
         XCTAssertEqual(SttLocalePreferences.identifier, "zh-TW")
     }
+
 }

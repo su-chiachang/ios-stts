@@ -17,22 +17,20 @@ struct STTSApp: App {
     #if os(macOS)
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     #endif
-    @State private var engine = StsEngine()
-
     var body: some Scene {
         #if os(macOS)
         WindowGroup {
-            RootTabView(engine: engine)
+            RootTabView()
         }
         .windowResizability(.contentSize)
 
         Settings {
-            SettingsView(engine: engine)
+            SettingsView()
         }
 
         #else
         WindowGroup {
-            RootTabView(engine: engine)
+            RootTabView()
         }
         #endif
     }
