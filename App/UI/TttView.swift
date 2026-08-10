@@ -18,6 +18,7 @@ struct TttView: View {
     @State private var isSessionExhausted = false
     @State private var lastUserPrompt: String?
     @State private var responseTask: Task<Void, Never>?
+    @FocusState private var isDraftFocused: Bool
 
     init() {
         _provider = State(initialValue: TttApple())
@@ -51,8 +52,17 @@ struct TttView: View {
             }
         }
         .onDisappear {
+            isDraftFocused = false
             responseTask?.cancel()
         }
+        #if os(iOS)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") { isDraftFocused = false }
+            }
+        }
+        #endif
     }
 
     private struct Message: Identifiable {
@@ -131,6 +141,7 @@ struct TttView: View {
                 .foregroundStyle(.tertiary)
             TextField("Message", text: $draft, axis: .vertical)
                 .disabled(isSessionExhausted)
+                .focused($isDraftFocused)
             Button("Send") { send() }
                 .disabled(!canSend)
         }
@@ -161,6 +172,7 @@ struct TttView: View {
     }
 
     private func newChat() {
+        isDraftFocused = false
         responseTask?.cancel()
         responseTask = nil
         provider.reset()
