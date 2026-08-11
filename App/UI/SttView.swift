@@ -14,7 +14,7 @@ struct SttView: View {
 
     @AppStorage(SttLocalePreferences.key)
     private var localeIdentifier = SttLocalePreferences.defaultIdentifier
-    @State private var stt: SttApple?
+    @State private var stt: SttAppleNew?
     @State private var state: ViewState = .loading
     @State private var transcript = ""
     @State private var timestampedWords: [SttWordTimestamp] = []
@@ -102,7 +102,7 @@ struct SttView: View {
 
         do {
             try Task.checkCancellation()
-            let loaded = try await SttApple.make(localeIdentifier: localeIdentifier)
+            let loaded = try await SttAppleNew.make(localeIdentifier: localeIdentifier)
             try Task.checkCancellation()
             stt = loaded
             state = .idle

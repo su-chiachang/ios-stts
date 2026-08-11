@@ -104,17 +104,23 @@ enum AppleSpeechSttError: LocalizedError {
     case localeNotSupported(String)
     case modelInstallationFailed(String)
     case noCompatibleAudioFormat
+    case authorizationDenied
+    case recognizerUnavailable
 
     var errorDescription: String? {
         switch self {
         case .unavailable:
             "Apple SpeechTranscriber is unavailable on this OS or device."
         case .localeNotSupported(let locale):
-            "Apple SpeechTranscriber does not support the locale \(locale) on this device."
+            "Apple Speech does not support the locale \(locale) on this device."
         case .modelInstallationFailed(let message):
             "Apple Speech model installation failed: \(message)"
         case .noCompatibleAudioFormat:
             "Apple SpeechTranscriber has no compatible audio format for this device."
+        case .authorizationDenied:
+            "Apple Speech recognition permission was not granted."
+        case .recognizerUnavailable:
+            "Apple Speech recognition is currently unavailable."
         }
     }
 }
@@ -122,12 +128,12 @@ enum AppleSpeechSttError: LocalizedError {
 /// File-only Apple SpeechTranscriber adapter. The module has one narrow
 /// interface: give it a complete audio file and receive its transcript.
 @available(macOS 26.0, iOS 26.0, *)
-actor SttApple {
+actor SttAppleNew {
     private let locale: Locale
 
     /// Asset installation and audio-format selection happen before the engine
     /// is returned, so file transcription starts with a ready model.
-    static func make(localeIdentifier: String?) async throws -> SttApple {
+    static func make(localeIdentifier: String?) async throws -> SttAppleNew {
         guard SpeechTranscriber.isAvailable else {
             throw AppleSpeechSttError.unavailable
         }
@@ -186,12 +192,12 @@ actor SttApple {
     private static func makeReady(
         locale: Locale,
         transcriber: SpeechTranscriber
-    ) async throws -> SttApple {
+    ) async throws -> SttAppleNew {
         try await reserve(locale: locale)
         guard await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [transcriber]) != nil else {
             throw AppleSpeechSttError.noCompatibleAudioFormat
         }
-        return SttApple(locale: locale)
+        return SttAppleNew(locale: locale)
     }
 
     private static func makeTranscriber(locale: Locale) -> SpeechTranscriber {
@@ -245,3 +251,4 @@ actor SttApple {
         }
     }
 }
+

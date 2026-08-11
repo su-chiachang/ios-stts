@@ -27,7 +27,8 @@
 		E9AC8844464C21D4BEDEC824 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 2BACF19EF711E00A2BE3B7DD /* Assets.xcassets */; };
 		F526299C6CE8371BF7373877 /* FoundationModels.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 60B596FDEE708E8291DDA051 /* FoundationModels.framework */; settings = {ATTRIBUTES = (Weak, ); }; };
 		F772E74BC3A8AB9B28C577E5 /* TtsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED75ECEDF32D44313C7A2EA5 /* TtsView.swift */; };
-		FD468D54EF228C48C20F3B8F /* SttApple.swift in Sources */ = {isa = PBXBuildFile; fileRef = D06558613F574CDAC8B94E4D /* SttApple.swift */; };
+		FD468D54EF228C48C20F3B8F /* SttAppleNew.swift in Sources */ = {isa = PBXBuildFile; fileRef = D06558613F574CDAC8B94E4D /* SttAppleNew.swift */; };
+		A6C1D7E8F90123456789ABCD /* SttAppleOld.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6C1D7E8F90123456789ABCE /* SttAppleOld.swift */; };
 		FFF6EFA8748F3FE2A8E12D2C /* TttAppleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66C6493E753AABF600F5CA2E /* TttAppleTests.swift */; };
 /* End PBXBuildFile section */
 
@@ -72,8 +73,9 @@
 		9276F59453065581A0421C5E /* STTSTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = STTSTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		973FB162B50E918C1B6A7EB3 /* AppleTtsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleTtsTests.swift; sourceTree = "<group>"; };
 		A42B0D01C33A472025C17A0F /* STTSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = STTSApp.swift; sourceTree = "<group>"; };
+		A6C1D7E8F90123456789ABCE /* SttAppleOld.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SttAppleOld.swift; sourceTree = "<group>"; };
 		BB71064230CF5CC96B82FDCA /* TtsApple.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TtsApple.swift; sourceTree = "<group>"; };
-		D06558613F574CDAC8B94E4D /* SttApple.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SttApple.swift; sourceTree = "<group>"; };
+		D06558613F574CDAC8B94E4D /* SttAppleNew.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SttAppleNew.swift; sourceTree = "<group>"; };
 		D30A4BAC2E50F07D1620698A /* RootTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootTabView.swift; sourceTree = "<group>"; };
 		E24F882EC35A5A2B5CB54E7D /* STTS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = STTS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E51E209B040508DAEA52C4BC /* AppleSpeechLifecycleProbeMacTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AppleSpeechLifecycleProbeMacTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -149,7 +151,8 @@
 			children = (
 				3E8F755F79115D9D4D9E0B1B /* AudioPlayer.swift */,
 				45EB14C6E593D09487F38568 /* LanguageDetect.swift */,
-				D06558613F574CDAC8B94E4D /* SttApple.swift */,
+				D06558613F574CDAC8B94E4D /* SttAppleNew.swift */,
+				A6C1D7E8F90123456789ABCE /* SttAppleOld.swift */,
 				BB71064230CF5CC96B82FDCA /* TtsApple.swift */,
 				E63822BAA703FD0A1BDB41A8 /* TttApple.swift */,
 			);
@@ -340,7 +343,8 @@
 				D514FB74D049863FA2A16CBE /* RootTabView.swift in Sources */,
 				2D8DE29A558BD92BFE939520 /* STTSApp.swift in Sources */,
 				B6D7592F5652D21E37C375C0 /* SettingsView.swift in Sources */,
-				FD468D54EF228C48C20F3B8F /* SttApple.swift in Sources */,
+				FD468D54EF228C48C20F3B8F /* SttAppleNew.swift in Sources */,
+				A6C1D7E8F90123456789ABCD /* SttAppleOld.swift in Sources */,
 				DED039CAAA47AF5792E8F040 /* SttView.swift in Sources */,
 				0C24077CF9DE5FE9944AC5AA /* TtsApple.swift in Sources */,
 				F772E74BC3A8AB9B28C577E5 /* TtsView.swift in Sources */,
