@@ -1,3 +1,5 @@
+import AVFoundation
+import Foundation
 import SwiftUI
 
 /// The [stt] tab: import a file and transcribe the complete audio using the
@@ -17,6 +19,8 @@ struct SttView: View {
     @AppStorage(SttAppleVersion.key)
     private var sttAppleVersionRawValue = SttAppleVersion.defaultValue.rawValue
     @State private var stt: SttAppleAdapter?
+    @State private var elapsedTime: Double?
+    @State private var durationTime: Double?
     @State private var state: ViewState = .loading
     @State private var transcript = ""
     @State private var timestampedWords: [SttWordTimestamp] = []
@@ -37,21 +41,33 @@ struct SttView: View {
     }
 
     private var header: some View {
-        HStack(spacing: 8) {
-            Text("stt").font(.headline)
-            Spacer(minLength: 8)
+        ZStack {
+            HStack(spacing: 8) {
+                Text("stt").font(.headline)
+                Spacer(minLength: 8)
 
-            if state == .transcribing {
-                Button("Stop") { cancel() }
-                    .buttonStyle(.plain)
+                if state == .transcribing {
+                    Button("Stop") { cancel() }
+                        .buttonStyle(.plain)
+                }
+
+                MediaSourceMenu(onPick: transcribeFile, onError: reportError) {
+                    Text("Import…")
+                }
+                .fixedSize(horizontal: true, vertical: false)
+                .layoutPriority(1)
+                .disabled(stt == nil || state == .loading || state == .transcribing)
             }
 
-            MediaSourceMenu(onPick: transcribeFile, onError: reportError) {
-                Text("Import…")
+            HStack(spacing: 8) {
+                Text(elapsedTime.map(formatDuration) ?? "--:--:--.--")
+                    .help("Transcribe elapsed time")
+                Text(durationTime.map(formatDuration) ?? "--:--:--.--")
+                    .help("Audio duration")
             }
-            .fixedSize(horizontal: true, vertical: false)
-            .layoutPriority(1)
-            .disabled(stt == nil || state == .loading || state == .transcribing)
+            .font(.caption.monospacedDigit())
+            .foregroundStyle(.secondary)
+            .allowsHitTesting(false)
         }
         .font(.callout)
         .padding()
@@ -130,6 +146,9 @@ struct SttView: View {
         let requestID = UUID()
         activeRequestID = requestID
         let accessingScope = url.startAccessingSecurityScopedResource()
+        let fileDuration = audioDuration(for: url)
+        durationTime = fileDuration
+        elapsedTime = 0
 
         transcriptionTask = Task { @MainActor [stt] in
             defer {
@@ -137,9 +156,11 @@ struct SttView: View {
             }
 
             do {
+                let startedAt = Date()
                 let result = try await stt.transcribeFile(url)
                 try Task.checkCancellation()
                 guard activeRequestID == requestID else { return }
+                elapsedTime = Date().timeIntervalSince(startedAt)
                 transcript = result.text.trimmingCharacters(in: .whitespacesAndNewlines)
                 timestampedWords = result.words
                 state = .idle
@@ -163,6 +184,8 @@ struct SttView: View {
         transcriptionTask?.cancel()
         transcriptionTask = nil
         activeRequestID = nil
+        elapsedTime = nil
+        durationTime = nil
         if state == .transcribing { state = .idle }
     }
 
@@ -189,6 +212,23 @@ struct SttView: View {
 
     private func seconds(_ value: Double) -> String {
         String(format: "%.2fs", value)
+    }
+
+    private func audioDuration(for url: URL) -> Double? {
+        guard let audioFile = try? AVAudioFile(forReading: url) else { return nil }
+        let sampleRate = audioFile.processingFormat.sampleRate
+        guard sampleRate > 0 else { return nil }
+        return Double(audioFile.length) / sampleRate
+    }
+
+    private func formatDuration(_ value: Double) -> String {
+        guard value.isFinite else { return "--:--:--.--" }
+        let centiseconds = max(0, Int((value * 100).rounded()))
+        let hours = centiseconds / 360_000
+        let minutes = (centiseconds / 6_000) % 60
+        let seconds = (centiseconds / 100) % 60
+        let remainder = centiseconds % 100
+        return String(format: "%02d:%02d:%02d.%02d", hours, minutes, seconds, remainder)
     }
 
     private func message(_ text: String, isError: Bool) -> some View {

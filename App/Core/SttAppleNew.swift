@@ -38,7 +38,7 @@ enum SttAppleVersion: String, CaseIterable, Identifiable {
     }
 }
 
-enum SttAppleNewWords {
+private enum SttAppleNewWords {
     static func words(from transcription: AttributedString) -> [SttWordTimestamp] {
         transcription.runs.compactMap { run in
             let text = String(transcription[run.range].characters)

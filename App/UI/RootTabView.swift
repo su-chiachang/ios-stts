@@ -7,7 +7,7 @@ struct RootTabView: View {
     @State private var selectedTab: Tab = .stt
     @State private var showingSettings = false
 
-    private enum Tab { case stt, tts, ttt }
+    private enum Tab { case stt, tts, ttt, settings }
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -20,7 +20,15 @@ struct RootTabView: View {
             TttView()
                 .tabItem { Label("ttt", systemImage: "bubble.left.and.text.bubble.right") }
                 .tag(Tab.ttt)
+
+            #if os(iOS)
+            SettingsView()
+                .tabItem { Label("Settings", systemImage: "gearshape") }
+                .tag(Tab.settings)
+            #endif
         }
+
+        #if os(macOS)
         .toolbar {
             ToolbarItem(placement: .automatic) {
                 Button {
@@ -44,5 +52,6 @@ struct RootTabView: View {
                     }
             }
         }
+        #endif
     }
 }

@@ -3,8 +3,8 @@ import Speech
 
 /// Converts the segment timings exposed by the legacy Speech framework into
 /// the same word result shape used by the SpeechAnalyzer adapter.
-private enum SttAppleOldTranscriptionMapper {
-    static func make(from result: SFSpeechRecognitionResult) -> SttFileTranscription {
+private enum SttAppleOldWords {
+    static func words(from result: SFSpeechRecognitionResult) -> SttFileTranscription {
         let transcription = result.bestTranscription
         let words = transcription.segments.compactMap { segment -> SttWordTimestamp? in
             let text = segment.substring.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -89,7 +89,7 @@ actor SttAppleOld {
                     if let error {
                         state.complete(with: .failure(error))
                     } else if let result, result.isFinal {
-                        state.complete(with: .success(SttAppleOldTranscriptionMapper.make(from: result)))
+                        state.complete(with: .success(SttAppleOldWords.words(from: result)))
                     }
                 }
 
