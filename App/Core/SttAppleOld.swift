@@ -1,3 +1,5 @@
+import AVFoundation
+import CoreMedia
 import Foundation
 import Speech
 
@@ -27,11 +29,9 @@ private enum SttAppleOldWords {
     }
 }
 
-/// File-only adapter for the legacy SFSpeechURLRecognitionRequest API.
-///
-/// This is intentionally kept beside SttAppleNew so the two Apple file
-/// transcription implementations can be compared without changing the UI's
-/// result type.
+/// Legacy adapter. File mode uses SFSpeechURLRecognitionRequest; buffer mode
+/// decodes the imported file into native PCM CMSampleBuffers and appends them
+/// to SFSpeechAudioBufferRecognitionRequest.
 @available(macOS 10.15, iOS 10.0, *)
 actor SttAppleOld {
     private let recognizer: SFSpeechRecognizer
@@ -69,16 +69,42 @@ actor SttAppleOld {
         self.recognizer = recognizer
     }
 
-    func transcribeFile(_ url: URL) async throws -> SttFileTranscription {
+    func transcribeFile(
+        _ url: URL,
+        inputType: SttInputType = .file
+    ) async throws -> SttFileTranscription {
         try Task.checkCancellation()
 
-        let request = SFSpeechURLRecognitionRequest(url: url)
-        request.shouldReportPartialResults = false
-
-        return try await recognize(request)
+        switch inputType {
+        case .file:
+            let request = SFSpeechURLRecognitionRequest(url: url)
+            request.shouldReportPartialResults = false
+            return try await recognize(request)
+        case .buffer:
+            let request = SFSpeechAudioBufferRecognitionRequest()
+            request.shouldReportPartialResults = false
+            return try await recognize(request) {
+                try await self.appendAudioSampleBuffers(from: url, to: request)
+            }
+        }
     }
 
-    private func recognize(_ request: SFSpeechURLRecognitionRequest) async throws -> SttFileTranscription {
+    private func appendAudioSampleBuffers(
+        from url: URL,
+        to request: SFSpeechAudioBufferRecognitionRequest
+    ) async throws {
+        try await LegacyAudioSampleBufferReader.forEachSampleBuffer(
+            from: url,
+            nativeFormat: request.nativeAudioFormat
+        ) { sampleBuffer in
+            request.appendAudioSampleBuffer(sampleBuffer)
+        }
+    }
+
+    private func recognize(
+        _ request: SFSpeechRecognitionRequest,
+        feedAudio: (() async throws -> Void)? = nil
+    ) async throws -> SttFileTranscription {
         let state = LegacyRecognitionTaskState()
 
         return try await withTaskCancellationHandler {
@@ -94,9 +120,96 @@ actor SttAppleOld {
                 }
 
                 state.setTask(task)
+
+                if let feedAudio {
+                    let feedTask = Task<Void, Never> {
+                        do {
+                            try await feedAudio()
+                            try Task.checkCancellation()
+                            guard let audioRequest = request as? SFSpeechAudioBufferRecognitionRequest else {
+                                return
+                            }
+                            audioRequest.endAudio()
+                            task.finish()
+                        } catch {
+                            task.cancel()
+                            state.complete(with: .failure(error))
+                        }
+                    }
+                    state.setFeedTask(feedTask)
+                }
             }
         } onCancel: {
             state.cancel()
+        }
+    }
+}
+
+enum LegacyAudioSampleBufferReader {
+    static func forEachSampleBuffer(
+        from url: URL,
+        nativeFormat: AVAudioFormat,
+        body: (CMSampleBuffer) throws -> Void
+    ) async throws {
+        let asset = AVURLAsset(url: url)
+        guard let track = try await asset.loadTracks(withMediaType: .audio).first else {
+            throw LegacyAudioBufferError.missingAudioTrack
+        }
+
+        let reader = try AVAssetReader(asset: asset)
+        let outputSettings: [String: Any] = [
+            AVFormatIDKey: kAudioFormatLinearPCM,
+            AVSampleRateKey: nativeFormat.sampleRate,
+            AVNumberOfChannelsKey: Int(nativeFormat.channelCount),
+            AVLinearPCMBitDepthKey: 32,
+            AVLinearPCMIsFloatKey: true,
+            AVLinearPCMIsBigEndianKey: false,
+            AVLinearPCMIsNonInterleaved: false,
+        ]
+        let output = AVAssetReaderTrackOutput(track: track, outputSettings: outputSettings)
+        output.alwaysCopiesSampleData = false
+        guard reader.canAdd(output) else {
+            throw LegacyAudioBufferError.cannotAddReaderOutput
+        }
+        reader.add(output)
+        guard reader.startReading() else {
+            throw LegacyAudioBufferError.readerFailed(reader.error)
+        }
+
+        while let sampleBuffer = output.copyNextSampleBuffer() {
+            try Task.checkCancellation()
+            try body(sampleBuffer)
+        }
+
+        switch reader.status {
+        case .completed:
+            return
+        case .cancelled:
+            throw CancellationError()
+        case .failed:
+            throw LegacyAudioBufferError.readerFailed(reader.error)
+        default:
+            throw LegacyAudioBufferError.readerEndedUnexpectedly
+        }
+    }
+}
+
+enum LegacyAudioBufferError: LocalizedError {
+    case missingAudioTrack
+    case cannotAddReaderOutput
+    case readerFailed(Error?)
+    case readerEndedUnexpectedly
+
+    var errorDescription: String? {
+        switch self {
+        case .missingAudioTrack:
+            "The imported file has no audio track."
+        case .cannotAddReaderOutput:
+            "The imported audio cannot be decoded into speech buffers."
+        case .readerFailed(let error):
+            "Reading imported audio failed: \(error?.localizedDescription ?? "unknown error")"
+        case .readerEndedUnexpectedly:
+            "Reading imported audio ended unexpectedly."
         }
     }
 }
@@ -107,6 +220,7 @@ private final class LegacyRecognitionTaskState: @unchecked Sendable {
     private let lock = NSLock()
     private var continuation: CheckedContinuation<SttFileTranscription, Error>?
     private var task: SFSpeechRecognitionTask?
+    private var feedTask: Task<Void, Never>?
     private var finished = false
 
     func setContinuation(_ continuation: CheckedContinuation<SttFileTranscription, Error>) {
@@ -135,6 +249,19 @@ private final class LegacyRecognitionTaskState: @unchecked Sendable {
         }
     }
 
+    func setFeedTask(_ feedTask: Task<Void, Never>) {
+        lock.lock()
+        let shouldCancel = finished
+        if !shouldCancel {
+            self.feedTask = feedTask
+        }
+        lock.unlock()
+
+        if shouldCancel {
+            feedTask.cancel()
+        }
+    }
+
     func complete(with result: Result<SttFileTranscription, Error>) {
         lock.lock()
         guard !finished else {
@@ -144,9 +271,12 @@ private final class LegacyRecognitionTaskState: @unchecked Sendable {
         finished = true
         let continuation = self.continuation
         self.continuation = nil
+        let feedTask = self.feedTask
+        self.feedTask = nil
         task = nil
         lock.unlock()
 
+        feedTask?.cancel()
         continuation?.resume(with: result)
     }
 
@@ -161,8 +291,11 @@ private final class LegacyRecognitionTaskState: @unchecked Sendable {
         self.continuation = nil
         let task = self.task
         self.task = nil
+        let feedTask = self.feedTask
+        self.feedTask = nil
         lock.unlock()
 
+        feedTask?.cancel()
         task?.cancel()
         continuation?.resume(throwing: CancellationError())
     }

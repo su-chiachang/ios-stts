@@ -8,6 +8,8 @@ struct SettingsView: View {
     private var localeIdentifier = SttLocalePreferences.defaultIdentifier
     @AppStorage(SttAppleVersion.key)
     private var sttAppleVersionRawValue = SttAppleVersion.defaultValue.rawValue
+    @AppStorage(SttInputType.key)
+    private var sttInputTypeRawValue = SttInputType.defaultValue.rawValue
     @State private var supportedLocaleTags: [String] = []
 
     var body: some View {
@@ -26,7 +28,13 @@ struct SettingsView: View {
                     }
                 }
 
-                Text("Changing locale or method reloads Apple Speech. New uses SpeechAnalyzer; Old uses SFSpeechURLRecognitionRequest.")
+                Picker("STT type", selection: sttInputTypeBinding) {
+                    ForEach(SttInputType.allCases) { inputType in
+                        Text(inputType.title).tag(inputType.rawValue)
+                    }
+                }
+
+                Text("New uses DictationTranscriber. Old uses SFSpeechURLRecognitionRequest for File and SFSpeechAudioBufferRecognitionRequest for Buffer.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -35,7 +43,7 @@ struct SettingsView: View {
         .formStyle(.grouped)
         .font(.callout)
         #if os(macOS)
-        .frame(width: 440, height: 240)
+        .frame(width: 440, height: 300)
         #endif
         .task(id: sttAppleVersionRawValue) { await loadSupportedLocales() }
     }
@@ -73,6 +81,14 @@ struct SettingsView: View {
             get: { SttAppleVersion.resolve(rawValue: sttAppleVersionRawValue).rawValue },
             set: { newValue in
                 sttAppleVersionRawValue = SttAppleVersion.resolve(rawValue: newValue).rawValue
+            })
+    }
+
+    private var sttInputTypeBinding: Binding<String> {
+        Binding(
+            get: { SttInputType.resolve(rawValue: sttInputTypeRawValue).rawValue },
+            set: { newValue in
+                sttInputTypeRawValue = SttInputType.resolve(rawValue: newValue).rawValue
             })
     }
 

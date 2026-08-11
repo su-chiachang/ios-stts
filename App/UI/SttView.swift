@@ -18,6 +18,8 @@ struct SttView: View {
     private var localeIdentifier = SttLocalePreferences.defaultIdentifier
     @AppStorage(SttAppleVersion.key)
     private var sttAppleVersionRawValue = SttAppleVersion.defaultValue.rawValue
+    @AppStorage(SttInputType.key)
+    private var sttInputTypeRawValue = SttInputType.defaultValue.rawValue
     @State private var stt: SttAppleAdapter?
     @State private var elapsedTime: Double?
     @State private var durationTime: Double?
@@ -36,7 +38,7 @@ struct SttView: View {
         #if os(macOS)
         .frame(minWidth: 420, minHeight: 500)
         #endif
-        .task(id: "\(localeIdentifier)|\(sttAppleVersionRawValue)") { await load() }
+        .task(id: "\(localeIdentifier)|\(sttAppleVersionRawValue)|\(sttInputTypeRawValue)") { await load() }
         .onDisappear { cancel() }
     }
 
@@ -147,6 +149,7 @@ struct SttView: View {
         activeRequestID = requestID
         let accessingScope = url.startAccessingSecurityScopedResource()
         let fileDuration = audioDuration(for: url)
+        let inputType = SttInputType.resolve(rawValue: sttInputTypeRawValue)
         durationTime = fileDuration
         elapsedTime = 0
 
@@ -157,7 +160,9 @@ struct SttView: View {
 
             do {
                 let startedAt = Date()
-                let result = try await stt.transcribeFile(url)
+                let result = try await stt.transcribeFile(
+                    url,
+                    inputType: inputType)
                 try Task.checkCancellation()
                 guard activeRequestID == requestID else { return }
                 elapsedTime = Date().timeIntervalSince(startedAt)

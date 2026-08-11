@@ -38,7 +38,31 @@ enum SttAppleVersion: String, CaseIterable, Identifiable {
     }
 }
 
-private enum SttAppleNewWords {
+enum SttInputType: String, CaseIterable, Identifiable {
+    case file
+    case buffer
+
+    static let key = "sttInputType"
+    static let defaultValue: Self = .file
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .file: "File"
+        case .buffer: "Buffer"
+        }
+    }
+
+    static func resolve(rawValue: String?) -> Self {
+        guard let rawValue, let value = Self(rawValue: rawValue) else {
+            return defaultValue
+        }
+        return value
+    }
+}
+
+enum SttAppleNewWords {
     static func words(from transcription: AttributedString) -> [SttWordTimestamp] {
         transcription.runs.compactMap { run in
             let text = String(transcription[run.range].characters)
@@ -104,7 +128,7 @@ enum SttAppleLocaleResolver {
     static func supportedLocales(for version: SttAppleVersion) async -> [Locale] {
         switch version {
         case .new:
-            return sortedForDisplay(await SpeechTranscriber.supportedLocales)
+            return sortedForDisplay(await DictationTranscriber.supportedLocales)
         case .old:
             return sortedForDisplay(Array(SFSpeechRecognizer.supportedLocales()))
         }
@@ -124,7 +148,6 @@ enum SttAppleLocaleResolver {
 }
 
 enum SttAppleError: LocalizedError {
-    case unavailable
     case localeNotSupported(String)
     case modelInstallationFailed(String)
     case noCompatibleAudioFormat
@@ -133,14 +156,12 @@ enum SttAppleError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .unavailable:
-            "Apple SpeechTranscriber is unavailable on this OS or device."
         case .localeNotSupported(let locale):
             "Apple Speech does not support the locale \(locale) on this device."
         case .modelInstallationFailed(let message):
             "Apple Speech model installation failed: \(message)"
         case .noCompatibleAudioFormat:
-            "Apple SpeechTranscriber has no compatible audio format for this device."
+            "Apple DictationTranscriber has no compatible audio format for this device."
         case .authorizationDenied:
             "Apple Speech recognition permission was not granted."
         case .recognizerUnavailable:
@@ -166,39 +187,36 @@ enum SttAppleAdapter {
         }
     }
 
-    func transcribeFile(_ url: URL) async throws -> SttFileTranscription {
+    func transcribeFile(
+        _ url: URL,
+        inputType: SttInputType = .file
+    ) async throws -> SttFileTranscription {
         switch self {
         case .new(let stt):
-            return try await stt.transcribeFile(url)
+            return try await stt.transcribeFile(url, inputType: inputType)
         case .old(let stt):
-            return try await stt.transcribeFile(url)
+            return try await stt.transcribeFile(url, inputType: inputType)
         }
     }
 }
 
-/// File-only Apple SpeechTranscriber adapter. The module has one narrow
-/// interface: give it a complete audio file and receive its transcript.
+/// Complete-file DictationTranscriber adapter. File mode lets SpeechAnalyzer
+/// read the file; buffer mode decodes it into AVAudioPCMBuffer chunks first.
 @available(macOS 26.0, iOS 26.0, *)
 actor SttAppleNew {
     private let locale: Locale
+    private let analyzerFormat: AVAudioFormat
 
     /// Asset installation and audio-format selection happen before the engine
     /// is returned, so file transcription starts with a ready model.
     static func make(localeIdentifier: String) async throws -> SttAppleNew {
-        guard SpeechTranscriber.isAvailable else {
-            throw SttAppleError.unavailable
-        }
-
         let requested = SttAppleLocaleResolver.requestedLocale(for: localeIdentifier)
-        guard let locale = await SpeechTranscriber.supportedLocale(equivalentTo: requested) else {
+        guard let locale = await DictationTranscriber.supportedLocale(equivalentTo: requested) else {
             throw SttAppleError.localeNotSupported(requested.identifier(.bcp47))
         }
 
-        let transcriber = SpeechTranscriber(locale: locale,
-                                            transcriptionOptions: [],
-                                            reportingOptions: [],
-                                            attributeOptions: [.audioTimeRange])
-        let installed = await SpeechTranscriber.installedLocales
+        let transcriber = makeTranscriber(locale: locale)
+        let installed = await DictationTranscriber.installedLocales
         let isInstalled = installed.contains {
             SttAppleLocaleResolver.isEquivalent($0, to: locale)
         }
@@ -206,7 +224,7 @@ actor SttAppleNew {
         if !isInstalled {
             do {
                 guard let request = try await AssetInventory.assetInstallationRequest(supporting: [transcriber]) else {
-                    let installedAfterRequest = await SpeechTranscriber.installedLocales
+                    let installedAfterRequest = await DictationTranscriber.installedLocales
                     guard installedAfterRequest.contains(where: {
                         SttAppleLocaleResolver.isEquivalent($0, to: locale)
                     }) else {
@@ -245,43 +263,50 @@ actor SttAppleNew {
 
     private static func makeReady(
         locale: Locale,
-        transcriber: SpeechTranscriber
+        transcriber: DictationTranscriber
     ) async throws -> SttAppleNew {
         try await reserve(locale: locale)
-        guard await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [transcriber]) != nil else {
+        guard let analyzerFormat = await SpeechAnalyzer.bestAvailableAudioFormat(
+            compatibleWith: [transcriber]
+        ) else {
             throw SttAppleError.noCompatibleAudioFormat
         }
-        return SttAppleNew(locale: locale)
+        return SttAppleNew(locale: locale, analyzerFormat: analyzerFormat)
     }
 
-    private init(locale: Locale) {
+    private static func makeTranscriber(locale: Locale) -> DictationTranscriber {
+        DictationTranscriber(locale: locale, preset: .timeIndexedLongDictation)
+    }
+
+    private init(locale: Locale, analyzerFormat: AVAudioFormat) {
         self.locale = locale
+        self.analyzerFormat = analyzerFormat
     }
 
-    func transcribeFile(_ url: URL) async throws -> SttFileTranscription {
+    func transcribeFile(
+        _ url: URL,
+        inputType: SttInputType = .file
+    ) async throws -> SttFileTranscription {
         let audioFile = try AVAudioFile(forReading: url)
-        return try await transcribeFile(audioFile)
+        return try await transcribeFile(audioFile, inputType: inputType)
     }
 
-    /// Reads the complete file through SpeechAnalyzer. It never feeds chunks
-    /// through a turn, so pauses in the recording cannot stop transcription.
-    func transcribeFile(_ audioFile: AVAudioFile) async throws -> SttFileTranscription {
-        let transcriber = SpeechTranscriber(locale: locale,
-                                            transcriptionOptions: [],
-                                            reportingOptions: [],
-                                            attributeOptions: [.audioTimeRange])
-        let analyzer = SpeechAnalyzer(modules: [transcriber])
-        let transcriptionTask = Task { () throws -> SttFileTranscription in
-            var transcription = AttributedString()
-            for try await result in transcriber.results {
-                transcription += result.text
-            }
-
-            return SttFileTranscription(
-                text: String(transcription.characters),
-                words: SttAppleNewWords.words(from: transcription))
-
+    func transcribeFile(
+        _ audioFile: AVAudioFile,
+        inputType: SttInputType = .file
+    ) async throws -> SttFileTranscription {
+        switch inputType {
+        case .file:
+            return try await transcribeAudioFile(audioFile)
+        case .buffer:
+            return try await transcribeAudioBuffers(audioFile)
         }
+    }
+
+    private func transcribeAudioFile(_ audioFile: AVAudioFile) async throws -> SttFileTranscription {
+        let transcriber = Self.makeTranscriber(locale: locale)
+        let analyzer = SpeechAnalyzer(modules: [transcriber])
+        let transcriptionTask = Self.collectResults(from: transcriber)
 
         do {
             guard let lastSample = try await analyzer.analyzeSequence(from: audioFile) else {
@@ -299,5 +324,179 @@ actor SttAppleNew {
             _ = await transcriptionTask.result
             throw error
         }
+    }
+
+    private func transcribeAudioBuffers(_ audioFile: AVAudioFile) async throws -> SttFileTranscription {
+        let transcriber = Self.makeTranscriber(locale: locale)
+        let analyzer = SpeechAnalyzer(modules: [transcriber])
+        let transcriptionTask = Self.collectResults(from: transcriber)
+        let reader = AnalyzerInputFileReader(
+            audioFile: audioFile,
+            analyzerFormat: analyzerFormat,
+            frameCount: Self.bufferFrameCount)
+        let inputSequence = AsyncThrowingStream<AnalyzerInput, Error> {
+            try await reader.next()
+        }
+
+        do {
+            try await analyzer.start(inputSequence: inputSequence)
+            try await analyzer.finalizeAndFinishThroughEndOfInput()
+            return try await transcriptionTask.value
+        } catch {
+            transcriptionTask.cancel()
+            await analyzer.cancelAndFinishNow()
+            _ = await transcriptionTask.result
+            throw error
+        }
+    }
+
+    private static func collectResults(
+        from transcriber: DictationTranscriber
+    ) -> Task<SttFileTranscription, Error> {
+        Task {
+            var transcription = AttributedString()
+            for try await result in transcriber.results where result.isFinal {
+                transcription += result.text
+            }
+
+            return SttFileTranscription(
+                text: String(transcription.characters),
+                words: SttAppleNewWords.words(from: transcription))
+        }
+    }
+
+    private static let bufferFrameCount: AVAudioFrameCount = 4_096
+}
+
+/// A single-consumer, pull-based file sequence. SpeechAnalyzer requests the
+/// next buffer only after consuming the previous one, which keeps memory
+/// bounded for long recordings.
+@available(macOS 26.0, iOS 26.0, *)
+actor AnalyzerInputFileReader {
+    private let audioFile: AVAudioFile
+    private let analyzerFormat: AVAudioFormat
+    private let frameCount: AVAudioFrameCount
+    private let converter = AnalyzerInputConverter()
+    private var reachedEndOfFile = false
+
+    init(
+        audioFile: AVAudioFile,
+        analyzerFormat: AVAudioFormat,
+        frameCount: AVAudioFrameCount
+    ) {
+        self.audioFile = audioFile
+        self.analyzerFormat = analyzerFormat
+        self.frameCount = frameCount
+    }
+
+    func next() throws -> AnalyzerInput? {
+        try Task.checkCancellation()
+
+        if !reachedEndOfFile, audioFile.framePosition < audioFile.length {
+            let remaining = audioFile.length - audioFile.framePosition
+            let count = AVAudioFrameCount(min(Int64(frameCount), remaining))
+            guard let buffer = AVAudioPCMBuffer(
+                pcmFormat: audioFile.processingFormat,
+                frameCapacity: count
+            ) else {
+                throw AnalyzerInputConverter.Error.failedToCreateConversionBuffer
+            }
+
+            try audioFile.read(into: buffer, frameCount: count)
+            if buffer.frameLength > 0 {
+                let converted = try converter.convertBuffer(buffer, to: analyzerFormat)
+                return AnalyzerInput(buffer: converted)
+            }
+        }
+
+        reachedEndOfFile = true
+        guard let trailingBuffer = try converter.finish() else { return nil }
+        return AnalyzerInput(buffer: trailingBuffer)
+    }
+}
+
+/// SpeechAnalyzer selects its own PCM format. Imported-file buffers are
+/// converted as they are read so the full decoded file is never retained.
+@available(macOS 26.0, iOS 26.0, *)
+final class AnalyzerInputConverter {
+    enum Error: LocalizedError {
+        case failedToCreateConverter
+        case failedToCreateConversionBuffer
+        case conversionFailed(NSError?)
+
+        var errorDescription: String? {
+            switch self {
+            case .failedToCreateConverter:
+                "Apple Speech could not create an audio converter."
+            case .failedToCreateConversionBuffer:
+                "Apple Speech could not allocate an audio buffer."
+            case .conversionFailed(let error):
+                "Apple Speech audio conversion failed: \(error?.localizedDescription ?? "unknown error")"
+            }
+        }
+    }
+
+    private var converter: AVAudioConverter?
+    private var finished = false
+
+    func convertBuffer(
+        _ buffer: AVAudioPCMBuffer,
+        to format: AVAudioFormat
+    ) throws -> AVAudioPCMBuffer {
+        guard !finished else { throw Error.conversionFailed(nil) }
+        let inputFormat = buffer.format
+        guard inputFormat != format else { return buffer }
+
+        if converter == nil || converter?.outputFormat != format {
+            converter = AVAudioConverter(from: inputFormat, to: format)
+            converter?.primeMethod = .none
+        }
+        guard let converter else { throw Error.failedToCreateConverter }
+
+        let ratio = converter.outputFormat.sampleRate / converter.inputFormat.sampleRate
+        let capacity = AVAudioFrameCount((Double(buffer.frameLength) * ratio).rounded(.up))
+        guard let converted = AVAudioPCMBuffer(
+            pcmFormat: converter.outputFormat,
+            frameCapacity: max(1, capacity)
+        ) else {
+            throw Error.failedToCreateConversionBuffer
+        }
+
+        var conversionError: NSError?
+        var suppliedInput = false
+        let status = converter.convert(to: converted, error: &conversionError) { _, outputStatus in
+            if suppliedInput {
+                outputStatus.pointee = .noDataNow
+                return nil
+            }
+            suppliedInput = true
+            outputStatus.pointee = .haveData
+            return buffer
+        }
+        guard status != .error else { throw Error.conversionFailed(conversionError) }
+        return converted
+    }
+
+    /// Signals EOF and drains frames retained by sample-rate conversion.
+    func finish() throws -> AVAudioPCMBuffer? {
+        guard let converter, !finished else { return nil }
+        guard let converted = AVAudioPCMBuffer(
+            pcmFormat: converter.outputFormat,
+            frameCapacity: 4_096
+        ) else {
+            throw Error.failedToCreateConversionBuffer
+        }
+
+        var conversionError: NSError?
+        let status = converter.convert(to: converted, error: &conversionError) { _, outputStatus in
+            outputStatus.pointee = .endOfStream
+            return nil
+        }
+        guard status != .error else { throw Error.conversionFailed(conversionError) }
+
+        if status == .endOfStream || converted.frameLength == 0 {
+            finished = true
+        }
+        return converted.frameLength > 0 ? converted : nil
     }
 }
