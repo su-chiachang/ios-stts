@@ -1,6 +1,39 @@
 import AVFoundation
+import CoreMedia
 import Foundation
 import Speech
+
+struct SttWordTimestamp: Equatable, Sendable {
+    let text: String
+    let start: Double
+    let end: Double
+}
+
+struct SttFileTranscription: Equatable, Sendable {
+    let text: String
+    let words: [SttWordTimestamp]
+}
+
+enum SttWordTimestampExtractor {
+    static func extract(from transcription: AttributedString) -> [SttWordTimestamp] {
+        transcription.runs.compactMap { run in
+            let text = String(transcription[run.range].characters)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !text.isEmpty else { return nil }
+
+            let timeRange: CMTimeRange? = run[
+                AttributeScopes.SpeechAttributes.TimeRangeAttribute.self
+            ]
+            guard let timeRange, timeRange.isValid else { return nil }
+
+            let start = timeRange.start.seconds
+            let end = timeRange.end.seconds
+            guard start.isFinite, end.isFinite, end >= start else { return nil }
+
+            return SttWordTimestamp(text: text, start: start, end: end)
+        }
+    }
+}
 
 enum SttLocalePreferences {
     static let key = "sttLocale"
@@ -162,29 +195,36 @@ actor SttApple {
     }
 
     private static func makeTranscriber(locale: Locale) -> SpeechTranscriber {
-        SpeechTranscriber(locale: locale, preset: .transcription)
+        SpeechTranscriber(
+            locale: locale,
+            transcriptionOptions: [],
+            reportingOptions: [],
+            attributeOptions: [.audioTimeRange])
     }
 
     private init(locale: Locale) {
         self.locale = locale
     }
 
-    func transcribeFile(_ url: URL) async throws -> String {
+    func transcribeFile(_ url: URL) async throws -> SttFileTranscription {
         let audioFile = try AVAudioFile(forReading: url)
         return try await transcribeFile(audioFile)
     }
 
     /// Reads the complete file through SpeechAnalyzer. It never feeds chunks
     /// through a turn, so pauses in the recording cannot stop transcription.
-    func transcribeFile(_ audioFile: AVAudioFile) async throws -> String {
+    func transcribeFile(_ audioFile: AVAudioFile) async throws -> SttFileTranscription {
         let transcriber = Self.makeTranscriber(locale: locale)
         let analyzer = SpeechAnalyzer(modules: [transcriber])
-        let transcriptionTask = Task { () throws -> String in
-            var fragments: [String] = []
+        let transcriptionTask = Task { () throws -> SttFileTranscription in
+            var transcription = AttributedString()
             for try await result in transcriber.results {
-                fragments.append(String(result.text.characters))
+                transcription += result.text
             }
-            return fragments.joined()
+
+            return SttFileTranscription(
+                text: String(transcription.characters),
+                words: SttWordTimestampExtractor.extract(from: transcription))
         }
 
         do {
@@ -192,7 +232,7 @@ actor SttApple {
                 await analyzer.cancelAndFinishNow()
                 transcriptionTask.cancel()
                 _ = await transcriptionTask.result
-                return ""
+                return SttFileTranscription(text: "", words: [])
             }
 
             try await analyzer.finalizeAndFinish(through: lastSample)

@@ -17,6 +17,7 @@ struct SttView: View {
     @State private var stt: SttApple?
     @State private var state: ViewState = .loading
     @State private var transcript = ""
+    @State private var timestampedWords: [SttWordTimestamp] = []
     @State private var transcriptionTask: Task<Void, Never>?
     @State private var activeRequestID: UUID?
 
@@ -75,9 +76,18 @@ struct SttView: View {
             message("Choose an audio file to transcribe.", isError: false)
         case .idle:
             ScrollView {
-                Text(transcript)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .textSelection(.enabled)
+                if timestampedWords.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(transcript)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .textSelection(.enabled)
+                        Text("Word timestamps are not available for this result.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
+                    wordList
+                }
             }
             .padding()
         }
@@ -87,6 +97,7 @@ struct SttView: View {
         cancel()
         stt = nil
         transcript = ""
+        timestampedWords = []
         state = .loading
 
         do {
@@ -110,6 +121,7 @@ struct SttView: View {
 
         cancel()
         transcript = ""
+        timestampedWords = []
         state = .transcribing
         let requestID = UUID()
         activeRequestID = requestID
@@ -121,10 +133,11 @@ struct SttView: View {
             }
 
             do {
-                let text = try await stt.transcribeFile(url)
+                let result = try await stt.transcribeFile(url)
                 try Task.checkCancellation()
                 guard activeRequestID == requestID else { return }
-                transcript = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                transcript = result.text.trimmingCharacters(in: .whitespacesAndNewlines)
+                timestampedWords = result.words
                 state = .idle
                 activeRequestID = nil
                 transcriptionTask = nil
@@ -151,6 +164,27 @@ struct SttView: View {
 
     private func reportError(_ message: String) {
         state = .error(message)
+    }
+
+    private var wordList: some View {
+        LazyVStack(alignment: .leading, spacing: 4) {
+            ForEach(Array(timestampedWords.enumerated()), id: \.offset) { _, word in
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text("\(seconds(word.start)) – \(seconds(word.end))")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .frame(width: 130, alignment: .leading)
+                    Text(word.text)
+                        .textSelection(.enabled)
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+
+    private func seconds(_ value: Double) -> String {
+        String(format: "%.2fs", value)
     }
 
     private func message(_ text: String, isError: Bool) -> some View {
