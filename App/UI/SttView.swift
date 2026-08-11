@@ -194,9 +194,3 @@ struct SttView: View {
             .padding()
     }
 }
-
-#Preview {
-    if #available(macOS 26.0, iOS 26.0, *) {
-        SttView()
-    }
-}

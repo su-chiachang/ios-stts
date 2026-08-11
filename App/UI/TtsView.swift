@@ -129,7 +129,3 @@ struct TtsView: View {
         isSpeaking = false
     }
 }
-
-#Preview {
-    TtsView()
-}

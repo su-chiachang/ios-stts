@@ -61,9 +61,3 @@ struct SettingsView: View {
         return "\(name) (\(tag))"
     }
 }
-
-#Preview {
-    if #available(macOS 26.0, iOS 26.0, *) {
-        SettingsView()
-    }
-}

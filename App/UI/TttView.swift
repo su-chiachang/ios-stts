@@ -300,7 +300,3 @@ struct TttView: View {
         #endif
     }
 }
-
-#Preview {
-    TttView()
-}

@@ -46,9 +46,3 @@ struct RootTabView: View {
         }
     }
 }
-
-#Preview {
-    if #available(macOS 26.0, iOS 26.0, *) {
-        RootTabView()
-    }
-}
