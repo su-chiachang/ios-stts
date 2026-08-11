@@ -7,19 +7,19 @@ import XCTest
 final class AppleSpeechTests: XCTestCase {
     func testAppleSpeechLocaleResolverMapsCompactIdentifiers() {
         XCTAssertEqual(
-            AppleSpeechLocaleResolver.requestedLocale(for: "en").identifier(.bcp47),
+            SttAppleLocaleResolver.requestedLocale(for: "en").identifier(.bcp47),
             "en-US")
         XCTAssertEqual(
-            AppleSpeechLocaleResolver.requestedLocale(for: "zh-Hant").identifier(.bcp47),
+            SttAppleLocaleResolver.requestedLocale(for: "zh-Hant").identifier(.bcp47),
             "zh-TW")
         XCTAssertEqual(
-            AppleSpeechLocaleResolver.requestedLocale(for: "zh-CN").identifier(.bcp47),
+            SttAppleLocaleResolver.requestedLocale(for: "zh-CN").identifier(.bcp47),
             "zh-CN")
     }
 
-    func testAppleSpeechAutoUsesProvidedCurrentLocale() {
+    func testAppleSpeechEmptyIdentifierUsesProvidedCurrentLocale() {
         let current = Locale(identifier: "ja-JP")
-        let resolved = AppleSpeechLocaleResolver.requestedLocale(for: "auto", current: current)
+        let resolved = SttAppleLocaleResolver.requestedLocale(for: "", current: current)
         XCTAssertEqual(resolved.identifier(.bcp47), "ja-JP")
     }
 
@@ -39,6 +39,12 @@ final class AppleSpeechTests: XCTestCase {
         XCTAssertEqual(SttLocalePreferences.identifier, "zh-TW")
     }
 
+    func testSttAppleVersionDefaultsToNew() {
+        XCTAssertEqual(SttAppleVersion.resolve(rawValue: nil), .new)
+        XCTAssertEqual(SttAppleVersion.resolve(rawValue: "unknown"), .new)
+        XCTAssertEqual(SttAppleVersion.resolve(rawValue: "old"), .old)
+    }
+
     func testSttWordTimestampExtractorReadsTimedRuns() {
         var transcription = AttributedString("hello world")
         let helloRange = try! XCTUnwrap(transcription.range(of: "hello"))
@@ -53,7 +59,7 @@ final class AppleSpeechTests: XCTestCase {
                 start: CMTime(seconds: 2, preferredTimescale: 1000),
                 duration: CMTime(seconds: 0.75, preferredTimescale: 1000))
 
-        let words = SttWordTimestampExtractor.extract(from: transcription)
+        let words = SttAppleNewWords.words(from: transcription)
 
         XCTAssertEqual(words.map(\.text), ["hello", "world"])
         XCTAssertEqual(words.count, 2)

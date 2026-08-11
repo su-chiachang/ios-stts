@@ -36,19 +36,19 @@ private enum SttAppleOldTranscriptionMapper {
 actor SttAppleOld {
     private let recognizer: SFSpeechRecognizer
 
-    static func make(localeIdentifier: String?) async throws -> SttAppleOld {
-        let requested = AppleSpeechLocaleResolver.requestedLocale(for: localeIdentifier)
+    static func make(localeIdentifier: String) async throws -> SttAppleOld {
+        let requested = SttAppleLocaleResolver.requestedLocale(for: localeIdentifier)
         guard let recognizer = SFSpeechRecognizer(locale: requested) else {
-            throw AppleSpeechSttError.localeNotSupported(requested.identifier(.bcp47))
+            throw SttAppleError.localeNotSupported(requested.identifier(.bcp47))
         }
 
         let authorization = await authorizationStatus()
         guard authorization == .authorized else {
-            throw AppleSpeechSttError.authorizationDenied
+            throw SttAppleError.authorizationDenied
         }
 
         guard recognizer.isAvailable else {
-            throw AppleSpeechSttError.recognizerUnavailable
+            throw SttAppleError.recognizerUnavailable
         }
 
         return SttAppleOld(recognizer: recognizer)

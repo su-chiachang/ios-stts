@@ -14,8 +14,32 @@ struct SttFileTranscription: Equatable, Sendable {
     let words: [SttWordTimestamp]
 }
 
-enum SttWordTimestampExtractor {
-    static func extract(from transcription: AttributedString) -> [SttWordTimestamp] {
+enum SttAppleVersion: String, CaseIterable, Identifiable {
+    case new
+    case old
+
+    static let key = "sttAppleVersion"
+    static let defaultValue: Self = .new
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .new: "New"
+        case .old: "Old"
+        }
+    }
+
+    static func resolve(rawValue: String?) -> Self {
+        guard let rawValue, let value = Self(rawValue: rawValue) else {
+            return defaultValue
+        }
+        return value
+    }
+}
+
+enum SttAppleNewWords {
+    static func words(from transcription: AttributedString) -> [SttWordTimestamp] {
         transcription.runs.compactMap { run in
             let text = String(transcription[run.range].characters)
                 .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -37,26 +61,23 @@ enum SttWordTimestampExtractor {
 
 enum SttLocalePreferences {
     static let key = "sttLocale"
-    static let defaultIdentifier = "auto"
+    static let defaultIdentifier = Locale.current.identifier(.bcp47)
 
     static var identifier: String {
         UserDefaults.standard.string(forKey: key) ?? defaultIdentifier
     }
 
     static func save(_ identifier: String) {
-        UserDefaults.standard.set(AppleSpeechLocaleResolver.tag(for: identifier), forKey: key)
+        UserDefaults.standard.set(SttAppleLocaleResolver.tag(for: identifier), forKey: key)
     }
 }
 
-/// Maps the optional locale choice to one concrete locale for Apple's
-/// locale-dependent SpeechTranscriber. A missing or `auto` value resolves to
-/// the user's current system locale.
-enum AppleSpeechLocaleResolver {
-    static let autoTag = "auto"
-
-    static func requestedLocale(for identifier: String?, current: Locale = .current) -> Locale {
-        let value = identifier?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        guard !value.isEmpty, value.lowercased() != "auto" else { return current }
+/// Maps a persisted locale identifier to one concrete locale for Apple's
+/// locale-dependent speech APIs.
+enum SttAppleLocaleResolver {
+    static func requestedLocale(for identifier: String, current: Locale = .current) -> Locale {
+        let value = identifier.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !value.isEmpty else { return current }
 
         switch value.lowercased() {
         case "en": return Locale(identifier: "en-US")
@@ -72,18 +93,21 @@ enum AppleSpeechLocaleResolver {
 
     /// The identifier form used for persistence and picker tags. Older values
     /// such as "en" are canonicalized so they still select a visible row.
-    static func tag(for identifier: String?) -> String {
-        let value = identifier?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        guard !value.isEmpty, value.lowercased() != autoTag else { return autoTag }
-        return tag(for: requestedLocale(for: value))
+    static func tag(for identifier: String) -> String {
+        tag(for: requestedLocale(for: identifier))
     }
 
     static func tag(for locale: Locale) -> String {
         locale.identifier(.bcp47)
     }
 
-    static func supportedLocales() async -> [Locale] {
-        sortedForDisplay(await SpeechTranscriber.supportedLocales)
+    static func supportedLocales(for version: SttAppleVersion) async -> [Locale] {
+        switch version {
+        case .new:
+            return sortedForDisplay(await SpeechTranscriber.supportedLocales)
+        case .old:
+            return sortedForDisplay(Array(SFSpeechRecognizer.supportedLocales()))
+        }
     }
 
     static func sortedForDisplay(_ locales: [Locale]) -> [Locale] {
@@ -99,7 +123,7 @@ enum AppleSpeechLocaleResolver {
     }
 }
 
-enum AppleSpeechSttError: LocalizedError {
+enum SttAppleError: LocalizedError {
     case unavailable
     case localeNotSupported(String)
     case modelInstallationFailed(String)
@@ -125,6 +149,33 @@ enum AppleSpeechSttError: LocalizedError {
     }
 }
 
+@available(macOS 26.0, iOS 26.0, *)
+enum SttAppleAdapter {
+    case new(SttAppleNew)
+    case old(SttAppleOld)
+
+    static func make(
+        version: SttAppleVersion,
+        localeIdentifier: String
+    ) async throws -> Self {
+        switch version {
+        case .new:
+            return .new(try await SttAppleNew.make(localeIdentifier: localeIdentifier))
+        case .old:
+            return .old(try await SttAppleOld.make(localeIdentifier: localeIdentifier))
+        }
+    }
+
+    func transcribeFile(_ url: URL) async throws -> SttFileTranscription {
+        switch self {
+        case .new(let stt):
+            return try await stt.transcribeFile(url)
+        case .old(let stt):
+            return try await stt.transcribeFile(url)
+        }
+    }
+}
+
 /// File-only Apple SpeechTranscriber adapter. The module has one narrow
 /// interface: give it a complete audio file and receive its transcript.
 @available(macOS 26.0, iOS 26.0, *)
@@ -133,20 +184,23 @@ actor SttAppleNew {
 
     /// Asset installation and audio-format selection happen before the engine
     /// is returned, so file transcription starts with a ready model.
-    static func make(localeIdentifier: String?) async throws -> SttAppleNew {
+    static func make(localeIdentifier: String) async throws -> SttAppleNew {
         guard SpeechTranscriber.isAvailable else {
-            throw AppleSpeechSttError.unavailable
+            throw SttAppleError.unavailable
         }
 
-        let requested = AppleSpeechLocaleResolver.requestedLocale(for: localeIdentifier)
+        let requested = SttAppleLocaleResolver.requestedLocale(for: localeIdentifier)
         guard let locale = await SpeechTranscriber.supportedLocale(equivalentTo: requested) else {
-            throw AppleSpeechSttError.localeNotSupported(requested.identifier(.bcp47))
+            throw SttAppleError.localeNotSupported(requested.identifier(.bcp47))
         }
 
-        let transcriber = makeTranscriber(locale: locale)
+        let transcriber = SpeechTranscriber(locale: locale,
+                                            transcriptionOptions: [],
+                                            reportingOptions: [],
+                                            attributeOptions: [.audioTimeRange])
         let installed = await SpeechTranscriber.installedLocales
         let isInstalled = installed.contains {
-            AppleSpeechLocaleResolver.isEquivalent($0, to: locale)
+            SttAppleLocaleResolver.isEquivalent($0, to: locale)
         }
 
         if !isInstalled {
@@ -154,17 +208,17 @@ actor SttAppleNew {
                 guard let request = try await AssetInventory.assetInstallationRequest(supporting: [transcriber]) else {
                     let installedAfterRequest = await SpeechTranscriber.installedLocales
                     guard installedAfterRequest.contains(where: {
-                        AppleSpeechLocaleResolver.isEquivalent($0, to: locale)
+                        SttAppleLocaleResolver.isEquivalent($0, to: locale)
                     }) else {
-                        throw AppleSpeechSttError.modelInstallationFailed("no installation request was available")
+                        throw SttAppleError.modelInstallationFailed("no installation request was available")
                     }
                     return try await makeReady(locale: locale, transcriber: transcriber)
                 }
                 try await request.downloadAndInstall()
-            } catch let error as AppleSpeechSttError {
+            } catch let error as SttAppleError {
                 throw error
             } catch {
-                throw AppleSpeechSttError.modelInstallationFailed(error.localizedDescription)
+                throw SttAppleError.modelInstallationFailed(error.localizedDescription)
             }
         }
 
@@ -174,7 +228,7 @@ actor SttAppleNew {
     /// SpeechAnalyzer requires modules to reserve their locale first.
     private static func reserve(locale: Locale) async throws {
         let reserved = await AssetInventory.reservedLocales
-        if reserved.contains(where: { AppleSpeechLocaleResolver.isEquivalent($0, to: locale) }) {
+        if reserved.contains(where: { SttAppleLocaleResolver.isEquivalent($0, to: locale) }) {
             return
         }
 
@@ -185,7 +239,7 @@ actor SttAppleNew {
         do {
             try await AssetInventory.reserve(locale: locale)
         } catch {
-            throw AppleSpeechSttError.modelInstallationFailed(error.localizedDescription)
+            throw SttAppleError.modelInstallationFailed(error.localizedDescription)
         }
     }
 
@@ -195,17 +249,9 @@ actor SttAppleNew {
     ) async throws -> SttAppleNew {
         try await reserve(locale: locale)
         guard await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [transcriber]) != nil else {
-            throw AppleSpeechSttError.noCompatibleAudioFormat
+            throw SttAppleError.noCompatibleAudioFormat
         }
         return SttAppleNew(locale: locale)
-    }
-
-    private static func makeTranscriber(locale: Locale) -> SpeechTranscriber {
-        SpeechTranscriber(
-            locale: locale,
-            transcriptionOptions: [],
-            reportingOptions: [],
-            attributeOptions: [.audioTimeRange])
     }
 
     private init(locale: Locale) {
@@ -220,7 +266,10 @@ actor SttAppleNew {
     /// Reads the complete file through SpeechAnalyzer. It never feeds chunks
     /// through a turn, so pauses in the recording cannot stop transcription.
     func transcribeFile(_ audioFile: AVAudioFile) async throws -> SttFileTranscription {
-        let transcriber = Self.makeTranscriber(locale: locale)
+        let transcriber = SpeechTranscriber(locale: locale,
+                                            transcriptionOptions: [],
+                                            reportingOptions: [],
+                                            attributeOptions: [.audioTimeRange])
         let analyzer = SpeechAnalyzer(modules: [transcriber])
         let transcriptionTask = Task { () throws -> SttFileTranscription in
             var transcription = AttributedString()
@@ -230,7 +279,8 @@ actor SttAppleNew {
 
             return SttFileTranscription(
                 text: String(transcription.characters),
-                words: SttWordTimestampExtractor.extract(from: transcription))
+                words: SttAppleNewWords.words(from: transcription))
+
         }
 
         do {
@@ -251,4 +301,3 @@ actor SttAppleNew {
         }
     }
 }
-

@@ -1,25 +1,32 @@
 import SwiftUI
 
-/// The small amount of user configuration that remains: Apple's STT locale.
+/// Shared STT configuration shown from the app settings entry point.
 @available(macOS 26.0, iOS 26.0, *)
 @MainActor
 struct SettingsView: View {
     @AppStorage(SttLocalePreferences.key)
-    private var sttLocale = SttLocalePreferences.defaultIdentifier
+    private var localeIdentifier = SttLocalePreferences.defaultIdentifier
+    @AppStorage(SttAppleVersion.key)
+    private var sttAppleVersionRawValue = SttAppleVersion.defaultValue.rawValue
     @State private var supportedLocaleTags: [String] = []
 
     var body: some View {
         Form {
             Section("Speech recognition") {
                 Picker("STT locale", selection: localeBinding) {
-                    Text("Auto (system locale)")
-                        .tag(AppleSpeechLocaleResolver.autoTag)
-
-                    ForEach(localeOptions, id: \.self) { tag in
+                    ForEach(supportedLocaleTags, id: \.self) { tag in
                         Text(localeTitle(for: tag)).tag(tag)
                     }
                 }
-                Text("Auto uses the current system locale. Changing this value reloads Apple Speech when STT is active.")
+                .disabled(supportedLocaleTags.isEmpty)
+
+                Picker("Method", selection: sttAppleVersionBinding) {
+                    ForEach(SttAppleVersion.allCases) { version in
+                        Text(version.title).tag(version.rawValue)
+                    }
+                }
+
+                Text("Changing locale or method reloads Apple Speech. New uses SpeechAnalyzer; Old uses SFSpeechURLRecognitionRequest.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -28,36 +35,49 @@ struct SettingsView: View {
         .formStyle(.grouped)
         .font(.callout)
         #if os(macOS)
-        .frame(width: 440, height: 220)
+        .frame(width: 440, height: 240)
         #endif
-        .task {
-            guard supportedLocaleTags.isEmpty else { return }
-            let locales = await AppleSpeechLocaleResolver.supportedLocales()
-            supportedLocaleTags = locales.map(AppleSpeechLocaleResolver.tag(for:))
-        }
+        .task(id: sttAppleVersionRawValue) { await loadSupportedLocales() }
+    }
+
+    private func loadSupportedLocales() async {
+        let version = SttAppleVersion.resolve(rawValue: sttAppleVersionRawValue)
+        let locales = await SttAppleLocaleResolver.supportedLocales(for: version)
+        guard !Task.isCancelled else { return }
+        let tags = locales.map(SttAppleLocaleResolver.tag(for:))
+        supportedLocaleTags = tags
+
+        guard !tags.isEmpty,
+              !tags.contains(where: { $0.caseInsensitiveCompare(SttAppleLocaleResolver.tag(for: localeIdentifier)) == .orderedSame })
+        else { return }
+
+        let systemTag = SttAppleLocaleResolver.tag(for: Locale.current)
+        let fallback = tags.first(where: { $0.caseInsensitiveCompare(systemTag) == .orderedSame }) ?? tags[0]
+        localeIdentifier = fallback
+        SttLocalePreferences.save(fallback)
     }
 
     private var localeBinding: Binding<String> {
         Binding(
-            get: { AppleSpeechLocaleResolver.tag(for: sttLocale) },
+            get: { SttAppleLocaleResolver.tag(for: localeIdentifier) },
             set: { newValue in
-                let canonical = AppleSpeechLocaleResolver.tag(for: newValue)
-                guard canonical != AppleSpeechLocaleResolver.tag(for: sttLocale) else { return }
-                sttLocale = canonical
+                let canonical = SttAppleLocaleResolver.tag(for: newValue)
+                guard canonical != SttAppleLocaleResolver.tag(for: localeIdentifier) else { return }
+                localeIdentifier = canonical
                 SttLocalePreferences.save(canonical)
             })
     }
 
-    private var localeOptions: [String] {
-        let selected = AppleSpeechLocaleResolver.tag(for: sttLocale)
-        guard selected != AppleSpeechLocaleResolver.autoTag,
-              !supportedLocaleTags.contains(where: { $0.caseInsensitiveCompare(selected) == .orderedSame })
-        else { return supportedLocaleTags }
-        return [selected] + supportedLocaleTags
+    private var sttAppleVersionBinding: Binding<String> {
+        Binding(
+            get: { SttAppleVersion.resolve(rawValue: sttAppleVersionRawValue).rawValue },
+            set: { newValue in
+                sttAppleVersionRawValue = SttAppleVersion.resolve(rawValue: newValue).rawValue
+            })
     }
 
     private func localeTitle(for tag: String) -> String {
-        let name = AppleSpeechLocaleResolver.displayName(for: Locale(identifier: tag))
+        let name = SttAppleLocaleResolver.displayName(for: Locale(identifier: tag))
         return "\(name) (\(tag))"
     }
 }
