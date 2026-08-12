@@ -51,6 +51,7 @@ actor SttAppleOld {
             throw SttAppleError.recognizerUnavailable
         }
 
+        recognizer.defaultTaskHint = .search
         return SttAppleOld(recognizer: recognizer)
     }
 
@@ -74,15 +75,19 @@ actor SttAppleOld {
         inputType: SttInputType = .file
     ) async throws -> SttFileTranscription {
         try Task.checkCancellation()
-
+        let supportsOnDeviceRecognition = recognizer.supportsOnDeviceRecognition
         switch inputType {
         case .file:
             let request = SFSpeechURLRecognitionRequest(url: url)
-            request.shouldReportPartialResults = false
+            request.requiresOnDeviceRecognition = supportsOnDeviceRecognition
+            request.shouldReportPartialResults = true
+            request.addsPunctuation = true
             return try await recognize(request)
         case .live:
             let request = SFSpeechAudioBufferRecognitionRequest()
-            request.shouldReportPartialResults = false
+            request.requiresOnDeviceRecognition = supportsOnDeviceRecognition
+            request.shouldReportPartialResults = true
+            request.addsPunctuation = true
             return try await recognize(request) {
                 try await self.appendAudioSampleBuffers(from: url, to: request)
             }

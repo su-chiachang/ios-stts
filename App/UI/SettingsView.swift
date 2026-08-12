@@ -15,20 +15,20 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section("Speech recognition") {
-                Picker("STT locale", selection: localeBinding) {
+                Picker("Locale", selection: localeBinding) {
                     ForEach(supportedLocaleTags, id: \.self) { tag in
                         Text(localeTitle(for: tag)).tag(tag)
                     }
                 }
                 .disabled(supportedLocaleTags.isEmpty)
 
-                Picker("Method", selection: sttAppleVersionBinding) {
+                Picker("Version", selection: sttAppleVersionBinding) {
                     ForEach(SttAppleVersion.allCases) { version in
                         Text(version.rawValue)
                     }
                 }
 
-                Picker("STT type", selection: sttInputTypeBinding) {
+                Picker("Type", selection: sttInputTypeBinding) {
                     ForEach(SttInputType.allCases) { inputType in
                         Text(inputType.rawValue)
                     }

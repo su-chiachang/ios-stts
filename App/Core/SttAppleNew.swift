@@ -177,6 +177,12 @@ enum SttAppleAdapter {
         _ url: URL,
         inputType: SttInputType = .file
     ) async throws -> SttFileTranscription {
+        let ts = CFAbsoluteTimeGetCurrent()
+        defer {
+            let elapsed = (CFAbsoluteTimeGetCurrent() - ts).formatted()
+            print(">>> T(\(self)-\(inputType)) = \(elapsed)")
+        }
+
         switch self {
         case .new(let stt):
             return try await stt.transcribeFile(url, inputType: inputType)
