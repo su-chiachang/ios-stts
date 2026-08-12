@@ -203,26 +203,25 @@ actor SttAppleNew {
     /// is returned, so file transcription starts with a ready model.
     static func make(localeIdentifier: String) async throws -> SttAppleNew {
         let requested = SttAppleLocaleResolver.requestedLocale(for: localeIdentifier)
-        guard let locale = await DictationTranscriber.supportedLocale(equivalentTo: requested) else {
+        guard
+            let locale = await DictationTranscriber.supportedLocale(equivalentTo: requested),
+            await SpeechTranscriber.supportedLocale(equivalentTo: requested) != nil
+        else {
             throw SttAppleError.localeNotSupported(requested.identifier(.bcp47))
         }
 
-        let transcriber = makeTranscriber(locale: locale)
-        let installed = await DictationTranscriber.installedLocales
-        let isInstalled = installed.contains {
-            SttAppleLocaleResolver.isEquivalent($0, to: locale)
-        }
+        // Both module kinds are prepared here because the input mode is chosen
+        // per transcription call, not when the actor is constructed.
+        let transcribers = SttInputType.allCases.map { makeTranscriber(locale: locale, inputType: $0) }
+        let isInstalled = await isLocaleInstalled(locale)
 
         if !isInstalled {
             do {
-                guard let request = try await AssetInventory.assetInstallationRequest(supporting: [transcriber]) else {
-                    let installedAfterRequest = await DictationTranscriber.installedLocales
-                    guard installedAfterRequest.contains(where: {
-                        SttAppleLocaleResolver.isEquivalent($0, to: locale)
-                    }) else {
+                guard let request = try await AssetInventory.assetInstallationRequest(supporting: transcribers) else {
+                    guard await isLocaleInstalled(locale) else {
                         throw SttAppleError.modelInstallationFailed("no installation request was available")
                     }
-                    return try await makeReady(locale: locale, transcriber: transcriber)
+                    return try await makeReady(locale: locale, transcribers: transcribers)
                 }
                 try await request.downloadAndInstall()
             } catch let error as SttAppleError {
@@ -232,7 +231,15 @@ actor SttAppleNew {
             }
         }
 
-        return try await makeReady(locale: locale, transcriber: transcriber)
+        return try await makeReady(locale: locale, transcribers: transcribers)
+    }
+
+    private static func isLocaleInstalled(_ locale: Locale) async -> Bool {
+        async let dictationInstalled = DictationTranscriber.installedLocales
+        async let speechInstalled = SpeechTranscriber.installedLocales
+        let (dictation, speech) = await (dictationInstalled, speechInstalled)
+        return dictation.contains(where: { SttAppleLocaleResolver.isEquivalent($0, to: locale) })
+            && speech.contains(where: { SttAppleLocaleResolver.isEquivalent($0, to: locale) })
     }
 
     /// SpeechAnalyzer requires modules to reserve their locale first.
@@ -255,19 +262,24 @@ actor SttAppleNew {
 
     private static func makeReady(
         locale: Locale,
-        transcriber: DictationTranscriber
+        transcribers: [any SpeechModule]
     ) async throws -> SttAppleNew {
         try await reserve(locale: locale)
         guard let analyzerFormat = await SpeechAnalyzer.bestAvailableAudioFormat(
-            compatibleWith: [transcriber]
+            compatibleWith: transcribers
         ) else {
             throw SttAppleError.noCompatibleAudioFormat
         }
         return SttAppleNew(locale: locale, analyzerFormat: analyzerFormat)
     }
 
-    private static func makeTranscriber(locale: Locale) -> DictationTranscriber {
-        DictationTranscriber(locale: locale, preset: .timeIndexedLongDictation)
+    private static func makeTranscriber(locale: Locale, inputType: SttInputType) -> any SpeechModule {
+        switch inputType {
+        case .file:
+            SpeechTranscriber(locale: locale, preset: .timeIndexedTranscriptionWithAlternatives)
+        case .live:
+            DictationTranscriber(locale: locale, preset: .timeIndexedLongDictation)
+        }
     }
 
     private init(locale: Locale, analyzerFormat: AVAudioFormat) {
@@ -280,13 +292,6 @@ actor SttAppleNew {
         inputType: SttInputType = .file
     ) async throws -> SttFileTranscription {
         let audioFile = try AVAudioFile(forReading: url)
-        return try await transcribeFile(audioFile, inputType: inputType)
-    }
-
-    func transcribeFile(
-        _ audioFile: AVAudioFile,
-        inputType: SttInputType = .file
-    ) async throws -> SttFileTranscription {
         switch inputType {
         case .file:
             return try await transcribeAudioFile(audioFile)
@@ -296,7 +301,7 @@ actor SttAppleNew {
     }
 
     private func transcribeAudioFile(_ audioFile: AVAudioFile) async throws -> SttFileTranscription {
-        let transcriber = Self.makeTranscriber(locale: locale)
+        let transcriber = SpeechTranscriber(locale: locale, preset: .timeIndexedTranscriptionWithAlternatives)
         let analyzer = SpeechAnalyzer(modules: [transcriber])
         let transcriptionTask = Self.collectResults(from: transcriber)
 
@@ -318,8 +323,9 @@ actor SttAppleNew {
         }
     }
 
+    private static let bufferFrameCount: AVAudioFrameCount = 4_096
     private func transcribeAudioBuffers(_ audioFile: AVAudioFile) async throws -> SttFileTranscription {
-        let transcriber = Self.makeTranscriber(locale: locale)
+        let transcriber = DictationTranscriber(locale: locale, preset: .timeIndexedLongDictation)
         let analyzer = SpeechAnalyzer(modules: [transcriber])
         let transcriptionTask = Self.collectResults(from: transcriber)
         let reader = AnalyzerInputFileReader(
@@ -343,7 +349,7 @@ actor SttAppleNew {
     }
 
     private static func collectResults(
-        from transcriber: DictationTranscriber
+        from transcriber: SpeechTranscriber
     ) -> Task<SttFileTranscription, Error> {
         Task {
             var transcription = AttributedString()
@@ -357,7 +363,20 @@ actor SttAppleNew {
         }
     }
 
-    private static let bufferFrameCount: AVAudioFrameCount = 4_096
+    private static func collectResults(
+        from transcriber: DictationTranscriber
+    ) -> Task<SttFileTranscription, Error> {
+        Task {
+            var transcription = AttributedString()
+            for try await result in transcriber.results where result.isFinal {
+                transcription += result.text
+            }
+
+            return SttFileTranscription(
+                text: String(transcription.characters),
+                words: SttAppleNewWords.words(from: transcription))
+        }
+    }
 }
 
 /// A single-consumer, pull-based file sequence. SpeechAnalyzer requests the
