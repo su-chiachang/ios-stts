@@ -34,7 +34,7 @@ struct SettingsView: View {
                     }
                 }
 
-                Text("New uses DictationTranscriber. Old uses SFSpeechURLRecognitionRequest for File and SFSpeechAudioBufferRecognitionRequest for Buffer.")
+                Text("New uses SpeechTranscriber for File and DictationTranscriber for Live. Old uses SFSpeechURLRecognitionRequest for File and SFSpeechAudioBufferRecognitionRequest for Live.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
