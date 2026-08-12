@@ -80,7 +80,7 @@ actor SttAppleOld {
             let request = SFSpeechURLRecognitionRequest(url: url)
             request.shouldReportPartialResults = false
             return try await recognize(request)
-        case .buffer:
+        case .live:
             let request = SFSpeechAudioBufferRecognitionRequest()
             request.shouldReportPartialResults = false
             return try await recognize(request) {

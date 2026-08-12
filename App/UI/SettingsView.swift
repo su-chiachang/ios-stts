@@ -24,13 +24,13 @@ struct SettingsView: View {
 
                 Picker("Method", selection: sttAppleVersionBinding) {
                     ForEach(SttAppleVersion.allCases) { version in
-                        Text(version.title).tag(version.rawValue)
+                        Text(version.rawValue)
                     }
                 }
 
                 Picker("STT type", selection: sttInputTypeBinding) {
                     ForEach(SttInputType.allCases) { inputType in
-                        Text(inputType.title).tag(inputType.rawValue)
+                        Text(inputType.rawValue)
                     }
                 }
 

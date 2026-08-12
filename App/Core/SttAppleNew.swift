@@ -23,13 +23,6 @@ enum SttAppleVersion: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    var title: String {
-        switch self {
-        case .new: "New"
-        case .old: "Old"
-        }
-    }
-
     static func resolve(rawValue: String?) -> Self {
         guard let rawValue, let value = Self(rawValue: rawValue) else {
             return defaultValue
@@ -40,19 +33,12 @@ enum SttAppleVersion: String, CaseIterable, Identifiable {
 
 enum SttInputType: String, CaseIterable, Identifiable {
     case file
-    case buffer
+    case live
 
     static let key = "sttInputType"
     static let defaultValue: Self = .file
 
     var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .file: "File"
-        case .buffer: "Buffer"
-        }
-    }
 
     static func resolve(rawValue: String?) -> Self {
         guard let rawValue, let value = Self(rawValue: rawValue) else {
@@ -298,7 +284,7 @@ actor SttAppleNew {
         switch inputType {
         case .file:
             return try await transcribeAudioFile(audioFile)
-        case .buffer:
+        case .live:
             return try await transcribeAudioBuffers(audioFile)
         }
     }

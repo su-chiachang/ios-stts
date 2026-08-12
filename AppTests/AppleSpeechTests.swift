@@ -49,7 +49,8 @@ final class AppleSpeechTests: XCTestCase {
     func testSttInputTypeDefaultsToFileAndRejectsUnknownValues() {
         XCTAssertEqual(SttInputType.resolve(rawValue: nil), .file)
         XCTAssertEqual(SttInputType.resolve(rawValue: "unknown"), .file)
-        XCTAssertEqual(SttInputType.resolve(rawValue: "buffer"), .buffer)
+        XCTAssertEqual(SttInputType.resolve(rawValue: "file"), .file)
+        XCTAssertEqual(SttInputType.resolve(rawValue: "live"), .live)
     }
 
     func testAnalyzerInputFileReaderStreamsAndDrainsConvertedAudio() async throws {
