@@ -315,7 +315,8 @@ actor SttAppleNew {
 
     private func transcribeAudioFile(_ audioFile: AVAudioFile) async throws -> SttFileTranscription {
         let transcriber = SpeechTranscriber(locale: locale, preset: .timeIndexedTranscriptionWithAlternatives)
-        let analyzer = SpeechAnalyzer(modules: [transcriber])
+        let detector = SpeechDetector()
+        let analyzer = SpeechAnalyzer(modules: [detector, transcriber])
         let transcriptionTask = Self.collectResults(from: transcriber)
 
         do {
@@ -339,7 +340,8 @@ actor SttAppleNew {
     private static let bufferFrameCount: AVAudioFrameCount = 4_096
     private func transcribeAudioBuffers(_ audioFile: AVAudioFile) async throws -> SttFileTranscription {
         let transcriber = DictationTranscriber(locale: locale, preset: .timeIndexedLongDictation)
-        let analyzer = SpeechAnalyzer(modules: [transcriber])
+        let detector = SpeechDetector()
+        let analyzer = SpeechAnalyzer(modules: [detector, transcriber])
         let transcriptionTask = Self.collectResults(from: transcriber)
         let reader = AnalyzerInputFileReader(
             audioFile: audioFile,
