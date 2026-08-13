@@ -3,6 +3,25 @@ import CoreMedia
 import Foundation
 import Speech
 
+/// File mode uses SFSpeechURLRecognitionRequest; live mode uses
+/// SFSpeechAudioBufferRecognitionRequest.
+enum SttAppleOldType: String, CaseIterable, Identifiable, CodingKey {
+    case file = "file: SFSpeechURLRecognitionRequest"
+    case live = "live: SFSpeechAudioBufferRecognitionRequest"
+
+    static let key = "sttAppleOldType"
+    static let defaultValue: Self = .file
+
+    var id: String { rawValue }
+
+    static func resolve(rawValue: String?) -> Self {
+        guard let rawValue, let value = Self(rawValue: rawValue) else {
+            return defaultValue
+        }
+        return value
+    }
+}
+
 /// Converts the segment timings exposed by the legacy Speech framework into
 /// the same word result shape used by the SpeechAnalyzer adapter.
 private enum SttAppleOldWords {
@@ -72,7 +91,7 @@ actor SttAppleOld {
 
     func transcribeFile(
         _ url: URL,
-        inputType: SttInputType = .file
+        inputType: SttAppleOldType = .file
     ) async throws -> SttFileTranscription {
         try Task.checkCancellation()
         let supportsOnDeviceRecognition = recognizer.supportsOnDeviceRecognition

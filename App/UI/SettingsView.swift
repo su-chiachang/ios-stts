@@ -8,31 +8,58 @@ struct SettingsView: View {
     private var localeIdentifier = SttLocalePreferences.defaultIdentifier
     @AppStorage(SttAppleVersion.key)
     private var sttAppleVersionRawValue = SttAppleVersion.defaultValue.rawValue
-    @AppStorage(SttInputType.key)
-    private var sttInputTypeRawValue = SttInputType.defaultValue.rawValue
+    @AppStorage(SttAppleNewType.key)
+    private var sttAppleNewTypeRawValue = SttAppleNewType.defaultValue.rawValue
+    @AppStorage(SttAppleOldType.key)
+    private var sttAppleOldTypeRawValue = SttAppleOldType.defaultValue.rawValue
+    @AppStorage(SttAppleNewFilePreset.key)
+    private var sttFilePresetRawValue = SttAppleNewFilePreset.defaultValue.rawValue
+    @AppStorage(SttAppleNewLivePreset.key)
+    private var sttLivePresetRawValue = SttAppleNewLivePreset.defaultValue.rawValue
     @State private var supportedLocaleTags: [String] = []
 
     var body: some View {
         Form {
             Section("Speech recognition") {
-                Picker("Locale", selection: localeBinding) {
-                    ForEach(supportedLocaleTags, id: \.self) { tag in
-                        Text(localeTitle(for: tag)).tag(tag)
-                    }
-                }
-                .disabled(supportedLocaleTags.isEmpty)
-
                 Picker("Version", selection: sttAppleVersionBinding) {
                     ForEach(SttAppleVersion.allCases) { version in
                         Text(version.rawValue)
                     }
                 }
 
-                Picker("Type", selection: sttInputTypeBinding) {
-                    ForEach(SttInputType.allCases) { inputType in
-                        Text(inputType.rawValue)
+                Picker("Locale", selection: sttLocaleBinding) {
+                    ForEach(supportedLocaleTags, id: \.self) { tag in
+                        Text(localeTitle(for: tag)).tag(tag)
                     }
                 }
+                .disabled(supportedLocaleTags.isEmpty)
+
+                Picker("Type", selection: sttTypeBinding) {
+                    switch SttAppleVersion.resolve(rawValue: sttAppleVersionRawValue) {
+                    case .new:
+                        ForEach(SttAppleNewType.allCases) { type in
+                            Text(type.rawValue).tag(type.rawValue)
+                        }
+                    case .old:
+                        ForEach(SttAppleOldType.allCases) { type in
+                            Text(type.rawValue).tag(type.rawValue)
+                        }
+                    }
+                }
+
+                Picker("Preset", selection: sttPresetBinding) {
+                    switch SttAppleNewType.resolve(rawValue: sttAppleNewTypeRawValue) {
+                    case .file:
+                        ForEach(SttAppleNewFilePreset.allCases) { preset in
+                            Text(preset.rawValue).tag(preset.rawValue)
+                        }
+                    case .live:
+                        ForEach(SttAppleNewLivePreset.allCases) { preset in
+                            Text(preset.rawValue).tag(preset.rawValue)
+                        }
+                    }
+                }
+                .disabled(SttAppleVersion.resolve(rawValue: sttAppleVersionRawValue) != .new)
 
                 Text("New uses SpeechTranscriber for File and DictationTranscriber for Live. Old uses SFSpeechURLRecognitionRequest for File and SFSpeechAudioBufferRecognitionRequest for Live.")
                     .font(.caption)
@@ -65,7 +92,7 @@ struct SettingsView: View {
         SttLocalePreferences.save(fallback)
     }
 
-    private var localeBinding: Binding<String> {
+    private var sttLocaleBinding: Binding<String> {
         Binding(
             get: { SttAppleLocaleResolver.tag(for: localeIdentifier) },
             set: { newValue in
@@ -84,12 +111,38 @@ struct SettingsView: View {
             })
     }
 
-    private var sttInputTypeBinding: Binding<String> {
-        Binding(
-            get: { SttInputType.resolve(rawValue: sttInputTypeRawValue).rawValue },
-            set: { newValue in
-                sttInputTypeRawValue = SttInputType.resolve(rawValue: newValue).rawValue
-            })
+    private var sttTypeBinding: Binding<String> {
+        switch SttAppleVersion.resolve(rawValue: sttAppleVersionRawValue) {
+        case .new:
+            Binding(
+                get: { SttAppleNewType.resolve(rawValue: sttAppleNewTypeRawValue).rawValue },
+                set: { newValue in
+                    sttAppleNewTypeRawValue = SttAppleNewType.resolve(rawValue: newValue).rawValue
+                })
+        case .old:
+            Binding(
+                get: { SttAppleOldType.resolve(rawValue: sttAppleOldTypeRawValue).rawValue },
+                set: { newValue in
+                    sttAppleOldTypeRawValue = SttAppleOldType.resolve(rawValue: newValue).rawValue
+                })
+        }
+    }
+
+    private var sttPresetBinding: Binding<String> {
+        switch SttAppleNewType.resolve(rawValue: sttAppleNewTypeRawValue) {
+        case .file:
+            Binding(
+                get: { SttAppleNewFilePreset.resolve(rawValue: sttFilePresetRawValue).rawValue },
+                set: { newValue in
+                    sttFilePresetRawValue = SttAppleNewFilePreset.resolve(rawValue: newValue).rawValue
+                })
+        case .live:
+            Binding(
+                get: { SttAppleNewLivePreset.resolve(rawValue: sttLivePresetRawValue).rawValue },
+                set: { newValue in
+                    sttLivePresetRawValue = SttAppleNewLivePreset.resolve(rawValue: newValue).rawValue
+                })
+        }
     }
 
     private func localeTitle(for tag: String) -> String {

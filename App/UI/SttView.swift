@@ -18,8 +18,14 @@ struct SttView: View {
     private var localeIdentifier = SttLocalePreferences.defaultIdentifier
     @AppStorage(SttAppleVersion.key)
     private var sttAppleVersionRawValue = SttAppleVersion.defaultValue.rawValue
-    @AppStorage(SttInputType.key)
-    private var sttInputTypeRawValue = SttInputType.defaultValue.rawValue
+    @AppStorage(SttAppleNewType.key)
+    private var sttAppleNewTypeRawValue = SttAppleNewType.defaultValue.rawValue
+    @AppStorage(SttAppleOldType.key)
+    private var sttAppleOldTypeRawValue = SttAppleOldType.defaultValue.rawValue
+    @AppStorage(SttAppleNewFilePreset.key)
+    private var sttFilePresetRawValue = SttAppleNewFilePreset.defaultValue.rawValue
+    @AppStorage(SttAppleNewLivePreset.key)
+    private var sttLivePresetRawValue = SttAppleNewLivePreset.defaultValue.rawValue
     @State private var stt: SttAppleAdapter?
     @State private var elapsedTime: Double?
     @State private var durationTime: Double?
@@ -38,7 +44,7 @@ struct SttView: View {
         #if os(macOS)
         .frame(minWidth: 420, minHeight: 500)
         #endif
-        .task(id: "\(localeIdentifier)|\(sttAppleVersionRawValue)|\(sttInputTypeRawValue)") { await load() }
+        .task(id: "\(localeIdentifier)|\(sttAppleVersionRawValue)") { await load() }
         .onDisappear { cancel() }
     }
 
@@ -149,7 +155,10 @@ struct SttView: View {
         activeRequestID = requestID
         let accessingScope = url.startAccessingSecurityScopedResource()
         let fileDuration = audioDuration(for: url)
-        let inputType = SttInputType.resolve(rawValue: sttInputTypeRawValue)
+        let newType = SttAppleNewType.resolve(rawValue: sttAppleNewTypeRawValue)
+        let oldType = SttAppleOldType.resolve(rawValue: sttAppleOldTypeRawValue)
+        let filePreset = SttAppleNewFilePreset.resolve(rawValue: sttFilePresetRawValue)
+        let livePreset = SttAppleNewLivePreset.resolve(rawValue: sttLivePresetRawValue)
         durationTime = fileDuration
         elapsedTime = 0
 
@@ -162,7 +171,10 @@ struct SttView: View {
                 let startedAt = Date()
                 let result = try await stt.transcribeFile(
                     url,
-                    inputType: inputType)
+                    newType: newType,
+                    oldType: oldType,
+                    filePreset: filePreset,
+                    livePreset: livePreset)
                 try Task.checkCancellation()
                 guard activeRequestID == requestID else { return }
                 elapsedTime = Date().timeIntervalSince(startedAt)

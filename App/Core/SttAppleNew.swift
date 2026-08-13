@@ -31,14 +31,79 @@ enum SttAppleVersion: String, CaseIterable, Identifiable {
     }
 }
 
-enum SttInputType: String, CaseIterable, Identifiable {
-    case file
-    case live
+/// File mode uses SpeechTranscriber; live mode uses DictationTranscriber.
+enum SttAppleNewType: String, CaseIterable, Identifiable, CodingKey {
+    case file = "file: SpeechTranscriber"
+    case live = "live: DictationTranscriber"
 
-    static let key = "sttInputType"
+    static let key = "sttAppleNewType"
     static let defaultValue: Self = .file
 
     var id: String { rawValue }
+
+    static func resolve(rawValue: String?) -> Self {
+        guard let rawValue, let value = Self(rawValue: rawValue) else {
+            return defaultValue
+        }
+        return value
+    }
+}
+
+@available(macOS 26.0, iOS 26.0, *)
+enum SttAppleNewFilePreset: String, CaseIterable, Identifiable {
+    case transcription
+    case transcriptionWithAlternatives
+    case timeIndexedTranscriptionWithAlternatives
+    case progressiveTranscription
+    case timeIndexedProgressiveTranscription
+
+    static let key = "sttAppleNewFilePreset"
+    static let defaultValue: Self = .timeIndexedTranscriptionWithAlternatives
+
+    var id: String { rawValue }
+
+    var preset: SpeechTranscriber.Preset {
+        switch self {
+        case .transcription: .transcription
+        case .transcriptionWithAlternatives: .transcriptionWithAlternatives
+        case .timeIndexedTranscriptionWithAlternatives: .timeIndexedTranscriptionWithAlternatives
+        case .progressiveTranscription: .progressiveTranscription
+        case .timeIndexedProgressiveTranscription: .timeIndexedProgressiveTranscription
+        }
+    }
+
+    static func resolve(rawValue: String?) -> Self {
+        guard let rawValue, let value = Self(rawValue: rawValue) else {
+            return defaultValue
+        }
+        return value
+    }
+}
+
+@available(macOS 26.0, iOS 26.0, *)
+enum SttAppleNewLivePreset: String, CaseIterable, Identifiable {
+    case phrase
+    case shortDictation
+    case progressiveShortDictation
+    case longDictation
+    case progressiveLongDictation
+    case timeIndexedLongDictation
+
+    static let key = "sttAppleNewLivePreset"
+    static let defaultValue: Self = .timeIndexedLongDictation
+
+    var id: String { rawValue }
+
+    var preset: DictationTranscriber.Preset {
+        switch self {
+        case .phrase: .phrase
+        case .shortDictation: .shortDictation
+        case .progressiveShortDictation: .progressiveShortDictation
+        case .longDictation: .longDictation
+        case .progressiveLongDictation: .progressiveLongDictation
+        case .timeIndexedLongDictation: .timeIndexedLongDictation
+        }
+    }
 
     static func resolve(rawValue: String?) -> Self {
         guard let rawValue, let value = Self(rawValue: rawValue) else {
@@ -175,19 +240,28 @@ enum SttAppleAdapter {
 
     func transcribeFile(
         _ url: URL,
-        inputType: SttInputType = .file
+        newType: SttAppleNewType = .file,
+        oldType: SttAppleOldType = .file,
+        filePreset: SttAppleNewFilePreset = .defaultValue,
+        livePreset: SttAppleNewLivePreset = .defaultValue
     ) async throws -> SttFileTranscription {
         let ts = CFAbsoluteTimeGetCurrent()
+        let typeDescription: String
+        switch self {
+        case .new: typeDescription = newType.rawValue
+        case .old: typeDescription = oldType.rawValue
+        }
         defer {
             let elapsed = (CFAbsoluteTimeGetCurrent() - ts).formatted()
-            print(">>> T(\(self)-\(inputType)) = \(elapsed)")
+            print(">>> T(\(self)-\(typeDescription)) = \(elapsed)")
         }
 
         switch self {
         case .new(let stt):
-            return try await stt.transcribeFile(url, inputType: inputType)
+            return try await stt.transcribeFile(
+                url, inputType: newType, filePreset: filePreset, livePreset: livePreset)
         case .old(let stt):
-            return try await stt.transcribeFile(url, inputType: inputType)
+            return try await stt.transcribeFile(url, inputType: oldType)
         }
     }
 }
@@ -212,7 +286,7 @@ actor SttAppleNew {
 
         // Both module kinds are prepared here because the input mode is chosen
         // per transcription call, not when the actor is constructed.
-        let transcribers = SttInputType.allCases.map { makeTranscriber(locale: locale, inputType: $0) }
+        let transcribers = SttAppleNewType.allCases.map { makeTranscriber(locale: locale, inputType: $0) }
         let isInstalled = await isLocaleInstalled(locale)
 
         if !isInstalled {
@@ -273,7 +347,7 @@ actor SttAppleNew {
         return SttAppleNew(locale: locale, analyzerFormat: analyzerFormat)
     }
 
-    private static func makeTranscriber(locale: Locale, inputType: SttInputType) -> any SpeechModule {
+    private static func makeTranscriber(locale: Locale, inputType: SttAppleNewType) -> any SpeechModule {
         switch inputType {
         case .file:
             SpeechTranscriber(locale: locale, preset: .timeIndexedTranscriptionWithAlternatives)
@@ -289,19 +363,24 @@ actor SttAppleNew {
 
     func transcribeFile(
         _ url: URL,
-        inputType: SttInputType = .file
+        inputType: SttAppleNewType = .file,
+        filePreset: SttAppleNewFilePreset = .defaultValue,
+        livePreset: SttAppleNewLivePreset = .defaultValue
     ) async throws -> SttFileTranscription {
         let audioFile = try AVAudioFile(forReading: url)
         switch inputType {
         case .file:
-            return try await transcribeAudioFile(audioFile)
+            return try await transcribeAudioFile(audioFile, preset: filePreset)
         case .live:
-            return try await transcribeAudioBuffers(audioFile)
+            return try await transcribeAudioBuffers(audioFile, preset: livePreset)
         }
     }
 
-    private func transcribeAudioFile(_ audioFile: AVAudioFile) async throws -> SttFileTranscription {
-        let transcriber = SpeechTranscriber(locale: locale, preset: .timeIndexedTranscriptionWithAlternatives)
+    private func transcribeAudioFile(
+        _ audioFile: AVAudioFile,
+        preset: SttAppleNewFilePreset
+    ) async throws -> SttFileTranscription {
+        let transcriber = SpeechTranscriber(locale: locale, preset: preset.preset)
         let analyzer = SpeechAnalyzer(modules: [transcriber])
         let transcriptionTask = Self.collectResults(from: transcriber)
 
@@ -324,8 +403,11 @@ actor SttAppleNew {
     }
 
     private static let bufferFrameCount: AVAudioFrameCount = 4_096
-    private func transcribeAudioBuffers(_ audioFile: AVAudioFile) async throws -> SttFileTranscription {
-        let transcriber = DictationTranscriber(locale: locale, preset: .timeIndexedLongDictation)
+    private func transcribeAudioBuffers(
+        _ audioFile: AVAudioFile,
+        preset: SttAppleNewLivePreset
+    ) async throws -> SttFileTranscription {
+        let transcriber = DictationTranscriber(locale: locale, preset: preset.preset)
         let analyzer = SpeechAnalyzer(modules: [transcriber])
         let transcriptionTask = Self.collectResults(from: transcriber)
         let reader = AnalyzerInputFileReader(

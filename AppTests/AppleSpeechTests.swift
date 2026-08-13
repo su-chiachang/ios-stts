@@ -46,11 +46,18 @@ final class AppleSpeechTests: XCTestCase {
         XCTAssertEqual(SttAppleVersion.resolve(rawValue: "old"), .old)
     }
 
-    func testSttInputTypeDefaultsToFileAndRejectsUnknownValues() {
-        XCTAssertEqual(SttInputType.resolve(rawValue: nil), .file)
-        XCTAssertEqual(SttInputType.resolve(rawValue: "unknown"), .file)
-        XCTAssertEqual(SttInputType.resolve(rawValue: "file"), .file)
-        XCTAssertEqual(SttInputType.resolve(rawValue: "live"), .live)
+    func testSttAppleNewTypeDefaultsToFileAndRejectsUnknownValues() {
+        XCTAssertEqual(SttAppleNewType.resolve(rawValue: nil), .file)
+        XCTAssertEqual(SttAppleNewType.resolve(rawValue: "unknown"), .file)
+        XCTAssertEqual(SttAppleNewType.resolve(rawValue: "file"), .file)
+        XCTAssertEqual(SttAppleNewType.resolve(rawValue: "live"), .live)
+    }
+
+    func testSttAppleOldTypeDefaultsToFileAndRejectsUnknownValues() {
+        XCTAssertEqual(SttAppleOldType.resolve(rawValue: nil), .file)
+        XCTAssertEqual(SttAppleOldType.resolve(rawValue: "unknown"), .file)
+        XCTAssertEqual(SttAppleOldType.resolve(rawValue: "file"), .file)
+        XCTAssertEqual(SttAppleOldType.resolve(rawValue: "live"), .live)
     }
 
     func testAnalyzerInputFileReaderStreamsAndDrainsConvertedAudio() async throws {
