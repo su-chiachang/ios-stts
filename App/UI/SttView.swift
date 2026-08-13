@@ -229,11 +229,11 @@ struct SttView: View {
     private func formatDuration(_ value: Double) -> String {
         guard value.isFinite else { return "--:--:--.--" }
         let centiseconds = max(0, Int((value * 100).rounded()))
-        let hours = centiseconds / 360_000
-        let minutes = (centiseconds / 6_000) % 60
-        let seconds = (centiseconds / 100) % 60
-        let remainder = centiseconds % 100
-        return String(format: "%02d:%02d:%02d.%02d", hours, minutes, seconds, remainder)
+        let hh = centiseconds / 360_000
+        let mm = (centiseconds / 6_000) % 60
+        let ss = (centiseconds / 100) % 60
+        let ff = centiseconds % 100
+        return String(format: "%02d:%02d:%02d.%02d", hh, mm, ss, ff)
     }
 
     private func message(_ text: String, isError: Bool) -> some View {
