@@ -51,7 +51,7 @@ actor SttAppleOld {
             throw SttAppleError.recognizerUnavailable
         }
 
-        recognizer.defaultTaskHint = .search
+        recognizer.defaultTaskHint = .dictation
         return SttAppleOld(recognizer: recognizer)
     }
 
@@ -72,23 +72,35 @@ actor SttAppleOld {
 
     func transcribeFile(
         _ url: URL,
-        inputType: SttInputType = .file
+        inputType: SttInputType = .file,
+        onUpdate: SttTranscriptionUpdate? = nil
     ) async throws -> SttFileTranscription {
         try Task.checkCancellation()
-        //let supportsOnDeviceRecognition = recognizer.supportsOnDeviceRecognition
+        let locale = recognizer.locale.identifier(.bcp47)
+        let supportsOnDeviceRecognition = recognizer.supportsOnDeviceRecognition
+        print("""
+        [SttAppleOld] locale=\(locale) inputType=\(inputType.rawValue) \
+        isAvailable=\(recognizer.isAvailable) \
+        supportsOnDeviceRecognition=\(supportsOnDeviceRecognition)
+        """)
+
         switch inputType {
         case .file:
             let request = SFSpeechURLRecognitionRequest(url: url)
-            request.requiresOnDeviceRecognition = false
+            request.requiresOnDeviceRecognition = supportsOnDeviceRecognition
             request.shouldReportPartialResults = false
             request.addsPunctuation = true
-            return try await recognize(request)
+            return try await recognize(request, onUpdate: onUpdate)
         case .live:
+            guard supportsOnDeviceRecognition else {
+                throw SttAppleError.onDeviceRecognitionUnavailable(locale)
+            }
+
             let request = SFSpeechAudioBufferRecognitionRequest()
-            request.requiresOnDeviceRecognition = false
+            request.requiresOnDeviceRecognition = supportsOnDeviceRecognition
             request.shouldReportPartialResults = false
             request.addsPunctuation = true
-            return try await recognize(request) {
+            return try await recognize(request, onUpdate: onUpdate) {
                 try await self.appendAudioSampleBuffers(from: url, to: request)
             }
         }
@@ -108,6 +120,7 @@ actor SttAppleOld {
 
     private func recognize(
         _ request: SFSpeechRecognitionRequest,
+        onUpdate: SttTranscriptionUpdate?,
         feedAudio: (() async throws -> Void)? = nil
     ) async throws -> SttFileTranscription {
         let state = LegacyRecognitionTaskState()
@@ -117,10 +130,35 @@ actor SttAppleOld {
                 state.setContinuation(continuation)
 
                 let task = recognizer.recognitionTask(with: request) { result, error in
+                    if let result {
+                        let transcription = result.bestTranscription
+                        print("""
+                        [SttAppleOld] result final=\(result.isFinal) \
+                        segments=\(transcription.segments.count) \
+                        text=\(transcription.formattedString)
+                        """)
+
+                        let paragraph = SttAppleOldWords.words(from: result)
+                        if !paragraph.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                           state.append(paragraph) {
+                            if let onUpdate {
+                                Task { @MainActor in
+                                    onUpdate(paragraph)
+                                }
+                            }
+                        }
+                    }
+
                     if let error {
+                        let nsError = error as NSError
+                        print("""
+                        [SttAppleOld] error domain=\(nsError.domain) code=\(nsError.code) \
+                        description=\(nsError.localizedDescription) \
+                        userInfo=\(nsError.userInfo)
+                        """)
                         state.complete(with: .failure(error))
                     } else if let result, result.isFinal {
-                        state.complete(with: .success(SttAppleOldWords.words(from: result)))
+                        state.completeWithAccumulatedTranscription()
                     }
                 }
 
@@ -162,15 +200,10 @@ enum LegacyAudioSampleBufferReader {
         }
 
         let reader = try AVAssetReader(asset: asset)
-        let outputSettings: [String: Any] = [
-            AVFormatIDKey: kAudioFormatLinearPCM,
-            AVSampleRateKey: nativeFormat.sampleRate,
-            AVNumberOfChannelsKey: Int(nativeFormat.channelCount),
-            AVLinearPCMBitDepthKey: 32,
-            AVLinearPCMIsFloatKey: true,
-            AVLinearPCMIsBigEndianKey: false,
-            AVLinearPCMIsNonInterleaved: false,
-        ]
+        // `appendAudioSampleBuffer` requires native, uncompressed PCM. Do not
+        // force Float32 here: the request's native format is Int16 on current
+        // runtimes, and the bit depth / sample representation must match it.
+        let outputSettings = nativeFormat.settings
         let output = AVAssetReaderTrackOutput(track: track, outputSettings: outputSettings)
         output.alwaysCopiesSampleData = false
         guard reader.canAdd(output) else {
@@ -226,7 +259,16 @@ private final class LegacyRecognitionTaskState: @unchecked Sendable {
     private var continuation: CheckedContinuation<SttFileTranscription, Error>?
     private var task: SFSpeechRecognitionTask?
     private var feedTask: Task<Void, Never>?
+    private var paragraphs: [SttFileTranscription] = []
     private var finished = false
+
+    func append(_ paragraph: SttFileTranscription) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        guard !finished else { return false }
+        paragraphs.append(paragraph)
+        return true
+    }
 
     func setContinuation(_ continuation: CheckedContinuation<SttFileTranscription, Error>) {
         lock.lock()
@@ -283,6 +325,28 @@ private final class LegacyRecognitionTaskState: @unchecked Sendable {
 
         feedTask?.cancel()
         continuation?.resume(with: result)
+    }
+
+    func completeWithAccumulatedTranscription() {
+        lock.lock()
+        guard !finished else {
+            lock.unlock()
+            return
+        }
+        finished = true
+        let transcription = SttFileTranscription(
+            text: paragraphs.map(\.text).joined(separator: "\n\n"),
+            words: paragraphs.flatMap(\.words))
+        paragraphs = []
+        let continuation = self.continuation
+        self.continuation = nil
+        let feedTask = self.feedTask
+        self.feedTask = nil
+        task = nil
+        lock.unlock()
+
+        feedTask?.cancel()
+        continuation?.resume(returning: transcription)
     }
 
     func cancel() {

@@ -14,6 +14,8 @@ struct SttFileTranscription: Equatable, Sendable {
     let words: [SttWordTimestamp]
 }
 
+typealias SttTranscriptionUpdate = @MainActor @Sendable (SttFileTranscription) -> Void
+
 enum SttAppleVersion: String, CaseIterable, Identifiable {
     case new
     case old
@@ -139,6 +141,7 @@ enum SttAppleError: LocalizedError {
     case noCompatibleAudioFormat
     case authorizationDenied
     case recognizerUnavailable
+    case onDeviceRecognitionUnavailable(String)
 
     var errorDescription: String? {
         switch self {
@@ -152,6 +155,8 @@ enum SttAppleError: LocalizedError {
             "Apple Speech recognition permission was not granted."
         case .recognizerUnavailable:
             "Apple Speech recognition is currently unavailable."
+        case .onDeviceRecognitionUnavailable(let locale):
+            "Apple on-device speech recognition is unavailable for locale \(locale) on this device."
         }
     }
 }
@@ -175,7 +180,8 @@ enum SttAppleAdapter {
 
     func transcribeFile(
         _ url: URL,
-        inputType: SttInputType = .file
+        inputType: SttInputType = .file,
+        onUpdate: SttTranscriptionUpdate? = nil
     ) async throws -> SttFileTranscription {
         let ts = CFAbsoluteTimeGetCurrent()
         defer {
@@ -187,7 +193,10 @@ enum SttAppleAdapter {
         case .new(let stt):
             return try await stt.transcribeFile(url, inputType: inputType)
         case .old(let stt):
-            return try await stt.transcribeFile(url, inputType: inputType)
+            return try await stt.transcribeFile(
+                url,
+                inputType: inputType,
+                onUpdate: onUpdate)
         }
     }
 }
@@ -202,6 +211,10 @@ actor SttAppleNew {
     /// Asset installation and audio-format selection happen before the engine
     /// is returned, so file transcription starts with a ready model.
     static func make(localeIdentifier: String) async throws -> SttAppleNew {
+        guard SpeechTranscriber.isAvailable else {
+            throw SttAppleError.recognizerUnavailable
+        }
+
         let requested = SttAppleLocaleResolver.requestedLocale(for: localeIdentifier)
         guard
             let locale = await DictationTranscriber.supportedLocale(equivalentTo: requested),

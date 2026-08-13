@@ -99,10 +99,17 @@ final class AppleSpeechTests: XCTestCase {
             XCTAssertEqual(asbd.mFormatID, kAudioFormatLinearPCM)
             XCTAssertEqual(asbd.mSampleRate, request.nativeAudioFormat.sampleRate, accuracy: 0.001)
             XCTAssertEqual(asbd.mChannelsPerFrame, request.nativeAudioFormat.channelCount)
-            XCTAssertEqual(asbd.mBitsPerChannel, 32)
-            XCTAssertNotEqual(asbd.mFormatFlags & kAudioFormatFlagIsFloat, 0)
-            XCTAssertEqual(asbd.mFormatFlags & kAudioFormatFlagIsBigEndian, 0)
-            XCTAssertEqual(asbd.mFormatFlags & kAudioFormatFlagIsNonInterleaved, 0)
+            let nativeASBD = request.nativeAudioFormat.streamDescription.pointee
+            XCTAssertEqual(asbd.mBitsPerChannel, nativeASBD.mBitsPerChannel)
+            XCTAssertEqual(
+                asbd.mFormatFlags & kAudioFormatFlagIsFloat,
+                nativeASBD.mFormatFlags & kAudioFormatFlagIsFloat)
+            XCTAssertEqual(
+                asbd.mFormatFlags & kAudioFormatFlagIsBigEndian,
+                nativeASBD.mFormatFlags & kAudioFormatFlagIsBigEndian)
+            XCTAssertEqual(
+                asbd.mFormatFlags & kAudioFormatFlagIsNonInterleaved,
+                nativeASBD.mFormatFlags & kAudioFormatFlagIsNonInterleaved)
             sampleBufferCount += 1
             sampleCount += CMSampleBufferGetNumSamples(sampleBuffer)
         }

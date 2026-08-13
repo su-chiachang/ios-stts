@@ -79,11 +79,23 @@ struct SttView: View {
     private var content: some View {
         switch state {
         case .transcribing:
-            VStack(spacing: 12) {
-                ProgressView()
-                Text("Transcribing…").foregroundStyle(.secondary)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                        Text("Transcribing…").foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    if !transcript.isEmpty {
+                        Text(transcript)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .textSelection(.enabled)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding()
         case .loading:
             VStack(spacing: 12) {
                 ProgressView()
@@ -96,17 +108,19 @@ struct SttView: View {
             message("Choose an audio file to transcribe.", isError: false)
         case .idle:
             ScrollView {
-                if timestampedWords.isEmpty {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(transcript)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .textSelection(.enabled)
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(transcript)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .textSelection(.enabled)
+
+                    if timestampedWords.isEmpty {
                         Text("Word timestamps are not available for this result.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                    } else {
+                        Divider()
+                        wordList
                     }
-                } else {
-                    wordList
                 }
             }
             .padding()
@@ -162,7 +176,12 @@ struct SttView: View {
                 let startedAt = Date()
                 let result = try await stt.transcribeFile(
                     url,
-                    inputType: inputType)
+                    inputType: inputType
+                ) { paragraph in
+                    guard activeRequestID == requestID else { return }
+                    appendParagraph(paragraph)
+                    elapsedTime = Date().timeIntervalSince(startedAt)
+                }
                 try Task.checkCancellation()
                 guard activeRequestID == requestID else { return }
                 elapsedTime = Date().timeIntervalSince(startedAt)
@@ -183,6 +202,13 @@ struct SttView: View {
                 state = .error(error.localizedDescription)
             }
         }
+    }
+
+    private func appendParagraph(_ paragraph: SttFileTranscription) {
+        let text = paragraph.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        transcript += transcript.isEmpty ? text : "\n\n\(text)"
+        timestampedWords.append(contentsOf: paragraph.words)
     }
 
     private func cancel() {
