@@ -162,9 +162,8 @@ struct SttView: View {
         let requestID = UUID()
         activeRequestID = requestID
         let accessingScope = url.startAccessingSecurityScopedResource()
-        let fileDuration = audioDuration(for: url)
         let inputType = SttInputType.resolve(rawValue: sttInputTypeRawValue)
-        durationTime = fileDuration
+        durationTime = nil
         elapsedTime = 0
 
         transcriptionTask = Task { @MainActor [stt] in
@@ -173,6 +172,11 @@ struct SttView: View {
             }
 
             do {
+                let fileDuration = await audioDuration(for: url)
+                try Task.checkCancellation()
+                guard activeRequestID == requestID else { return }
+                durationTime = fileDuration
+
                 let startedAt = Date()
                 let result = try await stt.transcribeFile(
                     url,
@@ -245,11 +249,18 @@ struct SttView: View {
         String(format: "%.2fs", value)
     }
 
-    private func audioDuration(for url: URL) -> Double? {
-        guard let audioFile = try? AVAudioFile(forReading: url) else { return nil }
-        let sampleRate = audioFile.processingFormat.sampleRate
-        guard sampleRate > 0 else { return nil }
-        return Double(audioFile.length) / sampleRate
+    private func audioDuration(for url: URL) async -> Double? {
+        do {
+            let asset = AVURLAsset(url: url)
+            guard let audioTrack = try await asset.loadTracks(withMediaType: .audio).first else {
+                return nil
+            }
+            let timeRange = try await audioTrack.load(.timeRange)
+            let duration = timeRange.duration.seconds
+            return duration.isFinite && duration >= 0 ? duration : nil
+        } catch {
+            return nil
+        }
     }
 
     private func formatDuration(_ value: Double) -> String {
