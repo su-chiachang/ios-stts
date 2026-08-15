@@ -27,6 +27,7 @@ struct SttView: View {
     @State private var transcript = ""
     @State private var timestampedWords: [SttWordTimestamp] = []
     @State private var transcriptionTask: Task<Void, Never>?
+    @State private var elapsedTimeTask: Task<Void, Never>?
     @State private var activeRequestID: UUID?
 
     var body: some View {
@@ -166,6 +167,19 @@ struct SttView: View {
         let inputType = SttInputType.resolve(rawValue: sttInputTypeRawValue)
         durationTime = fileDuration
         elapsedTime = 0
+        let startedAt = Date()
+        elapsedTimeTask = Task { @MainActor in
+            while !Task.isCancelled {
+                guard activeRequestID == requestID else { return }
+                elapsedTime = Date().timeIntervalSince(startedAt)
+
+                do {
+                    try await Task.sleep(nanoseconds: 100_000_000)
+                } catch {
+                    return
+                }
+            }
+        }
 
         transcriptionTask = Task { @MainActor [stt] in
             defer {
@@ -173,7 +187,6 @@ struct SttView: View {
             }
 
             do {
-                let startedAt = Date()
                 let result = try await stt.transcribeFile(
                     url,
                     inputType: inputType
@@ -184,6 +197,7 @@ struct SttView: View {
                 }
                 try Task.checkCancellation()
                 guard activeRequestID == requestID else { return }
+                stopElapsedTimer()
                 elapsedTime = Date().timeIntervalSince(startedAt)
                 transcript = result.text.trimmingCharacters(in: .whitespacesAndNewlines)
                 timestampedWords = result.words
@@ -192,11 +206,13 @@ struct SttView: View {
                 transcriptionTask = nil
             } catch is CancellationError {
                 guard activeRequestID == requestID else { return }
+                stopElapsedTimer()
                 activeRequestID = nil
                 transcriptionTask = nil
                 state = .idle
             } catch {
                 guard activeRequestID == requestID else { return }
+                stopElapsedTimer()
                 activeRequestID = nil
                 transcriptionTask = nil
                 state = .error(error.localizedDescription)
@@ -211,9 +227,15 @@ struct SttView: View {
         timestampedWords.append(contentsOf: paragraph.words)
     }
 
+    private func stopElapsedTimer() {
+        elapsedTimeTask?.cancel()
+        elapsedTimeTask = nil
+    }
+
     private func cancel() {
         transcriptionTask?.cancel()
         transcriptionTask = nil
+        stopElapsedTimer()
         activeRequestID = nil
         elapsedTime = nil
         durationTime = nil
