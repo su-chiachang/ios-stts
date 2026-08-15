@@ -120,13 +120,13 @@ struct SttView: View {
         case .idle:
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    transcriptView
-
                     if playback.hasMedia {
                         Divider()
                         PlaybackBar(playback: playback)
                     }
 
+                    transcriptView
+                    
                     if timestampedWords.isEmpty {
                         Text("Word timestamps are not available for this result.")
                             .font(.caption)
