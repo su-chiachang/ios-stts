@@ -184,6 +184,11 @@ struct SttView: View {
         transcriptionTask = Task { @MainActor [stt] in
             defer {
                 if accessingScope { url.stopAccessingSecurityScopedResource() }
+                if activeRequestID == requestID {
+                    stopElapsedTimer()
+                    activeRequestID = nil
+                    transcriptionTask = nil
+                }
             }
 
             do {
@@ -197,24 +202,15 @@ struct SttView: View {
                 }
                 try Task.checkCancellation()
                 guard activeRequestID == requestID else { return }
-                stopElapsedTimer()
                 elapsedTime = Date().timeIntervalSince(startedAt)
                 transcript = result.text.trimmingCharacters(in: .whitespacesAndNewlines)
                 timestampedWords = result.words
                 state = .idle
-                activeRequestID = nil
-                transcriptionTask = nil
             } catch is CancellationError {
                 guard activeRequestID == requestID else { return }
-                stopElapsedTimer()
-                activeRequestID = nil
-                transcriptionTask = nil
                 state = .idle
             } catch {
                 guard activeRequestID == requestID else { return }
-                stopElapsedTimer()
-                activeRequestID = nil
-                transcriptionTask = nil
                 state = .error(error.localizedDescription)
             }
         }
