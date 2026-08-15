@@ -142,6 +142,19 @@ final class AppleSpeechTests: XCTestCase {
         XCTAssertEqual(words[1].end, 2.75, accuracy: 0.001)
     }
 
+    func testSttWordHighlightingSelectsWordOnlyWithinItsTimeRange() {
+        let words = [
+            SttWordTimestamp(text: "hello", start: 1, end: 1.5),
+            SttWordTimestamp(text: "world", start: 2, end: 2.75)
+        ]
+
+        XCTAssertNil(SttWordHighlighting.activeWordIndex(at: 0.99, in: words))
+        XCTAssertEqual(SttWordHighlighting.activeWordIndex(at: 1, in: words), 0)
+        XCTAssertNil(SttWordHighlighting.activeWordIndex(at: 1.5, in: words))
+        XCTAssertEqual(SttWordHighlighting.activeWordIndex(at: 2.25, in: words), 1)
+        XCTAssertNil(SttWordHighlighting.activeWordIndex(at: 2.75, in: words))
+    }
+
     private func makeTemporaryAudioFile() throws -> URL {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("stt-buffer-test-\(UUID().uuidString).caf")

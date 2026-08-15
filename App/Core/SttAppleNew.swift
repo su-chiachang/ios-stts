@@ -14,6 +14,15 @@ struct SttFileTranscription: Equatable, Sendable {
     let words: [SttWordTimestamp]
 }
 
+enum SttWordHighlighting {
+    static func activeWordIndex(at seconds: Double, in words: [SttWordTimestamp]) -> Int? {
+        guard seconds.isFinite, seconds >= 0 else { return nil }
+        return words.firstIndex { word in
+            seconds >= word.start && seconds < word.end
+        }
+    }
+}
+
 typealias SttTranscriptionUpdate = @MainActor @Sendable (SttFileTranscription) -> Void
 
 enum SttAppleVersion: String, CaseIterable, Identifiable {
