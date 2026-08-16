@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Shared STT configuration shown from the app settings entry point.
+/// Shared speech configuration shown from the app settings entry point.
 @available(macOS 26.0, iOS 26.0, *)
 @MainActor
 struct SettingsView: View {
@@ -11,6 +11,17 @@ struct SettingsView: View {
     @AppStorage(SttInputType.key)
     private var sttInputTypeRawValue = SttInputType.defaultValue.rawValue
     @State private var supportedLocaleTags: [String] = []
+    @StateObject private var voiceCatalogStore: AppleTtsVoiceCatalogStore
+
+    init(
+        voiceCatalog: AppleTtsVoiceCatalog = AppleTtsVoiceCatalog(),
+        voiceChangeNotifications: NotificationCenter = .default
+    ) {
+        _voiceCatalogStore = StateObject(
+            wrappedValue: AppleTtsVoiceCatalogStore(
+                catalog: voiceCatalog,
+                notificationCenter: voiceChangeNotifications))
+    }
 
     var body: some View {
         Form {
@@ -39,12 +50,42 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
+
+            Section("Speech synthesis") {
+                Menu {
+                    if voiceCatalogStore.groups.isEmpty {
+                        Text("No system voices are currently available.")
+                    } else {
+                        ForEach(voiceCatalogStore.groups) { group in
+                            Menu("\(group.languageName) (\(group.language))") {
+                                ForEach(group.voices) { voice in
+                                    Text("\(voice.name) · \(voice.quality.title)")
+                                }
+                            }
+                        }
+                    }
+                } label: {
+                    Label("Available voices", systemImage: "chevron.up.chevron.down")
+                }
+                .disabled(voiceCatalogStore.groups.isEmpty)
+
+                if voiceCatalogStore.groups.isEmpty {
+                    Text("No system voices are currently available.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
         }
         .formStyle(.grouped)
         .font(.callout)
         #if os(macOS)
         .frame(width: 440, height: 300)
         #endif
+        .onAppear {
+            voiceCatalogStore.refresh()
+            voiceCatalogStore.startObserving()
+        }
+        .onDisappear { voiceCatalogStore.stopObserving() }
         .task(id: sttAppleVersionRawValue) { await loadSupportedLocales() }
     }
 

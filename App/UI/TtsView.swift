@@ -1,5 +1,4 @@
 import SwiftUI
-import AVFAudio
 
 /// The [tts] tab: type text and hear it spoken with Apple's system voice.
 @MainActor
@@ -7,23 +6,14 @@ struct TtsView: View {
     @State private var tts: TtsApple
     @State private var player: AudioPlayer?
     @State private var speechTask: Task<Void, Never>?
-    @StateObject private var voiceCatalogStore: AppleTtsVoiceCatalogStore
     @State private var text = "Hello world"
     @State private var message: String?
     @State private var isError = false
     @State private var isSpeaking = false
     @State private var activeRequestID: UUID?
 
-    init(
-        tts: TtsApple = TtsApple(),
-        voiceCatalog: AppleTtsVoiceCatalog = AppleTtsVoiceCatalog(),
-        voiceChangeNotifications: NotificationCenter = .default
-    ) {
+    init(tts: TtsApple = TtsApple()) {
         _tts = State(initialValue: tts)
-        _voiceCatalogStore = StateObject(
-            wrappedValue: AppleTtsVoiceCatalogStore(
-                catalog: voiceCatalog,
-                notificationCenter: voiceChangeNotifications))
     }
 
     var body: some View {
@@ -37,43 +27,6 @@ struct TtsView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
-
-                        Divider()
-
-                        Text("Available voices")
-                            .font(.subheadline.weight(.semibold))
-
-                        if voiceCatalogStore.groups.isEmpty {
-                            Text("No system voices are currently available.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        } else {
-                            LazyVStack(alignment: .leading, spacing: 10) {
-                                ForEach(voiceCatalogStore.groups) { group in
-                                    VStack(alignment: .leading, spacing: 5) {
-                                        HStack(alignment: .firstTextBaseline) {
-                                            Text(group.languageName)
-                                                .font(.subheadline.weight(.medium))
-                                            Spacer()
-                                            Text(group.language)
-                                                .font(.caption.monospaced())
-                                                .foregroundStyle(.secondary)
-                                        }
-
-                                        ForEach(group.voices) { voice in
-                                            HStack {
-                                                Text(voice.name)
-                                                Spacer()
-                                                Text(voice.quality.title)
-                                                    .font(.caption)
-                                                    .foregroundStyle(.secondary)
-                                            }
-                                            .padding(.leading, 8)
-                                        }
-                                    }
-                                }
-                            }
-                        }
                     }
                 }
 
@@ -109,14 +62,7 @@ struct TtsView: View {
             }
             .padding()
         }
-        .onDisappear {
-            voiceCatalogStore.stopObserving()
-            stop()
-        }
-        .onAppear {
-            voiceCatalogStore.refresh()
-            voiceCatalogStore.startObserving()
-        }
+        .onDisappear { stop() }
         #if os(macOS)
         .frame(minWidth: 420, minHeight: 500)
         #endif
