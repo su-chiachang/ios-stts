@@ -59,7 +59,7 @@ struct SettingsView: View {
                         ForEach(voiceCatalogStore.groups) { group in
                             Menu("\(group.languageName) (\(group.language))") {
                                 ForEach(group.voices) { voice in
-                                    Text("\(voice.name) · \(voice.quality.title)")
+                                    Button("\(voice.name) · \(voice.quality.title)") {}
                                 }
                             }
                         }
