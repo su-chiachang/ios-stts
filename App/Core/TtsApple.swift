@@ -74,16 +74,16 @@ struct AppleTtsVoiceGroup: Identifiable, Equatable, Sendable {
 }
 
 struct AppleTtsVoiceCatalog {
-    typealias Source = () -> [AppleTtsVoice]
+    typealias VoiceSource = () -> [AppleTtsVoice]
 
     private let displayLocale: Locale
-    private let source: Source
+    private let source: VoiceSource
 
     init(displayLocale: Locale = .current) {
         self.init(displayLocale: displayLocale, source: Self.systemVoiceSnapshots)
     }
 
-    init(displayLocale: Locale, source: @escaping Source) {
+    init(displayLocale: Locale, source: @escaping VoiceSource) {
         self.displayLocale = displayLocale
         self.source = source
     }
