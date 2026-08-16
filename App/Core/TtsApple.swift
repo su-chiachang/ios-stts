@@ -117,14 +117,16 @@ struct AppleTtsVoiceCatalog {
         }
     }
 
+    static func snapshot(from voice: AVSpeechSynthesisVoice) -> AppleTtsVoice {
+        AppleTtsVoice(
+            identifier: voice.identifier,
+            language: voice.language,
+            name: voice.name,
+            quality: AppleTtsVoiceQuality(voice.quality))
+    }
+
     private static func systemVoiceSnapshots() -> [AppleTtsVoice] {
-        AVSpeechSynthesisVoice.speechVoices().map { voice in
-            AppleTtsVoice(
-                identifier: voice.identifier,
-                language: voice.language,
-                name: voice.name,
-                quality: AppleTtsVoiceQuality(voice.quality))
-        }
+        AVSpeechSynthesisVoice.speechVoices().map(snapshot(from:))
     }
 }
 
@@ -223,13 +225,7 @@ enum AppleTtsVoiceResolver {
     ) -> AVSpeechSynthesisVoice? {
         let localeIdentifier = localeIdentifier(for: language)
         let installedVoices = AVSpeechSynthesisVoice.speechVoices()
-        let snapshots = installedVoices.map { voice in
-            AppleTtsVoice(
-                identifier: voice.identifier,
-                language: voice.language,
-                name: voice.name,
-                quality: AppleTtsVoiceQuality(voice.quality))
-        }
+        let snapshots = installedVoices.map(AppleTtsVoiceCatalog.snapshot(from:))
 
         if let selectedIdentifier = voiceIdentifier(
             for: language,

@@ -82,7 +82,6 @@ struct SettingsView: View {
                 } label: {
                     Label(voiceSelectionTitle, systemImage: "chevron.up.chevron.down")
                 }
-                .disabled(voiceCatalogStore.groups.isEmpty)
 
                 if voiceCatalogStore.groups.isEmpty {
                     Text("No system voices are currently available.")
