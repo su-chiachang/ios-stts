@@ -1,4 +1,5 @@
 import SwiftUI
+import AVFAudio
 
 /// The [tts] tab: type text and hear it spoken with Apple's system voice.
 @MainActor
@@ -6,26 +7,71 @@ struct TtsView: View {
     @State private var tts: TtsApple
     @State private var player: AudioPlayer?
     @State private var speechTask: Task<Void, Never>?
+    private let voiceCatalog: AppleTtsVoiceCatalog
+    @State private var voiceGroups: [AppleTtsVoiceGroup] = []
     @State private var text = "Hello world"
     @State private var message: String?
     @State private var isError = false
     @State private var isSpeaking = false
     @State private var activeRequestID: UUID?
 
-    init(tts: TtsApple = TtsApple()) {
+    init(
+        tts: TtsApple = TtsApple(),
+        voiceCatalog: AppleTtsVoiceCatalog = AppleTtsVoiceCatalog()
+    ) {
         _tts = State(initialValue: tts)
+        self.voiceCatalog = voiceCatalog
     }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 GroupBox("Voice") {
-                    Label("Apple: language-matched system voice", systemImage: "waveform")
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    Text("Apple TTS uses the system voice for the detected language and needs no downloaded model.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                    VStack(alignment: .leading, spacing: 10) {
+                        Label("Apple: language-matched system voice", systemImage: "waveform")
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Text("Apple TTS uses the system voice for the detected language and needs no downloaded model.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        Divider()
+
+                        Text("Available voices")
+                            .font(.subheadline.weight(.semibold))
+
+                        if voiceGroups.isEmpty {
+                            Text("No system voices are currently available.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            LazyVStack(alignment: .leading, spacing: 10) {
+                                ForEach(voiceGroups) { group in
+                                    VStack(alignment: .leading, spacing: 5) {
+                                        HStack(alignment: .firstTextBaseline) {
+                                            Text(group.languageName)
+                                                .font(.subheadline.weight(.medium))
+                                            Spacer()
+                                            Text(group.language)
+                                                .font(.caption.monospaced())
+                                                .foregroundStyle(.secondary)
+                                        }
+
+                                        ForEach(group.voices) { voice in
+                                            HStack {
+                                                Text(voice.name)
+                                                Spacer()
+                                                Text(voice.quality.title)
+                                                    .font(.caption)
+                                                    .foregroundStyle(.secondary)
+                                            }
+                                            .padding(.leading, 8)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
 
                 GroupBox("Text") {
@@ -61,6 +107,13 @@ struct TtsView: View {
             .padding()
         }
         .onDisappear { stop() }
+        .onAppear { refreshVoices() }
+        .onReceive(
+            NotificationCenter.default.publisher(
+                for: AVSpeechSynthesizer.availableVoicesDidChangeNotification)
+        ) { _ in
+            refreshVoices()
+        }
         #if os(macOS)
         .frame(minWidth: 420, minHeight: 500)
         #endif
@@ -69,6 +122,10 @@ struct TtsView: View {
     private var canSpeak: Bool {
         !isSpeaking
             && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private func refreshVoices() {
+        voiceGroups = voiceCatalog.groups()
     }
 
     private func speak() {

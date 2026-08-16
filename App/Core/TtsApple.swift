@@ -32,6 +32,101 @@ enum AppleTtsError: Error, LocalizedError {
     }
 }
 
+enum AppleTtsVoiceQuality: Equatable, Sendable {
+    case `default`
+    case enhanced
+    case other(Int)
+
+    init(_ quality: AVSpeechSynthesisVoiceQuality) {
+        if quality == .enhanced {
+            self = .enhanced
+        } else if quality == .default {
+            self = .default
+        } else {
+            self = .other(quality.rawValue)
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .default: "Default"
+        case .enhanced: "Enhanced"
+        case .other(let rawValue): "Quality \(rawValue)"
+        }
+    }
+}
+
+struct AppleTtsVoice: Identifiable, Equatable, Sendable {
+    let identifier: String
+    let language: String
+    let name: String
+    let quality: AppleTtsVoiceQuality
+
+    var id: String { identifier }
+}
+
+struct AppleTtsVoiceGroup: Identifiable, Equatable, Sendable {
+    let language: String
+    let languageName: String
+    let voices: [AppleTtsVoice]
+
+    var id: String { language }
+}
+
+struct AppleTtsVoiceCatalog {
+    typealias Source = () -> [AppleTtsVoice]
+
+    private let displayLocale: Locale
+    private let source: Source
+
+    init(displayLocale: Locale = .current) {
+        self.init(displayLocale: displayLocale, source: Self.systemVoiceSnapshots)
+    }
+
+    init(displayLocale: Locale, source: @escaping Source) {
+        self.displayLocale = displayLocale
+        self.source = source
+    }
+
+    func groups() -> [AppleTtsVoiceGroup] {
+        Self.groups(from: source(), displayLocale: displayLocale)
+    }
+
+    static func groups(
+        from voices: [AppleTtsVoice],
+        displayLocale: Locale
+    ) -> [AppleTtsVoiceGroup] {
+        let uniqueVoices = voices.reduce(into: [String: AppleTtsVoice]()) { result, voice in
+            guard result[voice.identifier] == nil else { return }
+            result[voice.identifier] = voice
+        }
+        let groupedVoices = Dictionary(grouping: uniqueVoices.values, by: \.language)
+
+        return groupedVoices.keys.sorted().map { language in
+            let voices = groupedVoices[language, default: []].sorted {
+                if $0.name == $1.name {
+                    return $0.identifier < $1.identifier
+                }
+                return $0.name < $1.name
+            }
+            return AppleTtsVoiceGroup(
+                language: language,
+                languageName: displayLocale.localizedString(forIdentifier: language) ?? language,
+                voices: voices)
+        }
+    }
+
+    private static func systemVoiceSnapshots() -> [AppleTtsVoice] {
+        AVSpeechSynthesisVoice.speechVoices().map { voice in
+            AppleTtsVoice(
+                identifier: voice.identifier,
+                language: voice.language,
+                name: voice.name,
+                quality: AppleTtsVoiceQuality(voice.quality))
+        }
+    }
+}
+
 enum AppleTtsVoiceResolver {
     static func localeIdentifier(for language: SpokenLanguage) -> String {
         switch language {
