@@ -7,8 +7,7 @@ struct TtsView: View {
     @State private var tts: TtsApple
     @State private var player: AudioPlayer?
     @State private var speechTask: Task<Void, Never>?
-    private let voiceCatalog: AppleTtsVoiceCatalog
-    @State private var voiceGroups: [AppleTtsVoiceGroup] = []
+    @StateObject private var voiceCatalogStore: AppleTtsVoiceCatalogStore
     @State private var text = "Hello world"
     @State private var message: String?
     @State private var isError = false
@@ -17,10 +16,14 @@ struct TtsView: View {
 
     init(
         tts: TtsApple = TtsApple(),
-        voiceCatalog: AppleTtsVoiceCatalog = AppleTtsVoiceCatalog()
+        voiceCatalog: AppleTtsVoiceCatalog = AppleTtsVoiceCatalog(),
+        voiceChangeNotifications: NotificationCenter = .default
     ) {
         _tts = State(initialValue: tts)
-        self.voiceCatalog = voiceCatalog
+        _voiceCatalogStore = StateObject(
+            wrappedValue: AppleTtsVoiceCatalogStore(
+                catalog: voiceCatalog,
+                notificationCenter: voiceChangeNotifications))
     }
 
     var body: some View {
@@ -40,13 +43,13 @@ struct TtsView: View {
                         Text("Available voices")
                             .font(.subheadline.weight(.semibold))
 
-                        if voiceGroups.isEmpty {
+                        if voiceCatalogStore.groups.isEmpty {
                             Text("No system voices are currently available.")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         } else {
                             LazyVStack(alignment: .leading, spacing: 10) {
-                                ForEach(voiceGroups) { group in
+                                ForEach(voiceCatalogStore.groups) { group in
                                     VStack(alignment: .leading, spacing: 5) {
                                         HStack(alignment: .firstTextBaseline) {
                                             Text(group.languageName)
@@ -106,13 +109,13 @@ struct TtsView: View {
             }
             .padding()
         }
-        .onDisappear { stop() }
-        .onAppear { refreshVoices() }
-        .onReceive(
-            NotificationCenter.default.publisher(
-                for: AVSpeechSynthesizer.availableVoicesDidChangeNotification)
-        ) { _ in
-            refreshVoices()
+        .onDisappear {
+            voiceCatalogStore.stopObserving()
+            stop()
+        }
+        .onAppear {
+            voiceCatalogStore.refresh()
+            voiceCatalogStore.startObserving()
         }
         #if os(macOS)
         .frame(minWidth: 420, minHeight: 500)
@@ -122,10 +125,6 @@ struct TtsView: View {
     private var canSpeak: Bool {
         !isSpeaking
             && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
-
-    private func refreshVoices() {
-        voiceGroups = voiceCatalog.groups()
     }
 
     private func speak() {

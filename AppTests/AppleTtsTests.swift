@@ -1,5 +1,4 @@
 import AVFAudio
-import Combine
 import XCTest
 @testable import STTS
 
@@ -85,7 +84,8 @@ final class AppleTtsTests: XCTestCase {
         XCTAssertTrue(catalog.groups().isEmpty)
     }
 
-    func testAvailableVoicesNotificationRefreshesCatalogWithoutChangingSpeechState() {
+    @MainActor
+    func testVoiceCatalogStoreRefreshesAndStopsObserving() async {
         var snapshots = [
             AppleTtsVoice(
                 identifier: "en-us-samantha",
@@ -97,14 +97,10 @@ final class AppleTtsTests: XCTestCase {
             displayLocale: Locale(identifier: "en-US"),
             source: { snapshots })
         let notificationCenter = NotificationCenter()
-        var refreshedGroups = catalog.groups()
-        let isSpeaking = true
-        let subscription = notificationCenter.publisher(
-            for: AVSpeechSynthesizer.availableVoicesDidChangeNotification)
-            .sink { _ in
-                refreshedGroups = catalog.groups()
-            }
-        defer { subscription.cancel() }
+        let store = AppleTtsVoiceCatalogStore(
+            catalog: catalog,
+            notificationCenter: notificationCenter)
+        store.startObserving()
 
         snapshots = [
             AppleTtsVoice(
@@ -116,10 +112,25 @@ final class AppleTtsTests: XCTestCase {
         notificationCenter.post(
             name: AVSpeechSynthesizer.availableVoicesDidChangeNotification,
             object: nil)
+        await Task.yield()
 
-        XCTAssertEqual(refreshedGroups.map(\.language), ["ja-JP"])
-        XCTAssertEqual(refreshedGroups.flatMap(\.voices).map(\.name), ["Kyoko"])
-        XCTAssertTrue(isSpeaking)
+        XCTAssertEqual(store.groups.map(\.language), ["ja-JP"])
+        XCTAssertEqual(store.groups.flatMap(\.voices).map(\.name), ["Kyoko"])
+
+        store.stopObserving()
+        snapshots = [
+            AppleTtsVoice(
+                identifier: "en-us-samantha",
+                language: "en-US",
+                name: "Samantha",
+                quality: .default),
+        ]
+        notificationCenter.post(
+            name: AVSpeechSynthesizer.availableVoicesDidChangeNotification,
+            object: nil)
+        await Task.yield()
+
+        XCTAssertEqual(store.groups.map(\.language), ["ja-JP"])
     }
 
 }

@@ -1,4 +1,5 @@
 @preconcurrency import AVFAudio
+import Combine
 import Foundation
 
 enum SpokenLanguage: String, Sendable {
@@ -123,6 +124,53 @@ struct AppleTtsVoiceCatalog {
                 language: voice.language,
                 name: voice.name,
                 quality: AppleTtsVoiceQuality(voice.quality))
+        }
+    }
+}
+
+@MainActor
+final class AppleTtsVoiceCatalogStore: ObservableObject {
+    @Published private(set) var groups: [AppleTtsVoiceGroup]
+
+    private let catalog: AppleTtsVoiceCatalog
+    private let notificationCenter: NotificationCenter
+    private var observer: NSObjectProtocol?
+
+    init(
+        catalog: AppleTtsVoiceCatalog,
+        notificationCenter: NotificationCenter = .default
+    ) {
+        self.catalog = catalog
+        self.notificationCenter = notificationCenter
+        self.groups = catalog.groups()
+    }
+
+    func refresh() {
+        groups = catalog.groups()
+    }
+
+    func startObserving() {
+        guard observer == nil else { return }
+        observer = notificationCenter.addObserver(
+            forName: AVSpeechSynthesizer.availableVoicesDidChangeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.refresh()
+            }
+        }
+    }
+
+    func stopObserving() {
+        guard let observer else { return }
+        notificationCenter.removeObserver(observer)
+        self.observer = nil
+    }
+
+    deinit {
+        if let observer {
+            notificationCenter.removeObserver(observer)
         }
     }
 }
