@@ -10,6 +10,8 @@ struct SettingsView: View {
     private var sttAppleVersionRawValue = SttAppleVersion.defaultValue.rawValue
     @AppStorage(SttInputType.key)
     private var sttInputTypeRawValue = SttInputType.defaultValue.rawValue
+    @AppStorage(AppleTtsVoicePreferences.key)
+    private var selectedVoiceIdentifier = ""
     @State private var supportedLocaleTags: [String] = []
     @StateObject private var voiceCatalogStore: AppleTtsVoiceCatalogStore
 
@@ -53,19 +55,32 @@ struct SettingsView: View {
 
             Section("Speech synthesis") {
                 Menu {
-                    if voiceCatalogStore.groups.isEmpty {
-                        Text("No system voices are currently available.")
-                    } else {
+                    Button {
+                        selectedVoiceIdentifier = ""
+                    } label: {
+                        Label(
+                            "Automatic (language matched)",
+                            systemImage: selectedVoiceIdentifier.isEmpty ? "checkmark" : "circle")
+                    }
+
+                    if !voiceCatalogStore.groups.isEmpty {
+                        Divider()
                         ForEach(voiceCatalogStore.groups) { group in
                             Menu("\(group.languageName) (\(group.language))") {
                                 ForEach(group.voices) { voice in
-                                    Button("\(voice.name) · \(voice.quality.title)") {}
+                                    Button {
+                                        selectedVoiceIdentifier = voice.identifier
+                                    } label: {
+                                        Label(
+                                            "\(voice.name) · \(voice.quality.title)",
+                                            systemImage: selectedVoiceIdentifier == voice.identifier ? "checkmark" : "circle")
+                                    }
                                 }
                             }
                         }
                     }
                 } label: {
-                    Label("Available voices", systemImage: "chevron.up.chevron.down")
+                    Label(voiceSelectionTitle, systemImage: "chevron.up.chevron.down")
                 }
                 .disabled(voiceCatalogStore.groups.isEmpty)
 
@@ -136,5 +151,15 @@ struct SettingsView: View {
     private func localeTitle(for tag: String) -> String {
         let name = SttAppleLocaleResolver.displayName(for: Locale(identifier: tag))
         return "\(name) (\(tag))"
+    }
+
+    private var voiceSelectionTitle: String {
+        guard let selectedVoice = voiceCatalogStore.groups
+            .flatMap(\.voices)
+            .first(where: { $0.identifier == selectedVoiceIdentifier })
+        else {
+            return "Automatic voice"
+        }
+        return "Voice: \(selectedVoice.name)"
     }
 }

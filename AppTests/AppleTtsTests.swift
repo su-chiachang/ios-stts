@@ -9,6 +9,33 @@ final class AppleTtsTests: XCTestCase {
         XCTAssertEqual(AppleTtsVoiceResolver.localeIdentifier(for: .ja), "ja-JP")
     }
 
+    func testVoiceResolverUsesPreferredVoiceOnlyForMatchingLanguage() {
+        let voices = [
+            AppleTtsVoice(
+                identifier: "en-gb-daniel",
+                language: "en-GB",
+                name: "Daniel",
+                quality: .default),
+            AppleTtsVoice(
+                identifier: "zh-tw-meijia",
+                language: "zh-TW",
+                name: "Meijia",
+                quality: .default),
+        ]
+
+        XCTAssertEqual(
+            AppleTtsVoiceResolver.voiceIdentifier(
+                for: .en,
+                preferredIdentifier: "en-gb-daniel",
+                voices: voices),
+            "en-gb-daniel")
+        XCTAssertNil(
+            AppleTtsVoiceResolver.voiceIdentifier(
+                for: .zh,
+                preferredIdentifier: "en-gb-daniel",
+                voices: voices))
+    }
+
     func testVoiceCatalogGroupsByLocaleAndSortsVoices() {
         let catalog = AppleTtsVoiceCatalog(
             displayLocale: Locale(identifier: "zh-TW"),

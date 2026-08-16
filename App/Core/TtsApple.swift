@@ -175,6 +175,18 @@ final class AppleTtsVoiceCatalogStore: ObservableObject {
     }
 }
 
+enum AppleTtsVoicePreferences {
+    static let key = "ttsVoiceIdentifier"
+
+    static var identifier: String? {
+        guard let identifier = UserDefaults.standard.string(forKey: key),
+              !identifier.isEmpty else {
+            return nil
+        }
+        return identifier
+    }
+}
+
 enum AppleTtsVoiceResolver {
     static func localeIdentifier(for language: SpokenLanguage) -> String {
         switch language {
@@ -184,24 +196,65 @@ enum AppleTtsVoiceResolver {
         }
     }
 
+    static func voiceIdentifier(
+        for language: SpokenLanguage,
+        preferredIdentifier: String?,
+        voices: [AppleTtsVoice]
+    ) -> String? {
+        guard let preferredIdentifier,
+              let preferredVoice = voices.first(where: { $0.identifier == preferredIdentifier }),
+              languageCode(for: preferredVoice.language) == languageCode(for: localeIdentifier(for: language))
+        else {
+            return nil
+        }
+        return preferredVoice.identifier
+    }
+
     /// A language-specific voice is preferred. If the requested region is not
     /// installed, use an installed voice with the same language before asking
     /// AVFAudio for the system's current default voice.
     static func voice(for language: SpokenLanguage) -> AVSpeechSynthesisVoice? {
+        voice(for: language, preferredIdentifier: AppleTtsVoicePreferences.identifier)
+    }
+
+    static func voice(
+        for language: SpokenLanguage,
+        preferredIdentifier: String?
+    ) -> AVSpeechSynthesisVoice? {
         let localeIdentifier = localeIdentifier(for: language)
+        let installedVoices = AVSpeechSynthesisVoice.speechVoices()
+        let snapshots = installedVoices.map { voice in
+            AppleTtsVoice(
+                identifier: voice.identifier,
+                language: voice.language,
+                name: voice.name,
+                quality: AppleTtsVoiceQuality(voice.quality))
+        }
+
+        if let selectedIdentifier = voiceIdentifier(
+            for: language,
+            preferredIdentifier: preferredIdentifier,
+            voices: snapshots),
+           let selectedVoice = installedVoices.first(where: { $0.identifier == selectedIdentifier }) {
+            return selectedVoice
+        }
+
         if let exactVoice = AVSpeechSynthesisVoice(language: localeIdentifier) {
             return exactVoice
         }
 
-        let languageCode = localeIdentifier.split(separator: "-").first.map(String.init)
-        if let languageCode,
-           let sameLanguageVoice = AVSpeechSynthesisVoice.speechVoices().first(where: {
-               $0.language.split(separator: "-").first.map(String.init) == languageCode
+        if let requestedLanguageCode = languageCode(for: localeIdentifier),
+           let sameLanguageVoice = installedVoices.first(where: {
+               languageCode(for: $0.language) == requestedLanguageCode
            }) {
             return sameLanguageVoice
         }
 
         return AVSpeechSynthesisVoice(language: nil)
+    }
+
+    private static func languageCode(for localeIdentifier: String) -> String? {
+        localeIdentifier.split(separator: "-").first.map(String.init)
     }
 }
 
@@ -277,7 +330,9 @@ actor TtsApple {
 
         let requestID = UUID()
         let utterance = AVSpeechUtterance(string: text)
-        utterance.voice = AppleTtsVoiceResolver.voice(for: language)
+        utterance.voice = AppleTtsVoiceResolver.voice(
+            for: language,
+            preferredIdentifier: AppleTtsVoicePreferences.identifier)
 
         return try await withTaskCancellationHandler(operation: {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<TtsAudioChunk, Error>) in
