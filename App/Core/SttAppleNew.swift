@@ -304,12 +304,21 @@ actor SttAppleNew {
         _ url: URL,
         inputType: SttInputType = .file
     ) async throws -> SttFileTranscription {
-        let audioFile = try AVAudioFile(forReading: url)
-        switch inputType {
-        case .file:
-            return try await transcribeAudioFile(audioFile)
-        case .live:
-            return try await transcribeAudioBuffers(audioFile)
+        let ts = CFAbsoluteTimeGetCurrent()
+        let prepared = try await SttPreparedAudioFile.prepare(url)
+        let elapsed = (CFAbsoluteTimeGetCurrent() - ts).formatted()
+        print(">>> T(SttPreparedAudioFile) = \(elapsed)")
+
+        return try await prepared.withCancellationCleanup {
+            try Task.checkCancellation()
+            let audioFile = try AVAudioFile(forReading: prepared.url)
+
+            switch inputType {
+            case .file:
+                return try await self.transcribeAudioFile(audioFile)
+            case .live:
+                return try await self.transcribeAudioBuffers(audioFile)
+            }
         }
     }
 
@@ -391,6 +400,174 @@ actor SttAppleNew {
                 text: String(transcription.characters),
                 words: SttAppleNewWords.words(from: transcription))
         }
+    }
+}
+
+/// Audio tracks whose AVURLAsset duration is meaningfully different from the
+/// AVAudioFile duration are remuxed to an audio-only M4A before AVAudioFile
+/// reads them. Rebuilding the container avoids malformed AAC packet metadata
+/// that can make AVAudioFile treat valid frames as trailing remainder.
+struct SttPreparedAudioFile {
+    enum Error: LocalizedError {
+        case missingAudioTrack
+        case cannotCreateCompositionTrack
+        case cannotCreateExportSession
+        case m4aExportUnsupported
+        case incompleteExport(expected: Double, actual: Double)
+
+        var errorDescription: String? {
+            switch self {
+            case .missingAudioTrack:
+                "The imported file has no audio track."
+            case .cannotCreateCompositionTrack:
+                "Apple Speech could not prepare the imported audio track."
+            case .cannotCreateExportSession:
+                "Apple Speech could not create an audio export session."
+            case .m4aExportUnsupported:
+                "The imported file cannot be converted to M4A on this device."
+            case .incompleteExport(let expected, let actual):
+                "The temporary M4A is incomplete (expected \(expected)s, got \(actual)s)."
+            }
+        }
+    }
+
+    let url: URL
+    private let isTemporary: Bool
+
+    init(url: URL, isTemporary: Bool) {
+        self.url = url
+        self.isTemporary = isTemporary
+    }
+
+    private static let minimumDurationTolerance: Double = 0.05
+    private static let relativeDurationTolerance = 0.01
+
+    static func requiresPreparation(
+        trackDuration: Double,
+        audioFileDuration: Double
+    ) -> Bool {
+        guard
+            trackDuration.isFinite,
+            audioFileDuration.isFinite,
+            trackDuration >= 0,
+            audioFileDuration >= 0
+        else {
+            return true
+        }
+
+        let tolerance = max(
+            minimumDurationTolerance,
+            trackDuration * relativeDurationTolerance)
+        return abs(trackDuration - audioFileDuration) > tolerance
+    }
+
+    private static func duration(of audioFile: AVAudioFile) -> Double {
+        let sampleRate = audioFile.processingFormat.sampleRate
+        guard sampleRate.isFinite, sampleRate > 0 else { return .nan }
+        return Double(audioFile.length) / sampleRate
+    }
+
+    static func prepare(_ sourceURL: URL) async throws -> SttPreparedAudioFile {
+        try Task.checkCancellation()
+
+        let asset = AVURLAsset(url: sourceURL)
+        guard let sourceTrack = try await asset.loadTracks(withMediaType: .audio).first else {
+            throw Error.missingAudioTrack
+        }
+
+        let sourceRange = try await sourceTrack.load(.timeRange)
+        let sourceAudioFile = try AVAudioFile(forReading: sourceURL)
+        let trackDuration = sourceRange.duration.seconds
+        let audioFileDuration = duration(of: sourceAudioFile)
+        try Task.checkCancellation()
+        guard requiresPreparation(
+            trackDuration: trackDuration,
+            audioFileDuration: audioFileDuration)
+        else {
+            return SttPreparedAudioFile(url: sourceURL, isTemporary: false)
+        }
+
+        let composition = AVMutableComposition()
+        guard let compositionTrack = composition.addMutableTrack(
+            withMediaType: .audio,
+            preferredTrackID: kCMPersistentTrackID_Invalid
+        ) else {
+            throw Error.cannotCreateCompositionTrack
+        }
+        try compositionTrack.insertTimeRange(sourceRange, of: sourceTrack, at: .zero)
+
+        try Task.checkCancellation()
+        let outputURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("stts-\(UUID().uuidString).m4a")
+        do {
+            return try await withTaskCancellationHandler(operation: {
+                do {
+                    let exportSession = try await makeExportSession(for: composition)
+                    try Task.checkCancellation()
+                    try await exportSession.export(to: outputURL, as: .m4a)
+                    try Task.checkCancellation()
+
+                    let audioFile = try AVAudioFile(forReading: outputURL)
+                    let actualDuration = duration(of: audioFile)
+                    guard !requiresPreparation(
+                        trackDuration: trackDuration,
+                        audioFileDuration: actualDuration)
+                    else {
+                        throw Error.incompleteExport(expected: trackDuration, actual: actualDuration)
+                    }
+                    return SttPreparedAudioFile(url: outputURL, isTemporary: true)
+                } catch {
+                    try? FileManager.default.removeItem(at: outputURL)
+                    throw error
+                }
+            }, onCancel: {
+                try? FileManager.default.removeItem(at: outputURL)
+            })
+        } catch {
+            try? FileManager.default.removeItem(at: outputURL)
+            throw error
+        }
+    }
+
+    private static func makeExportSession(
+        for composition: AVComposition
+    ) async throws -> AVAssetExportSession {
+        guard let passthrough = AVAssetExportSession(
+            asset: composition,
+            presetName: AVAssetExportPresetPassthrough
+        ) else {
+            throw Error.cannotCreateExportSession
+        }
+        if await passthrough.compatibleFileTypes.contains(.m4a) {
+            return passthrough
+        }
+
+        guard let encoded = AVAssetExportSession(
+            asset: composition,
+            presetName: AVAssetExportPresetAppleM4A
+        ) else {
+            throw Error.cannotCreateExportSession
+        }
+        guard await encoded.compatibleFileTypes.contains(.m4a) else {
+            throw Error.m4aExportUnsupported
+        }
+        return encoded
+    }
+
+    func removeTemporaryFile() {
+        guard isTemporary else { return }
+        try? FileManager.default.removeItem(at: url)
+    }
+
+    func withCancellationCleanup<T>(
+        operation: () async throws -> T
+    ) async throws -> T {
+        try await withTaskCancellationHandler(operation: {
+            defer { removeTemporaryFile() }
+            return try await operation()
+        }, onCancel: {
+            removeTemporaryFile()
+        })
     }
 }
 
