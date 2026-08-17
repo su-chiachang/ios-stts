@@ -27,8 +27,8 @@ when the OS and device support Foundation Models.
 - `SpeechPipeline` serializes Apple TTS synthesis and audio playback.
 - `SttEngine`, `TtsEngine`, and `TttEngine` are narrow runtime seams for
   protocol conformance and tests; they do not represent selectable backends.
-- The Xcode project links only system AVFoundation, AVFAudio, Speech, and
-  FoundationModels frameworks.
+- The Xcode project links only system AVFoundation, AVFAudio, AVKit, Speech,
+  and FoundationModels frameworks.
 
 Historical Audio8/Qwen/Parakeet specifications and tickets under `docs/` are
 archival records, not supported project components.

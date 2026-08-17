@@ -187,6 +187,40 @@ final class AppleSpeechTests: XCTestCase {
         XCTAssertEqual(words[1].end, 2.75, accuracy: 0.001)
     }
 
+    func testSttWordHighlightingSelectsWordOnlyWithinItsTimeRange() {
+        let words = [
+            SttWordTimestamp(text: "hello", start: 1, end: 1.5),
+            SttWordTimestamp(text: "world", start: 2, end: 2.75)
+        ]
+
+        XCTAssertNil(SttWordHighlighting.activeWordIndex(at: 0.99, in: words))
+        XCTAssertEqual(SttWordHighlighting.activeWordIndex(at: 1, in: words), 0)
+        XCTAssertNil(SttWordHighlighting.activeWordIndex(at: 1.5, in: words))
+        XCTAssertEqual(SttWordHighlighting.activeWordIndex(at: 2.25, in: words), 1)
+        XCTAssertNil(SttWordHighlighting.activeWordIndex(at: 2.75, in: words))
+    }
+
+    func testSttTranscriptSegmentsKeepTranscriptTextAndWordIndexes() {
+        let words = [
+            SttWordTimestamp(text: "hello", start: 1, end: 1.5),
+            SttWordTimestamp(text: "world", start: 2, end: 2.75)
+        ]
+
+        let segments = SttWordHighlighting.transcriptSegments(
+            in: "hello, world!",
+            words: words)
+
+        XCTAssertEqual(
+            segments,
+            [
+                SttTranscriptSegment(text: "hello", wordIndex: 0),
+                SttTranscriptSegment(text: ", ", wordIndex: nil),
+                SttTranscriptSegment(text: "world", wordIndex: 1),
+                SttTranscriptSegment(text: "!", wordIndex: nil)
+            ])
+        XCTAssertEqual(segments.map(\.text).joined(), "hello, world!")
+    }
+
     func testSttAppleNewFileTranscribesPastMalformedAVAudioFileLength() async throws {
         guard let path = ProcessInfo.processInfo.environment["STTS_TEST_MALFORMED_AUDIO_URL"] else {
             throw XCTSkip(
