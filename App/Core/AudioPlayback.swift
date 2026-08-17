@@ -9,6 +9,7 @@ final class AudioPlaybackController: ObservableObject {
     @Published private(set) var currentTime: TimeInterval = 0
     @Published private(set) var duration: TimeInterval = 0
     @Published private(set) var hasMedia = false
+    @Published private(set) var hasVideo = false
     @Published private(set) var errorMessage: String?
 
     private var player: AVPlayer?
@@ -33,6 +34,7 @@ final class AudioPlaybackController: ObservableObject {
         scopedURL = url
         self.isAccessingScopedResource = isAccessingScopedResource
         hasMedia = true
+        hasVideo = false
         errorMessage = nil
 
         timeObserver = player.addPeriodicTimeObserver(
@@ -69,12 +71,24 @@ final class AudioPlaybackController: ObservableObject {
                 let time = try await asset.load(.duration)
                 try Task.checkCancellation()
                 let seconds = time.seconds
-                guard seconds.isFinite, seconds > 0 else { return }
-                self?.duration = seconds
+                if seconds.isFinite, seconds > 0 {
+                    self?.duration = seconds
+                }
+            } catch is CancellationError {
+                // Loading a new file cancels the previous asset request.
+                return
+            } catch {
+                self?.errorMessage = error.localizedDescription
+            }
+
+            do {
+                let videoTracks = try await asset.loadTracks(withMediaType: .video)
+                try Task.checkCancellation()
+                self?.hasVideo = !videoTracks.isEmpty
             } catch is CancellationError {
                 // Loading a new file cancels the previous asset request.
             } catch {
-                self?.errorMessage = error.localizedDescription
+                self?.hasVideo = false
             }
         }
     }
@@ -110,6 +124,7 @@ final class AudioPlaybackController: ObservableObject {
         currentTime = 0
         duration = 0
         hasMedia = false
+        hasVideo = false
         errorMessage = nil
     }
 

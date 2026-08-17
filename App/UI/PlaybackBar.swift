@@ -10,7 +10,7 @@ struct PlaybackBar: View {
         Group {
             if let player = playback.avPlayer {
                 NativePlaybackView(player: player)
-                    .frame(height: 76)
+                    .frame(height: playback.hasVideo ? 240 : 76)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
             }
 
