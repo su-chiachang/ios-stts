@@ -26,6 +26,7 @@ struct SttView: View {
     @State private var state: ViewState = .loading
     @State private var transcript = ""
     @State private var timestampedWords: [SttWordTimestamp] = []
+    @StateObject private var playback = AudioPlaybackController()
     @State private var transcriptionTask: Task<Void, Never>?
     @State private var elapsedTimeTask: Task<Void, Never>?
     @State private var activeRequestID: UUID?
@@ -106,14 +107,26 @@ struct SttView: View {
         case .error(let message):
             self.message(message, isError: true)
         case .idle where transcript.isEmpty:
-            message("Choose an audio file to transcribe.", isError: false)
+            VStack(spacing: 12) {
+                if playback.hasMedia {
+                    PlaybackBar(playback: playback)
+                }
+                message(
+                    playback.hasMedia
+                        ? "No transcript was found in this audio file."
+                        : "Choose an audio file to transcribe.",
+                    isError: false)
+            }
         case .idle:
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text(transcript)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .textSelection(.enabled)
+                    if playback.hasMedia {
+                        Divider()
+                        PlaybackBar(playback: playback)
+                    }
 
+                    transcriptView
+                    
                     if timestampedWords.isEmpty {
                         Text("Word timestamps are not available for this result.")
                             .font(.caption)
@@ -209,6 +222,7 @@ struct SttView: View {
                 elapsedTime = Date().timeIntervalSince(startedAt)
                 transcript = result.text.trimmingCharacters(in: .whitespacesAndNewlines)
                 timestampedWords = result.words
+                playback.load(url: url)
                 state = .idle
             } catch is CancellationError {
                 guard activeRequestID == requestID else { return }
@@ -239,6 +253,7 @@ struct SttView: View {
         activeRequestID = nil
         elapsedTime = nil
         durationTime = nil
+        playback.unload()
         if state == .transcribing { state = .idle }
     }
 
@@ -246,19 +261,71 @@ struct SttView: View {
         state = .error(message)
     }
 
+    private var activeWordIndex: Int? {
+        SttWordHighlighting.activeWordIndex(
+            at: playback.currentTime,
+            in: timestampedWords)
+    }
+
+    @ViewBuilder
+    private var transcriptView: some View {
+        if timestampedWords.isEmpty {
+            Text(transcript)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .textSelection(.enabled)
+        } else {
+            highlightedTranscript
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .textSelection(.enabled)
+        }
+    }
+
+    private var highlightedTranscript: Text {
+        var result = Text(verbatim: "")
+        var cursor = transcript.startIndex
+
+        for (index, word) in timestampedWords.enumerated() {
+            guard let range = transcript.range(
+                of: word.text,
+                range: cursor..<transcript.endIndex
+            ) else {
+                continue
+            }
+
+            let prefix = String(transcript[cursor..<range.lowerBound])
+            let color: Color = index == activeWordIndex ? .accentColor : .primary
+            let styledWord = Text(verbatim: word.text)
+                .foregroundColor(color)
+            result = Text("\(result)\(Text(verbatim: prefix))\(styledWord)")
+            cursor = range.upperBound
+        }
+
+        let suffix = String(transcript[cursor..<transcript.endIndex])
+        return Text("\(result)\(Text(verbatim: suffix))")
+    }
+
     private var wordList: some View {
         LazyVStack(alignment: .leading, spacing: 4) {
-            ForEach(Array(timestampedWords.enumerated()), id: \.offset) { _, word in
+            ForEach(Array(timestampedWords.enumerated()), id: \.offset) { index, word in
+                let isActive = index == activeWordIndex
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text("\(seconds(word.start)) – \(seconds(word.end))")
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)
                         .frame(width: 130, alignment: .leading)
                     Text(word.text)
+                        .foregroundStyle(
+                            isActive ? Color.accentColor : Color.primary)
+                        .fontWeight(isActive ? .bold : .regular)
                         .textSelection(.enabled)
                     Spacer()
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.vertical, 4)
+                .padding(.horizontal, 6)
+                .background(
+                    isActive ? Color.accentColor.opacity(0.18) : Color.clear,
+                    in: RoundedRectangle(cornerRadius: 6))
             }
         }
     }
