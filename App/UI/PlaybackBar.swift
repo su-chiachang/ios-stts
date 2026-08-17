@@ -5,12 +5,13 @@ import SwiftUI
 /// available to the transcript timeline observer.
 struct PlaybackBar: View {
     @ObservedObject var playback: AudioPlaybackController
+    var height: CGFloat? = nil
 
     var body: some View {
         Group {
             if let player = playback.avPlayer {
                 NativePlaybackView(player: player)
-                    .frame(height: playback.hasVideo ? 240 : 76)
+                    .frame(height: height ?? (playback.hasVideo ? 240 : 76))
                     .clipShape(RoundedRectangle(cornerRadius: 8))
             }
 

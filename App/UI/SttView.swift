@@ -36,10 +36,24 @@ struct SttView: View {
     @State private var elapsedTimeTask: Task<Void, Never>?
     @State private var activeRequestID: UUID?
     @State private var viewMode: ViewMode = .sentence
+    @State private var playbackHeight: CGFloat?
+    @State private var playbackResizeStart: CGFloat?
+
+    private let minimumPlaybackHeight: CGFloat = 76
+    private let maximumPlaybackHeight: CGFloat = 420
 
     var body: some View {
         VStack(spacing: 0) {
             header
+            if playback.hasMedia {
+                PlaybackBar(
+                    playback: playback,
+                    height: playbackHeight ?? defaultPlaybackHeight)
+                    .padding(.horizontal)
+                    .padding(.vertical, 8)
+                playbackResizeDivider
+            }
+            viewModePicker
             Divider()
             content
         }
@@ -51,52 +65,78 @@ struct SttView: View {
     }
 
     private var header: some View {
-        VStack(spacing: 8) {
-            ZStack {
-                HStack(spacing: 8) {
-                    Text("stt:").font(.headline)
-                    Spacer(minLength: 8)
+        ZStack {
+            HStack(spacing: 8) {
+                Text("stt:").font(.headline)
+                Spacer(minLength: 8)
 
-                    if state == .transcribing {
-                        Button("Stop") { cancel() }
-                            .buttonStyle(.plain)
-                    }
-
-                    MediaSourceMenu(onPick: transcribeFile, onError: reportError) {
-                        Text("Import…")
-                    }
-                    .fixedSize(horizontal: true, vertical: false)
-                    .layoutPriority(1)
-                    .disabled(stt == nil || state == .loading || state == .transcribing)
+                if state == .transcribing {
+                    Button("Stop") { cancel() }
+                        .buttonStyle(.plain)
                 }
 
-                HStack(spacing: 8) {
-                    Text(elapsedTime.map(formatDuration) ?? "--:--:--.--")
-                        .help("Transcribe elapsed time")
-                    Text("|")
-                    Text(durationTime.map(formatDuration) ?? "--:--:--.--")
-                        .help("Audio duration")
+                MediaSourceMenu(onPick: transcribeFile, onError: reportError) {
+                    Text("Import…")
                 }
-                .font(.caption.monospacedDigit())
-                .foregroundStyle(.secondary)
-                .allowsHitTesting(false)
+                .fixedSize(horizontal: true, vertical: false)
+                .layoutPriority(1)
+                .disabled(stt == nil || state == .loading || state == .transcribing)
             }
 
-            HStack {
-                Spacer(minLength: 0)
-                Picker("View", selection: $viewMode) {
-                    Text("sentence").tag(ViewMode.sentence)
-                    Text("words").tag(ViewMode.words)
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .frame(width: 150)
-                .accessibilityLabel("Transcript view")
-                Spacer(minLength: 0)
+            HStack(spacing: 8) {
+                Text(elapsedTime.map(formatDuration) ?? "--:--:--.--")
+                    .help("Transcribe elapsed time")
+                Text("|")
+                Text(durationTime.map(formatDuration) ?? "--:--:--.--")
+                    .help("Audio duration")
             }
+            .font(.caption.monospacedDigit())
+            .foregroundStyle(.secondary)
+            .allowsHitTesting(false)
         }
         .font(.callout)
         .padding()
+    }
+
+    private var viewModePicker: some View {
+        HStack {
+            Spacer(minLength: 0)
+            Picker("View", selection: $viewMode) {
+                Text("sentence").tag(ViewMode.sentence)
+                Text("words").tag(ViewMode.words)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(width: 150)
+            .accessibilityLabel("Transcript view")
+            Spacer(minLength: 0)
+        }
+        .font(.callout)
+        .padding(.vertical, 8)
+    }
+
+    private var defaultPlaybackHeight: CGFloat {
+        playback.hasVideo ? 240 : minimumPlaybackHeight
+    }
+
+    private var playbackResizeDivider: some View {
+        Divider()
+            .frame(height: 10)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 1)
+                    .onChanged { value in
+                        let startHeight = playbackResizeStart ?? defaultPlaybackHeight
+                        if playbackResizeStart == nil {
+                            playbackResizeStart = startHeight
+                        }
+                        playbackHeight = min(
+                            max(startHeight + value.translation.height, minimumPlaybackHeight),
+                            maximumPlaybackHeight)
+                    }
+                    .onEnded { _ in
+                        playbackResizeStart = nil
+                    })
     }
 
     @ViewBuilder
@@ -129,24 +169,14 @@ struct SttView: View {
         case .error(let message):
             self.message(message, isError: true)
         case .idle where transcript.isEmpty:
-            VStack(spacing: 12) {
-                if playback.hasMedia {
-                    PlaybackBar(playback: playback)
-                }
-                message(
-                    playback.hasMedia
-                        ? "No transcript was found in this audio file."
-                        : "Choose an audio file to transcribe.",
-                    isError: false)
-            }
+            message(
+                playback.hasMedia
+                    ? "No transcript was found in this audio file."
+                    : "Choose an audio file to transcribe.",
+                isError: false)
         case .idle:
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    if playback.hasMedia {
-                        Divider()
-                        PlaybackBar(playback: playback)
-                    }
-
                     if viewMode == .sentence {
                         transcriptView
                     } else if timestampedWords.isEmpty {
@@ -275,6 +305,8 @@ struct SttView: View {
         activeRequestID = nil
         elapsedTime = nil
         durationTime = nil
+        playbackHeight = nil
+        playbackResizeStart = nil
         playback.unload()
         if state == .transcribing { state = .idle }
     }
