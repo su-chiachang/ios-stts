@@ -9,6 +9,11 @@ struct SttWordTimestamp: Equatable, Sendable {
     let end: Double
 }
 
+struct SttTranscriptSegment: Equatable, Sendable {
+    let text: String
+    let wordIndex: Int?
+}
+
 struct SttFileTranscription: Equatable, Sendable {
     let text: String
     let words: [SttWordTimestamp]
@@ -20,6 +25,48 @@ enum SttWordHighlighting {
         return words.firstIndex { word in
             seconds >= word.start && seconds < word.end
         }
+    }
+
+    static func transcriptSegments(
+        in transcript: String,
+        words: [SttWordTimestamp]
+    ) -> [SttTranscriptSegment] {
+        guard !transcript.isEmpty else { return [] }
+
+        var segments: [SttTranscriptSegment] = []
+        var cursor = transcript.startIndex
+
+        for (index, word) in words.enumerated() {
+            guard !word.text.isEmpty,
+                  let range = transcript.range(
+                      of: word.text,
+                      range: cursor..<transcript.endIndex)
+            else {
+                continue
+            }
+
+            if cursor < range.lowerBound {
+                segments.append(
+                    SttTranscriptSegment(
+                        text: String(transcript[cursor..<range.lowerBound]),
+                        wordIndex: nil))
+            }
+
+            segments.append(
+                SttTranscriptSegment(
+                    text: String(transcript[range]),
+                    wordIndex: index))
+            cursor = range.upperBound
+        }
+
+        if cursor < transcript.endIndex {
+            segments.append(
+                SttTranscriptSegment(
+                    text: String(transcript[cursor..<transcript.endIndex]),
+                    wordIndex: nil))
+        }
+
+        return segments
     }
 }
 

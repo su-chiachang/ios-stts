@@ -133,7 +133,7 @@ struct SttView: View {
                             .foregroundStyle(.secondary)
                     } else {
                         Divider()
-                        wordList
+                        wordListView
                     }
                 }
             }
@@ -269,45 +269,34 @@ struct SttView: View {
 
     @ViewBuilder
     private var transcriptView: some View {
-        if timestampedWords.isEmpty {
-            Text(transcript)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .textSelection(.enabled)
-        } else {
-            highlightedTranscript
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .textSelection(.enabled)
-        }
+        highlightedTranscript
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .textSelection(.enabled)
     }
 
     private var highlightedTranscript: Text {
-        var result = Text(verbatim: "")
-        var cursor = transcript.startIndex
+        let activeIndex = activeWordIndex
+        var result = AttributedString()
 
-        for (index, word) in timestampedWords.enumerated() {
-            guard let range = transcript.range(
-                of: word.text,
-                range: cursor..<transcript.endIndex
-            ) else {
-                continue
+        for segment in SttWordHighlighting.transcriptSegments(
+            in: transcript,
+            words: timestampedWords)
+        {
+            var styledSegment = AttributedString(segment.text)
+            if segment.wordIndex == activeIndex {
+                styledSegment.foregroundColor = .accentColor
             }
-
-            let prefix = String(transcript[cursor..<range.lowerBound])
-            let color: Color = index == activeWordIndex ? .accentColor : .primary
-            let styledWord = Text(verbatim: word.text)
-                .foregroundColor(color)
-            result = Text("\(result)\(Text(verbatim: prefix))\(styledWord)")
-            cursor = range.upperBound
+            result += styledSegment
         }
 
-        let suffix = String(transcript[cursor..<transcript.endIndex])
-        return Text("\(result)\(Text(verbatim: suffix))")
+        return Text(result)
     }
 
-    private var wordList: some View {
-        LazyVStack(alignment: .leading, spacing: 4) {
+    private var wordListView: some View {
+        let activeIndex = activeWordIndex
+        return LazyVStack(alignment: .leading, spacing: 4) {
             ForEach(Array(timestampedWords.enumerated()), id: \.offset) { index, word in
-                let isActive = index == activeWordIndex
+                let isActive = index == activeIndex
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text("\(seconds(word.start)) – \(seconds(word.end))")
                         .font(.caption.monospacedDigit())
