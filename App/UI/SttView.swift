@@ -14,6 +14,11 @@ struct SttView: View {
         case error(String)
     }
 
+    private enum ViewMode: Hashable {
+        case sentence
+        case words
+    }
+
     @AppStorage(SttLocalePreferences.key)
     private var localeIdentifier = SttLocalePreferences.defaultIdentifier
     @AppStorage(SttAppleVersion.key)
@@ -29,6 +34,7 @@ struct SttView: View {
     @State private var transcriptionTask: Task<Void, Never>?
     @State private var elapsedTimeTask: Task<Void, Never>?
     @State private var activeRequestID: UUID?
+    @State private var viewMode: ViewMode = .sentence
 
     var body: some View {
         VStack(spacing: 0) {
@@ -47,6 +53,14 @@ struct SttView: View {
         ZStack {
             HStack(spacing: 8) {
                 Text("stt").font(.headline)
+                Picker("View", selection: $viewMode) {
+                    Text("sentence").tag(ViewMode.sentence)
+                    Text("words").tag(ViewMode.words)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .frame(width: 150)
+                .accessibilityLabel("Transcript view")
                 Spacer(minLength: 8)
 
                 if state == .transcribing {
@@ -110,17 +124,15 @@ struct SttView: View {
         case .idle:
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text(transcript)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .textSelection(.enabled)
-
-                    if timestampedWords.isEmpty {
+                    if viewMode == .sentence {
+                        transcriptView
+                    } else if timestampedWords.isEmpty {
                         Text("Word timestamps are not available for this result.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     } else {
                         Divider()
-                        wordList
+                        wordListView
                     }
                 }
             }
@@ -246,7 +258,13 @@ struct SttView: View {
         state = .error(message)
     }
 
-    private var wordList: some View {
+    private var transcriptView: some View {
+        Text(transcript)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .textSelection(.enabled)
+    }
+
+    private var wordListView: some View {
         LazyVStack(alignment: .leading, spacing: 4) {
             ForEach(Array(timestampedWords.enumerated()), id: \.offset) { _, word in
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
