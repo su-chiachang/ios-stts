@@ -132,11 +132,11 @@ actor SttAppleOld {
                 let task = recognizer.recognitionTask(with: request) { result, error in
                     if let result {
                         let transcription = result.bestTranscription
-                        print("""
-                        [SttAppleOld] result final=\(result.isFinal) \
-                        segments=\(transcription.segments.count) \
-                        text=\(transcription.formattedString)
-                        """)
+//                        print("""
+//                        [SttAppleOld] result final=\(result.isFinal) \
+//                        segments=\(transcription.segments.count) \
+//                        text=\(transcription.formattedString)
+//                        """)
 
                         let paragraph = SttAppleOldWords.words(from: result)
                         if !paragraph.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
