@@ -272,10 +272,16 @@ struct SttView: View {
                 }
                 try Task.checkCancellation()
                 guard activeRequestID == requestID else { return }
-                elapsedTime = Date().timeIntervalSince(startedAt)
+                let finalElapsed = Date().timeIntervalSince(startedAt)
+                elapsedTime = finalElapsed
                 transcript = result.text.trimmingCharacters(in: .whitespacesAndNewlines)
                 timestampedWords = result.words
-                saveTranscript(transcript, sourceURL: url, version: appleVersion, inputType: inputType)
+                saveTranscript(
+                    transcript,
+                    sourceURL: url,
+                    version: appleVersion,
+                    inputType: inputType,
+                    elapsedSeconds: finalElapsed)
                 playback.load(url: url)
                 state = .idle
             } catch is CancellationError {
@@ -292,11 +298,13 @@ struct SttView: View {
         _ text: String,
         sourceURL: URL,
         version: SttAppleVersion,
-        inputType: SttInputType
+        inputType: SttInputType,
+        elapsedSeconds: Double
     ) {
         guard !text.isEmpty else { return }
         let baseName = sourceURL.deletingPathExtension().lastPathComponent
-        let fileName = "\(baseName)-stts-\(version.rawValue)-\(inputType.rawValue).txt"
+        let seconds = String(format: "%.2f", elapsedSeconds)
+        let fileName = "\(baseName)-stts-\(version.rawValue)-\(inputType.rawValue)-\(seconds)s.txt"
         let destination = sourceURL.deletingLastPathComponent().appendingPathComponent(fileName)
         do {
             try text.write(to: destination, atomically: true, encoding: .utf8)
