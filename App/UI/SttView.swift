@@ -229,6 +229,7 @@ struct SttView: View {
         activeRequestID = requestID
         let accessingScope = url.startAccessingSecurityScopedResource()
         let inputType = SttInputType.resolve(rawValue: sttInputTypeRawValue)
+        let appleVersion = SttAppleVersion.resolve(rawValue: sttAppleVersionRawValue)
         durationTime = nil
         elapsedTime = 0
         let startedAt = Date()
@@ -274,6 +275,7 @@ struct SttView: View {
                 elapsedTime = Date().timeIntervalSince(startedAt)
                 transcript = result.text.trimmingCharacters(in: .whitespacesAndNewlines)
                 timestampedWords = result.words
+                saveTranscript(transcript, sourceURL: url, version: appleVersion, inputType: inputType)
                 playback.load(url: url)
                 state = .idle
             } catch is CancellationError {
@@ -283,6 +285,23 @@ struct SttView: View {
                 guard activeRequestID == requestID else { return }
                 state = .error(error.localizedDescription)
             }
+        }
+    }
+
+    private func saveTranscript(
+        _ text: String,
+        sourceURL: URL,
+        version: SttAppleVersion,
+        inputType: SttInputType
+    ) {
+        guard !text.isEmpty else { return }
+        let baseName = sourceURL.deletingPathExtension().lastPathComponent
+        let fileName = "\(baseName)-stts-\(version.rawValue)-\(inputType.rawValue).txt"
+        let destination = sourceURL.deletingLastPathComponent().appendingPathComponent(fileName)
+        do {
+            try text.write(to: destination, atomically: true, encoding: .utf8)
+        } catch {
+            print("saveTranscript failed for \(destination.path): \(error)")
         }
     }
 
