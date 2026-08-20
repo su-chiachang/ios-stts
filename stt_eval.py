@@ -29,13 +29,14 @@ import argparse
 import re
 import sys
 import unicodedata
+import warnings
 from pathlib import Path
 
 import jiwer
 
 try:
     from opencc import OpenCC
-    _opencc = OpenCC('s2t')  # 簡體轉繁體；若字幕本身是繁體，簡體字不會被誤轉
+    _opencc = OpenCC('s2twp')  # 簡體轉繁體並轉台灣慣用字/詞；若字幕本身是繁體，簡體字不會被誤轉
 except ImportError:
     _opencc = None
 
@@ -91,6 +92,8 @@ def load_text(path: str) -> str:
                 continue
             if line.upper().startswith("NOTE"):
                 continue
+            if line.lower().startswith("kind:") or line.lower().startswith("language:"):
+                continue
             if VTT_TIMESTAMP_RE.match(line):
                 continue
             if INDEX_LINE_RE.match(line):
@@ -141,7 +144,9 @@ def normalize_zh(text: str, keep_punctuation: bool = False) -> str:
         # 將中文數字（一二三…）與阿拉伯數字先統一成阿拉伯數字，
         # 避免 "2026" vs "二〇二六" 被誤判為錯誤。失敗時保留原文字。
         try:
-            text = cn2an.transform(text, "cn2an")
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                text = cn2an.transform(text, "cn2an")
         except Exception:
             pass
 
