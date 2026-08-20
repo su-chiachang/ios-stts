@@ -45,12 +45,15 @@ struct SettingsView: View {
         #if os(macOS)
         .frame(width: 440, height: 300)
         #endif
-        .task(id: sttAppleVersionRawValue) { await loadSupportedLocales() }
+        .task(id: "\(sttAppleVersionRawValue)|\(sttInputTypeRawValue)") {
+            await loadSupportedLocales()
+        }
     }
 
     private func loadSupportedLocales() async {
         let version = SttAppleVersion.resolve(rawValue: sttAppleVersionRawValue)
-        let locales = await SttAppleLocaleResolver.supportedLocales(for: version)
+        let inputType = SttInputType.resolve(rawValue: sttInputTypeRawValue)
+        let locales = await SttAppleLocaleResolver.supportedLocales(for: version, inputType: inputType)
         guard !Task.isCancelled else { return }
         let tags = locales.map(SttAppleLocaleResolver.tag(for:))
         supportedLocaleTags = tags

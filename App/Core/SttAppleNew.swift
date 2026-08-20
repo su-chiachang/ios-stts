@@ -169,13 +169,20 @@ enum SttAppleLocaleResolver {
         locale.identifier(.bcp47)
     }
 
-    static func supportedLocales(for version: SttAppleVersion) async -> [Locale] {
-        switch version {
-        case .new:
-            return sortedForDisplay(await DictationTranscriber.supportedLocales)
-        case .old:
-            return sortedForDisplay(Array(SFSpeechRecognizer.supportedLocales()))
+    static func supportedLocales(
+        for version: SttAppleVersion,
+        inputType: SttInputType
+    ) async -> [Locale] {
+        let locales: [Locale]
+        switch (version, inputType) {
+        case (.new, .file):
+                locales = await SpeechTranscriber.supportedLocales
+        case (.new, .live):
+                locales = await DictationTranscriber.supportedLocales
+        case (.old, .file), (.old, .live):
+            locales = Array(SFSpeechRecognizer.supportedLocales())
         }
+        return sortedForDisplay(locales)
     }
 
     static func sortedForDisplay(_ locales: [Locale]) -> [Locale] {
