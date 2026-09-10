@@ -25,6 +25,8 @@ struct SttView: View {
     private var sttAppleVersionRawValue = SttAppleVersion.defaultValue.rawValue
     @AppStorage(SttInputType.key)
     private var sttInputTypeRawValue = SttInputType.defaultValue.rawValue
+    @AppStorage(SttReadableSegmentsPreference.key)
+    private var readableSegmentsEnabled = SttReadableSegmentsPreference.defaultValue
     @State private var stt: SttAppleAdapter?
     @State private var elapsedTime: Double?
     @State private var durationTime: Double?
@@ -62,6 +64,7 @@ struct SttView: View {
         .frame(minWidth: 420, minHeight: 500)
         #endif
         .task(id: "\(localeIdentifier)|\(sttAppleVersionRawValue)|\(sttInputTypeRawValue)") { await load() }
+        .onChange(of: readableSegmentsEnabled) { recomputeReadableSegments() }
         .onDisappear { cancel() }
     }
 
@@ -332,6 +335,10 @@ struct SttView: View {
     }
 
     private func recomputeReadableSegments() {
+        guard readableSegmentsEnabled else {
+            readableSegments = []
+            return
+        }
         readableSegments = SttSentenceBreaking.segments(
             for: SttFileTranscription(text: transcript, words: timestampedWords),
             locale: localeIdentifier)
@@ -368,13 +375,37 @@ struct SttView: View {
 
     @ViewBuilder
     private var transcriptView: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            ForEach(Array(readableSegments.enumerated()), id: \.offset) { _, segment in
-                highlightedText(for: segment)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .textSelection(.enabled)
+        if readableSegmentsEnabled {
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(Array(readableSegments.enumerated()), id: \.offset) { _, segment in
+                    highlightedText(for: segment)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .textSelection(.enabled)
+                }
             }
+        } else {
+            highlightedTranscript
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .textSelection(.enabled)
         }
+    }
+
+    /// The whole transcript as one continuous block, highlighted word by
+    /// word. Shown when readable-segment breaking (`SttSentenceBreaking`) is
+    /// turned off in Settings.
+    private var highlightedTranscript: Text {
+        let activeIndex = activeWordIndex
+        var result = AttributedString()
+
+        for piece in SttWordHighlighting.transcriptSegments(in: transcript, words: timestampedWords) {
+            var styledPiece = AttributedString(piece.text)
+            if piece.wordIndex == activeIndex {
+                styledPiece.foregroundColor = .accentColor
+            }
+            result += styledPiece
+        }
+
+        return Text(result)
     }
 
     private func highlightedText(for segment: SttReadableSegment) -> Text {
