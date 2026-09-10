@@ -31,6 +31,7 @@ struct SttView: View {
     @State private var state: ViewState = .loading
     @State private var transcript = ""
     @State private var timestampedWords: [SttWordTimestamp] = []
+    @State private var readableSegments: [SttReadableSegment] = []
     @StateObject private var playback = AudioPlaybackController()
     @State private var transcriptionTask: Task<Void, Never>?
     @State private var elapsedTimeTask: Task<Void, Never>?
@@ -196,8 +197,7 @@ struct SttView: View {
     private func load() async {
         cancel()
         stt = nil
-        transcript = ""
-        timestampedWords = []
+        resetTranscriptState()
         state = .loading
 
         do {
@@ -222,8 +222,7 @@ struct SttView: View {
         }
 
         cancel()
-        transcript = ""
-        timestampedWords = []
+        resetTranscriptState()
         state = .transcribing
         let requestID = UUID()
         activeRequestID = requestID
@@ -276,6 +275,7 @@ struct SttView: View {
                 elapsedTime = finalElapsed
                 transcript = result.text.trimmingCharacters(in: .whitespacesAndNewlines)
                 timestampedWords = result.words
+                recomputeReadableSegments()
                 saveTranscript(
                     transcript,
                     sourceURL: url,
@@ -325,6 +325,18 @@ struct SttView: View {
         elapsedTimeTask = nil
     }
 
+    private func resetTranscriptState() {
+        transcript = ""
+        timestampedWords = []
+        readableSegments = []
+    }
+
+    private func recomputeReadableSegments() {
+        readableSegments = SttSentenceBreaking.segments(
+            for: SttFileTranscription(text: transcript, words: timestampedWords),
+            locale: localeIdentifier)
+    }
+
     private func cancel() {
         transcriptionTask?.cancel()
         transcriptionTask = nil
@@ -335,7 +347,13 @@ struct SttView: View {
         playbackHeight = nil
         playbackResizeStart = nil
         playback.unload()
-        if state == .transcribing { state = .idle }
+        if state == .transcribing {
+            // A partial transcript may already be accumulated (streamed via
+            // appendParagraph) when the user stops mid-transcription; keep
+            // the Sentence view in sync with it rather than showing nothing.
+            recomputeReadableSegments()
+            state = .idle
+        }
     }
 
     private func reportError(_ message: String) {
@@ -350,24 +368,30 @@ struct SttView: View {
 
     @ViewBuilder
     private var transcriptView: some View {
-        highlightedTranscript
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .textSelection(.enabled)
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(Array(readableSegments.enumerated()), id: \.offset) { _, segment in
+                highlightedText(for: segment)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .textSelection(.enabled)
+            }
+        }
     }
 
-    private var highlightedTranscript: Text {
+    private func highlightedText(for segment: SttReadableSegment) -> Text {
+        guard let wordRange = segment.wordRange else {
+            return Text(segment.text)
+        }
+
         let activeIndex = activeWordIndex
+        let words = Array(timestampedWords[wordRange])
         var result = AttributedString()
 
-        for segment in SttWordHighlighting.transcriptSegments(
-            in: transcript,
-            words: timestampedWords)
-        {
-            var styledSegment = AttributedString(segment.text)
-            if segment.wordIndex == activeIndex {
-                styledSegment.foregroundColor = .accentColor
+        for piece in SttWordHighlighting.transcriptSegments(in: segment.text, words: words) {
+            var styledPiece = AttributedString(piece.text)
+            if let localIndex = piece.wordIndex, wordRange.lowerBound + localIndex == activeIndex {
+                styledPiece.foregroundColor = .accentColor
             }
-            result += styledSegment
+            result += styledPiece
         }
 
         return Text(result)

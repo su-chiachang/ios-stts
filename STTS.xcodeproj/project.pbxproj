@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		098599628854AE8FB941578E /* AppleSpeechTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF7C189337BD7E5CABE3D4DE /* AppleSpeechTests.swift */; };
+		0DBF590D37F2B7F3E597286C /* SttSentenceBreaking.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69FB33F93060C0676F23B4D3 /* SttSentenceBreaking.swift */; };
 		0DEE8263CEA2085201210CC1 /* SttAppleOld.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DA6222A978C635DC290E124 /* SttAppleOld.swift */; };
 		171F7CBE0F8B561B2F6912A1 /* MediaSourceMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E420319ED13CC8B10D45B20 /* MediaSourceMenu.swift */; };
 		2D8DE29A558BD92BFE939520 /* STTSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A42B0D01C33A472025C17A0F /* STTSApp.swift */; };
@@ -21,6 +22,7 @@
 		8A991A44D8C8097A1E708A8F /* TtsApple.swift in Sources */ = {isa = PBXBuildFile; fileRef = 641B97007D30482E76B02DAC /* TtsApple.swift */; };
 		905A56AC96F6DA92829330AC /* AppleTtsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 973FB162B50E918C1B6A7EB3 /* AppleTtsTests.swift */; };
 		ACC0320D0C8579C3FDC4E66A /* SttAppleNew.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93CEB8F4A93C3444FA0B5CA0 /* SttAppleNew.swift */; };
+		B240307E38764FC1D86D4F20 /* SttSentenceBreakingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86B79DE7ED107D36B33A40B7 /* SttSentenceBreakingTests.swift */; };
 		B6D7592F5652D21E37C375C0 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84FEBD4B5611CECB465387C1 /* SettingsView.swift */; };
 		B96145BA68E58E40CACA12C8 /* AVFAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 07EC02451599AD4C28F239E6 /* AVFAudio.framework */; };
 		C045EF23381807489D46CA2F /* TttAppleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AAF5D7D2DC99FF6CE83B0B8 /* TttAppleTests.swift */; };
@@ -69,10 +71,12 @@
 		54015CE032053C6A56560C85 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
 		60B596FDEE708E8291DDA051 /* FoundationModels.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = FoundationModels.framework; path = System/Library/Frameworks/FoundationModels.framework; sourceTree = SDKROOT; };
 		641B97007D30482E76B02DAC /* TtsApple.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TtsApple.swift; sourceTree = "<group>"; };
+		69FB33F93060C0676F23B4D3 /* SttSentenceBreaking.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SttSentenceBreaking.swift; sourceTree = "<group>"; };
 		6AB33C348377EAE1822DCC6F /* AppleSpeechWriteLifecycleProbeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSpeechWriteLifecycleProbeTests.swift; sourceTree = "<group>"; };
 		7B546928209CC0614320F3BF /* SttView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SttView.swift; sourceTree = "<group>"; };
 		81DCFD8988295B9B4115506C /* TttView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TttView.swift; sourceTree = "<group>"; };
 		84FEBD4B5611CECB465387C1 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		86B79DE7ED107D36B33A40B7 /* SttSentenceBreakingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SttSentenceBreakingTests.swift; sourceTree = "<group>"; };
 		8AAF5D7D2DC99FF6CE83B0B8 /* TttAppleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TttAppleTests.swift; sourceTree = "<group>"; };
 		8E420319ED13CC8B10D45B20 /* MediaSourceMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaSourceMenu.swift; sourceTree = "<group>"; };
 		9276F59453065581A0421C5E /* STTSTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = STTSTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -163,6 +167,7 @@
 				45EB14C6E593D09487F38568 /* LanguageDetect.swift */,
 				93CEB8F4A93C3444FA0B5CA0 /* SttAppleNew.swift */,
 				1DA6222A978C635DC290E124 /* SttAppleOld.swift */,
+				69FB33F93060C0676F23B4D3 /* SttSentenceBreaking.swift */,
 				641B97007D30482E76B02DAC /* TtsApple.swift */,
 				C844B9F5DA09F6CDC3AD4B76 /* TttApple.swift */,
 			);
@@ -193,6 +198,7 @@
 			children = (
 				EF7C189337BD7E5CABE3D4DE /* AppleSpeechTests.swift */,
 				973FB162B50E918C1B6A7EB3 /* AppleTtsTests.swift */,
+				86B79DE7ED107D36B33A40B7 /* SttSentenceBreakingTests.swift */,
 				8AAF5D7D2DC99FF6CE83B0B8 /* TttAppleTests.swift */,
 			);
 			path = AppTests;
@@ -315,10 +321,10 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				7784F7248B3F58E7983CCC76 /* AppleSpeechLifecycleProbeIOSTests */,
-				427BBE6FC31A1248D7B9C469 /* AppleSpeechLifecycleProbeMacTests */,
 				E1C867299251B55FDF15AA1C /* STTS */,
 				D02BDD4B70800EB6A5465D6E /* STTSTests */,
+				7784F7248B3F58E7983CCC76 /* AppleSpeechLifecycleProbeIOSTests */,
+				427BBE6FC31A1248D7B9C469 /* AppleSpeechLifecycleProbeMacTests */,
 			);
 		};
 /* End PBXProject section */
@@ -357,6 +363,7 @@
 				B6D7592F5652D21E37C375C0 /* SettingsView.swift in Sources */,
 				ACC0320D0C8579C3FDC4E66A /* SttAppleNew.swift in Sources */,
 				0DEE8263CEA2085201210CC1 /* SttAppleOld.swift in Sources */,
+				0DBF590D37F2B7F3E597286C /* SttSentenceBreaking.swift in Sources */,
 				DED039CAAA47AF5792E8F040 /* SttView.swift in Sources */,
 				8A991A44D8C8097A1E708A8F /* TtsApple.swift in Sources */,
 				F772E74BC3A8AB9B28C577E5 /* TtsView.swift in Sources */,
@@ -371,6 +378,7 @@
 			files = (
 				098599628854AE8FB941578E /* AppleSpeechTests.swift in Sources */,
 				905A56AC96F6DA92829330AC /* AppleTtsTests.swift in Sources */,
+				B240307E38764FC1D86D4F20 /* SttSentenceBreakingTests.swift in Sources */,
 				C045EF23381807489D46CA2F /* TttAppleTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
