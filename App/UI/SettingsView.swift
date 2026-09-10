@@ -10,8 +10,6 @@ struct SettingsView: View {
     private var sttAppleVersionRawValue = SttAppleVersion.defaultValue.rawValue
     @AppStorage(SttInputType.key)
     private var sttInputTypeRawValue = SttInputType.defaultValue.rawValue
-    @AppStorage(SttReadableSegmentsPreference.key)
-    private var readableSegmentsEnabled = SttReadableSegmentsPreference.defaultValue
     @State private var supportedLocaleTags: [String] = []
 
     var body: some View {
@@ -37,13 +35,6 @@ struct SettingsView: View {
                 }
 
                 Text("New uses SpeechTranscriber for File and DictationTranscriber for Live. Old uses SFSpeechURLRecognitionRequest for File and SFSpeechAudioBufferRecognitionRequest for Live.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                Toggle("Readable segments", isOn: $readableSegmentsEnabled)
-
-                Text("Breaks the Sentence view into shorter, readable segments (English/Chinese) instead of one continuous block.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

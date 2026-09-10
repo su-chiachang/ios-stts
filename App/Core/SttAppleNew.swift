@@ -106,14 +106,6 @@ enum SttInputType: String, CaseIterable, Identifiable {
     }
 }
 
-/// Whether the Sentence view breaks the transcript into readable segments
-/// (`SttSentenceBreaking`) instead of showing it as one continuous block.
-/// Off by default: it's a new, opt-in behavior change to existing transcripts.
-enum SttReadableSegmentsPreference {
-    static let key = "sttReadableSegmentsEnabled"
-    static let defaultValue = false
-}
-
 enum SttAppleNewWords {
     static func words(from transcription: AttributedString) -> [SttWordTimestamp] {
         transcription.runs.compactMap { run in

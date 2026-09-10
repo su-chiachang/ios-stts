@@ -15,6 +15,7 @@ struct SttView: View {
     }
 
     private enum ViewMode: Hashable {
+        case readable
         case sentence
         case words
     }
@@ -25,8 +26,6 @@ struct SttView: View {
     private var sttAppleVersionRawValue = SttAppleVersion.defaultValue.rawValue
     @AppStorage(SttInputType.key)
     private var sttInputTypeRawValue = SttInputType.defaultValue.rawValue
-    @AppStorage(SttReadableSegmentsPreference.key)
-    private var readableSegmentsEnabled = SttReadableSegmentsPreference.defaultValue
     @State private var stt: SttAppleAdapter?
     @State private var elapsedTime: Double?
     @State private var durationTime: Double?
@@ -34,6 +33,7 @@ struct SttView: View {
     @State private var transcript = ""
     @State private var timestampedWords: [SttWordTimestamp] = []
     @State private var readableSegments: [SttReadableSegment] = []
+    @State private var readableSegmentsElapsed: Double?
     @StateObject private var playback = AudioPlaybackController()
     @State private var transcriptionTask: Task<Void, Never>?
     @State private var elapsedTimeTask: Task<Void, Never>?
@@ -64,7 +64,10 @@ struct SttView: View {
         .frame(minWidth: 420, minHeight: 500)
         #endif
         .task(id: "\(localeIdentifier)|\(sttAppleVersionRawValue)|\(sttInputTypeRawValue)") { await load() }
-        .onChange(of: readableSegmentsEnabled) { recomputeReadableSegments() }
+        .onChange(of: viewMode) { _, newValue in
+            guard newValue == .readable else { return }
+            computeReadableSegments()
+        }
         .onDisappear { cancel() }
     }
 
@@ -106,12 +109,13 @@ struct SttView: View {
         HStack {
             Spacer(minLength: 0)
             Picker("View", selection: $viewMode) {
+                Text("readable").tag(ViewMode.readable)
                 Text("sentence").tag(ViewMode.sentence)
                 Text("words").tag(ViewMode.words)
             }
             .pickerStyle(.segmented)
             .labelsHidden()
-            .frame(width: 150)
+            .frame(width: 220)
             .accessibilityLabel("Transcript view")
             Spacer(minLength: 0)
         }
@@ -181,15 +185,20 @@ struct SttView: View {
         case .idle:
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    if viewMode == .sentence {
+                    switch viewMode {
+                    case .readable:
+                        readableView
+                    case .sentence:
                         transcriptView
-                    } else if timestampedWords.isEmpty {
-                        Text("Word timestamps are not available for this result.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    } else {
-                        Divider()
-                        wordListView
+                    case .words:
+                        if timestampedWords.isEmpty {
+                            Text("Word timestamps are not available for this result.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Divider()
+                            wordListView
+                        }
                     }
                 }
             }
@@ -278,7 +287,7 @@ struct SttView: View {
                 elapsedTime = finalElapsed
                 transcript = result.text.trimmingCharacters(in: .whitespacesAndNewlines)
                 timestampedWords = result.words
-                recomputeReadableSegments()
+                computeReadableSegmentsIfShowing()
                 saveTranscript(
                     transcript,
                     sourceURL: url,
@@ -332,16 +341,25 @@ struct SttView: View {
         transcript = ""
         timestampedWords = []
         readableSegments = []
+        readableSegmentsElapsed = nil
     }
 
-    private func recomputeReadableSegments() {
-        guard readableSegmentsEnabled else {
-            readableSegments = []
-            return
-        }
+    /// Only meaningful while the readable tab is the one on screen: computed
+    /// lazily on switching into it (see the `viewMode` `onChange` in `body`),
+    /// and re-run here so a transcript that finishes, or is stopped early,
+    /// while that tab is already showing doesn't display stale segments.
+    /// Timed deliberately so the cost of this pass is visible each time.
+    private func computeReadableSegmentsIfShowing() {
+        guard viewMode == .readable else { return }
+        computeReadableSegments()
+    }
+
+    private func computeReadableSegments() {
+        let startedAt = Date()
         readableSegments = SttSentenceBreaking.segments(
             for: SttFileTranscription(text: transcript, words: timestampedWords),
             locale: localeIdentifier)
+        readableSegmentsElapsed = Date().timeIntervalSince(startedAt)
     }
 
     private func cancel() {
@@ -357,8 +375,9 @@ struct SttView: View {
         if state == .transcribing {
             // A partial transcript may already be accumulated (streamed via
             // appendParagraph) when the user stops mid-transcription; keep
-            // the Sentence view in sync with it rather than showing nothing.
-            recomputeReadableSegments()
+            // the readable tab in sync with it rather than showing stale
+            // segments, if that tab is the one currently on screen.
+            computeReadableSegmentsIfShowing()
             state = .idle
         }
     }
@@ -374,25 +393,30 @@ struct SttView: View {
     }
 
     @ViewBuilder
-    private var transcriptView: some View {
-        if readableSegmentsEnabled {
-            VStack(alignment: .leading, spacing: 8) {
-                ForEach(Array(readableSegments.enumerated()), id: \.offset) { _, segment in
-                    highlightedText(for: segment)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .textSelection(.enabled)
-                }
+    private var readableView: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let readableSegmentsElapsed {
+                Text("Segmented in \(String(format: "%.3f", readableSegmentsElapsed))s")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
             }
-        } else {
-            highlightedTranscript
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .textSelection(.enabled)
+            ForEach(Array(readableSegments.enumerated()), id: \.offset) { _, segment in
+                highlightedText(for: segment)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .textSelection(.enabled)
+            }
         }
     }
 
+    @ViewBuilder
+    private var transcriptView: some View {
+        highlightedTranscript
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .textSelection(.enabled)
+    }
+
     /// The whole transcript as one continuous block, highlighted word by
-    /// word. Shown when readable-segment breaking (`SttSentenceBreaking`) is
-    /// turned off in Settings.
+    /// word.
     private var highlightedTranscript: Text {
         let activeIndex = activeWordIndex
         var result = AttributedString()
